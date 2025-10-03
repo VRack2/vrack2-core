@@ -1,0 +1,27 @@
+{
+  "name": "vrack2-core",
+  "version": "1.0.0",
+  "description": "Фреймворк для создания событийно-ориентированных сервисов на JavaScript/TypeScript",
+  "main": "./lib/index",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VRack2/vrack2-core.git"
+  },
+  "author": "Boris Bobylev",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/VRack2/vrack2-core/issues"
+  },
+  "homepage": "https://github.com/VRack2/vrack2-core#readme",
+  "devDependencies": {
+    "@types/node": "^18.11.17",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.29.0",
+    "typescript": "^4.9.3"
+  },
+  "dependencies": {
+    "vrack-db": "^3.0.1"
+  }
+}
