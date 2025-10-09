@@ -14,8 +14,10 @@ VRack2 Core
 -------
 
  - [VRack2](https://github.com/VRack2/vrack2) - Официальный репозиторий
- - [VRack2-service](https://github.com/VRack2/vrack2-service) - Репозиторий для запуска сервисов на основе VRack2-Core, включая официальный VRack2.
+ - [VRack2-service](https://github.com/VRack2/vrack2-service) - Запуск сервисов на VRack2-Core
  - [VRack2 Manager](https://github.com/VRack2/vrack2-manager) - Интерфейс для работы с сервисами VRack2
+ - [VGranite](https://github.com/VRack2/VGranite) - Сервис для создания туннелей Socket -> Serial
+
 
 Основная документация для VRack2-Core на данный момент не готова. Часть документации в виде черновиков уже есть.
 
