@@ -11,7 +11,6 @@ import IAction from '../actions/IAction'
 import IMetricSettings from '../metrics/IMetricSettings'
 import IPort from '../ports/IPort'
 import IValidationRule from '../validator/IValidationRule'
-import Validator from '../validator/Validator'
 
 export interface IDeviceVendor {
     /** Group name = Vendor name  */
@@ -176,11 +175,6 @@ export default class DeviceManager extends BootClass {
         const DeviceClass = await this.get(di)
         const dev = new DeviceClass('1', di, this) as Device
         
-        // Заполняем значения по умолчанию валидатором
-        // Это нужно динамических портов которые определяются через options
-        const rules = dev.checkOptions()
-        Validator.validate(rules, dev.options)
-
         const result: IDeivceInfo = { actions: {}, metrics: {}, inputs: {}, outputs: {}, options: {}, description: '' }
         try {
             const preOptions = dev.checkOptions();
