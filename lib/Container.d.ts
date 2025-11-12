@@ -87,6 +87,12 @@ export default class Container extends EventEmitter {
      * */
     confFile?: string;
     /**
+     * Дополнительные метаданные
+    */
+    meta?: {
+        [key: string]: any;
+    };
+    /**
      * Container bootstrap class
      *
      * A different bootstrap class must be created for each container
