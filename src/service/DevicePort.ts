@@ -6,6 +6,7 @@
 import IPort from "../ports/IPort"
 import DeviceConnect from "./DeviceConnect"
 import Utility from "../Utility"
+import Device from "./Device"
 
 /**
  * A class to implement a device port. 
@@ -26,6 +27,9 @@ export default class DevicePort {
     /** Flag determines whether the port should be connected */
     required: boolean
 
+    /**  Ссылка на устройсто владельца */
+    Device: Device
+
     /**
      * Список слушателей порта
      * Используется для захвата порта. Если какие либо данные будут проброшены 
@@ -33,10 +37,11 @@ export default class DevicePort {
     */
     listens = new Map<number, (data:any) => void>()
 
-    constructor(id: string, port: IPort) {
+    constructor(id: string, port: IPort, device: Device) {
         this.id = id
         this.type = port.type
         this.required = port.required
+        this.Device = device
     }
 
     /**

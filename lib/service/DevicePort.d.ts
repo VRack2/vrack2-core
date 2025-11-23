@@ -1,5 +1,6 @@
 import IPort from "../ports/IPort";
 import DeviceConnect from "./DeviceConnect";
+import Device from "./Device";
 /**
  * A class to implement a device port.
  * The port can be either incoming or outgoing
@@ -15,13 +16,15 @@ export default class DevicePort {
     type: string;
     /** Flag determines whether the port should be connected */
     required: boolean;
+    /**  Ссылка на устройсто владельца */
+    Device: Device;
     /**
      * Список слушателей порта
      * Используется для захвата порта. Если какие либо данные будут проброшены
      * в порт, они будут переданы для каждого вызнванного слушателя
     */
     listens: Map<number, (data: any) => void>;
-    constructor(id: string, port: IPort);
+    constructor(id: string, port: IPort, device: Device);
     /**
      * Adding communication to a port
     */
