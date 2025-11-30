@@ -21,6 +21,16 @@ export default class BasicType {
         }
     }
 
+    required(){
+        this.rule.require = true
+        return this
+    }
+    
+    /**
+     * Вскоре будет удален
+     * @see required
+     * @deprecated use required()
+    */
     require(){
         this.rule.require = true
         return this

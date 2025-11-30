@@ -1,6 +1,6 @@
 {
   "name": "vrack2-core",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Фреймворк для создания событийно-ориентированных сервисов на JavaScript/TypeScript",
   "main": "./lib/index",
   "scripts": {},

@@ -2,6 +2,12 @@ import IValidationRule from "../IValidationRule";
 export default class BasicType {
     protected rule: IValidationRule;
     constructor();
+    required(): this;
+    /**
+     * Вскоре будет удален
+     * @see required
+     * @deprecated use required()
+    */
     require(): this;
     /**
      * Example of a valid value for this rule

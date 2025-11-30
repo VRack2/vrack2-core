@@ -35,6 +35,18 @@ declare class ErrorManager {
     */
     convert(error: any): any;
     /**
+     * Проверяет является ли ошибка VRack2 Error
+     * и соответсвует ли код переданной ошибке (проверяет vShort и vCode)
+    */
+    isCode(error: any, code: string): boolean;
+    /**
+     * Проверяет - пренадлежит объект ошибки VRack2 Error
+     *
+     * Это не обязательно должен быть класс CoreError но и
+     * любой сериализированный класс ошибки VRack2
+    */
+    isError(error: any): boolean;
+    /**
      * Searches for an error by code or short
      *
      * @param short Short error code or search error code

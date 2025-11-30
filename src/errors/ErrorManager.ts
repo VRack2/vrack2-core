@@ -49,7 +49,14 @@ class ErrorManager {
     register(name: string, code: string, short: string, description: string, rules: { [key: string]: BasicType } = {}) {
         const reg1 = this.getRegistered(code)
         const reg2 = this.getRegistered(short)
-        if (reg1 !== null || reg2 !== null) throw this.make('EM_CODE_EXISTS', { code, short })
+        if (reg1 !== null || reg2 !== null) { 
+            // Если уже есть идентичная запись - просто игнорим
+            if (reg1?.code === reg2?.code && reg1?.short === reg2?.short){
+                return
+            }else {
+                throw this.make('EM_CODE_EXISTS', { code, short })
+            }
+        }
         const nr = { name, code, short, description, rules }
         this.registeredList.push(nr)
     }
@@ -74,6 +81,7 @@ class ErrorManager {
         return Object.assign(ne, additional)
     }
 
+    
     /**
      * Converts a normal error to a VRack error
      * 
@@ -84,6 +92,28 @@ class ErrorManager {
         const ne = this.make('EM_ERROR_CONVERT')
         ne.import(error)
         return ne
+    }
+
+    /**
+     * Проверяет является ли ошибка VRack2 Error 
+     * и соответсвует ли код переданной ошибке (проверяет vShort и vCode)
+    */
+    isCode(error: any, code: string){
+        if (!this.isError(error)) return false
+        if (error.vShort === code || error.vCode === code) return true
+        return false
+    }
+
+    /**
+     * Проверяет - пренадлежит объект ошибки VRack2 Error
+     * 
+     * Это не обязательно должен быть класс CoreError но и 
+     * любой сериализированный класс ошибки VRack2
+    */
+    isError(error: any){
+        if (error instanceof CoreError) return true
+        if (error.vError && error.vCode !== undefined && error.vShort !== undefined) return true
+        return false
     }
 
     /**
@@ -100,7 +130,7 @@ class ErrorManager {
 
 
 const GlobalErrorManager = new ErrorManager()
-GlobalErrorManager.register('ErrorManager', 'NcZIb9QvQRcq', 'EM_CODE_EXISTS', 'This code already exists')
+GlobalErrorManager.register('ErrorManager', 'NcZIb9QvQRcq', 'EM_CODE_EXISTS', 'Has anyone else encountered this error code? Possible duplication of the error code and short word in different registrations.')
 GlobalErrorManager.register('ErrorManager', 'uLYv4mE1Yo50', 'EM_CODE_NOT_FOUND', 'No such error found')
 GlobalErrorManager.register('ErrorManager', 'RIl3BUrxWOzP', 'EM_ERROR_CONVERT', 'Converted error')
 export default GlobalErrorManager
