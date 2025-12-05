@@ -18,6 +18,7 @@ export default class DevicePort {
     required: boolean;
     /**  Ссылка на устройсто владельца */
     Device: Device;
+    bind: ((data: any) => {}) | null;
     /**
      * Список слушателей порта
      * Используется для захвата порта. Если какие либо данные будут проброшены

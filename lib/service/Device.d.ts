@@ -41,6 +41,12 @@ export default class Device {
     */
     type: string;
     /**
+     * Флаг общей работы
+     * Если флаг === false = все порты перестают принимать или отправлять данные/события
+     *
+    */
+    works: boolean;
+    /**
      * Allows access to port management.
     */
     ports: {
@@ -136,6 +142,11 @@ export default class Device {
      * @param data  data for action
     */
     beforeAction(action: string, data: any): boolean;
+    /**
+     * Должен вызываться перед завершением сервиса
+     * Но может не вызываться (зависит от реализации)
+    */
+    beforeTerminate(): void;
     /**
      * Prepare options
      *

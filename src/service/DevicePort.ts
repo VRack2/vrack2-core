@@ -30,6 +30,8 @@ export default class DevicePort {
     /**  Ссылка на устройсто владельца */
     Device: Device
 
+    bind: ((data: any) => {}) | null = null;
+
     /**
      * Список слушателей порта
      * Используется для захвата порта. Если какие либо данные будут проброшены 
@@ -56,6 +58,9 @@ export default class DevicePort {
      * Calling the incoming port when calling a connection 
     */
     push(data: any): any { 
+        if (!this.Device.works) return
+        if (this.bind !== null) return this.bind(data)
+
         // Если у нас есть слушатели порта
         // Передаем им данные и пересоздаем Map
         if (this.listens.size) {

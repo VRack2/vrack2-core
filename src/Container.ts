@@ -107,6 +107,9 @@ ErrorManager.register('Container', 'XR1K10R0OOUC', 'CTR_INCOMPATIBLE_PORTS', 'In
 ErrorManager.register('Container', 'MmVoDOQwaYkx', 'CTR_INCORRECT_BOOSTRAP', 'The required DeviceManager class is not specified correctly', {})
 ErrorManager.register('Container', 'e090R0MLyb7y', 'CTR_CONF_EXTENDS_PROBLEM', 'Problem with extending service configuration.', {})
 
+ErrorManager.register('Container', 'LYC0VA1AWYKU', 'CTR_IGNORE_SERVICE_AUTORELOAD', 'Error that ignores service restart flag', {})
+
+
 
 /**
  * Contains the structure of the service
@@ -474,7 +477,9 @@ export default class Container extends EventEmitter {
                 this.structure[dconf.id].ports.push(
                     Object.assign({ port: subkey, direct: 'input' }, pList[subkey])
                 )
-                if (handler in dev) ndp.push = dev[handler].bind(dev)
+                
+                // биндимся а не заменяем push для контроля внутри push
+                if (handler in dev) ndp.bind = dev[handler].bind(dev)
             }
         }
 

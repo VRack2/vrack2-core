@@ -55,6 +55,13 @@ export default class Device {
     type: string;
 
     /**
+     * Флаг общей работы
+     * Если флаг === false = все порты перестают принимать или отправлять данные/события
+     * 
+    */
+    works: boolean
+
+    /**
      * Allows access to port management. 
     */
     ports: {
@@ -83,6 +90,7 @@ export default class Device {
         this.id = id
         this.type = type
         this.Container = Container
+        this.works = true
         this.ports = {
             input: {},
             output: {}
@@ -165,6 +173,12 @@ export default class Device {
      * @param data  data for action
     */
     beforeAction(action: string, data: any) { return true }
+    
+    /**
+     * Должен вызываться перед завершением сервиса
+     * Но может не вызываться (зависит от реализации)
+    */
+    beforeTerminate(){ return }
 
     /**
      * Prepare options 
@@ -330,7 +344,8 @@ export default class Device {
     */
     addInputHandler(name: string, action: (data: any) => any) {
         name = ImportManager.camelize('input.' + name)
-        this[name as keyof Device] = action
+        const a = this as any
+        a[name] = action
     }
 
     /**
@@ -341,7 +356,8 @@ export default class Device {
     */
     addActionHandler(name: string, action: (data: any) => any) {
         name = ImportManager.camelize('action.' + name)
-        this[name as keyof Device] = action
+        const a = this as any
+        a[name] = action
     }
 
     /**
@@ -353,4 +369,5 @@ export default class Device {
     terminate(error: Error, action: string) {
         return this.makeEvent('device.terminate', action, error, [])
     }
+    
 }
