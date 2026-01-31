@@ -5,6 +5,8 @@ export { default as Validator } from './validator/Validator';
 export { default as ImportManager } from './ImportManager';
 export { default as Container } from './Container';
 export { default as MainProcess } from './MainProcess';
+export { default as UniversalWorker } from './UniversalWorkers';
+export { default as ReactiveRef } from './ReactiveRef';
 export { default as Bootstrap } from './Bootstrap';
 export { default as BootClass } from './boot/BootClass';
 export { default as DeviceFileStorage } from './boot/DeviceFileStorage';

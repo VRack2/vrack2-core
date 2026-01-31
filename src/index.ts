@@ -14,6 +14,11 @@ export { default as ImportManager } from './ImportManager';
 export { default as Container } from './Container';
 export { default as MainProcess } from './MainProcess';
 
+/* -------------- HELPERS EXTENSION ----------------- */
+
+export {default as UniversalWorker } from './UniversalWorkers'
+export {default as ReactiveRef } from './ReactiveRef'
+
 /* ---------------- BOOTSTRAP ------------------- */
 
 export { default as Bootstrap } from './Bootstrap'
