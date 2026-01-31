@@ -9,7 +9,43 @@ type UniversalWorkerOptions = {
   workerData?: any;
 };
 
+export type WorkerMessageHandler = (message: any) => void;
+
 export default class UniversalWorker {
+
+  static isMain = isMainThread &&  process.send === undefined
+  static isForked = typeof process.send === 'function';
+  static isChild = !isMainThread || typeof process.send === 'function';
+
+  /**
+   * Получение данных сверху, которые были переданны при создании воркера
+   * В случае использования worker_threads - workerData
+   * Если же это форк - парсит устаноленнюу переменную окружения VRACK2_WORKER_DATA
+  */
+  static getWorkerData(): any {
+    if (!isMainThread) return workerData;
+    if (UniversalWorker.isForked) return JSON.parse(process.env.VRACK2_WORKER_DATA || '{}');
+    throw new Error('getWorkerData() called in main process');
+  }
+
+  /**
+   * Отправка данных наверх в родительский процесс
+  */
+  static sendMessage(message: any): void {
+    if (!isMainThread) return parentPort?.postMessage(message);
+    if (UniversalWorker.isForked) { process.send?.(message); return }
+    throw new Error('sendMessage() called in main process');
+  }
+
+  /**
+   * Позволяет подписаться на данные которые приходят сверху
+  */
+  static onMessage(handler: WorkerMessageHandler): void {
+    if (!isMainThread) parentPort?.on('message', handler);
+    else if (UniversalWorker.isForked) process.on('message', handler);
+    else throw new Error('onMessage() called in main process');
+  }
+
 
   private impl: {
     send: (msg: any) => void;
@@ -80,48 +116,4 @@ export default class UniversalWorker {
   terminate() {
     this.impl.kill();
   }
-}
-
-
-export type WorkerMessageHandler = (message: any) => void;
-
-/**
- * Определяет - является ли процесс форкнутым 
- * Основанно на проверке метода process.send которая есть только у фокрнутого процесса
-*/
-export const isForked = typeof process.send === 'function';
-
-/**
- * Определяет - является ли данный инстанс дочерним - не важно используя worker_threads или fork
- * Проверяет !isMainThread || isForked
-*/
-export const isChild = !isMainThread || isForked;
-
-/**
- * Получение данных сверху, которые были переданны при создании воркера
- * В случае использования worker_threads - workerData
- * Если же это форк - парсит устаноленнюу переменную окружения VRACK2_WORKER_DATA
-*/
-export function getWorkerData(): any {
-  if (!isMainThread) return workerData;
-  if (isForked) return JSON.parse(process.env.VRACK2_WORKER_DATA || '{}');
-  throw new Error('getWorkerData() called in main process');
-}
-
-/**
- * Отправка данных наверх в родительский процесс
-*/
-export function sendMessage(message: any): void {
-  if (!isMainThread) return parentPort?.postMessage(message);
-  if (isForked) { process.send?.(message); return }
-  throw new Error('sendMessage() called in main process');
-}
-
-/**
- * Позволяет подписаться на данные которые приходят сверху
-*/
-export function onMessage(handler: WorkerMessageHandler): void {
-  if (!isMainThread) parentPort?.on('message', handler);
-  else if (isForked)  process.on('message', handler); 
-  else throw new Error('onMessage() called in main process');
 }

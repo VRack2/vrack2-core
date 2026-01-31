@@ -3,7 +3,25 @@ type UniversalWorkerOptions = {
     scriptPath: string;
     workerData?: any;
 };
+export type WorkerMessageHandler = (message: any) => void;
 export default class UniversalWorker {
+    static isMain: boolean;
+    static isForked: boolean;
+    static isChild: boolean;
+    /**
+     * Получение данных сверху, которые были переданны при создании воркера
+     * В случае использования worker_threads - workerData
+     * Если же это форк - парсит устаноленнюу переменную окружения VRACK2_WORKER_DATA
+    */
+    static getWorkerData(): any;
+    /**
+     * Отправка данных наверх в родительский процесс
+    */
+    static sendMessage(message: any): void;
+    /**
+     * Позволяет подписаться на данные которые приходят сверху
+    */
+    static onMessage(handler: WorkerMessageHandler): void;
     private impl;
     /**
      * Создает новые воркер
@@ -31,29 +49,4 @@ export default class UniversalWorker {
     */
     terminate(): void;
 }
-export type WorkerMessageHandler = (message: any) => void;
-/**
- * Определяет - является ли процесс форкнутым
- * Основанно на проверке метода process.send которая есть только у фокрнутого процесса
-*/
-export declare const isForked: boolean;
-/**
- * Определяет - является ли данный инстанс дочерним - не важно используя worker_threads или fork
- * Проверяет !isMainThread || isForked
-*/
-export declare const isChild: boolean;
-/**
- * Получение данных сверху, которые были переданны при создании воркера
- * В случае использования worker_threads - workerData
- * Если же это форк - парсит устаноленнюу переменную окружения VRACK2_WORKER_DATA
-*/
-export declare function getWorkerData(): any;
-/**
- * Отправка данных наверх в родительский процесс
-*/
-export declare function sendMessage(message: any): void;
-/**
- * Позволяет подписаться на данные которые приходят сверху
-*/
-export declare function onMessage(handler: WorkerMessageHandler): void;
 export {};
