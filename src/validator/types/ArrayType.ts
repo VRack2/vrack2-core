@@ -61,7 +61,7 @@ export default class ArrayType extends BasicType {
         if (!Array.isArray(obj[key])) throw ErrorManager.make('VR_IS_NOT_ARRAY', {})
         for (const subrule of this.rule.rules) {
             switch (subrule.name) {
-                case 'fields':
+                case 'contain':
                     this.checkContent(obj, key, subrule)
             }
         }
@@ -78,8 +78,9 @@ export default class ArrayType extends BasicType {
     protected checkContent(obj: { [key: string]: any }, key: string, sub: IValidationSubrule) {
         const sw = { value: undefined }
         const tr = { value: sub.args }
-        for (const index of obj[key]) {
-            sw.value = obj[key][index]
+        const items = obj[key]
+        for (let index = 0; index < items.length; index++) {
+            sw.value = items[index]
             try {
                 Validator.validate(tr, sw)
             } catch (error) {
@@ -94,7 +95,7 @@ export default class ArrayType extends BasicType {
 
 ErrorManager.register(
     'Validator', '3U9s3ZsTH6FA', 'VR_IS_NOT_ARRAY',
-    'Value must be a array', {
+    'Value must be an array', {
 })
 
 ErrorManager.register(
