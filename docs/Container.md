@@ -42,7 +42,7 @@ constructor(id: string, service: IServiceStructure, Bootstrap: Bootstrap, confFi
 ### Ошибки устройств:
 - `CTR_ERROR_INIT_DEVICE` - ошибка инициализации устройства (общая ошибка инициализации устройства. См. Вложенные ошибки)
 - `CTR_INCORRECT_DEVICE_ID` - некорректный ID устройства 
-- `CTR_DEVICE_DUBLICATE` - дублирование ID устройства
+- `CTR_DEVICE_DUPLICATE` - дублирование ID устройства
 - `CTR_ERROR_PREPARE_OPTIONS` - ошибка подготовки параметров
 - `CTR_DEVICE_ACTION_NF` - действие устройства не найдено
 - `CTR_DEVICE_NF` - устройство не найдено

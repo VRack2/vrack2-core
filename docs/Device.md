@@ -131,8 +131,8 @@ inputs(): { [key: string]: BasicPort } { return {} }
 outputs(): { [key: string]: BasicPort } { return {} }
 // Пример:
 // return {
-//   'sensor.temperature': Port.standart(),
-//   'control.setpoint': Port.standart()
+//   'sensor.temperature': Port.standard(),
+//   'control.setpoint': Port.standard()
 // }
 ```
 
@@ -242,7 +242,7 @@ class TemperatureSensor extends Device {
 
   inputs() {
     return {
-      'control.setpoint': Port.standart()
+      'control.setpoint': Port.standard()
     };
   }
 
