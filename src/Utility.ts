@@ -9,7 +9,7 @@ export default class Utility {
     /** 
      * Check device name (device ID)
      * */
-    static async isDeviceName(name: string) {
+    static isDeviceName(name: string) {
         return /^[a-zA-Z0-9_*-:]+$/.test(name)
     }
 
