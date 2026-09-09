@@ -45,5 +45,5 @@ export default class BooleanType  extends BasicType {
 
 ErrorManager.register(
     'Validator', 'Fr7BvAlZyZPm', 'VR_IS_NOT_BOOLEAN',
-    'Value must be a number', {
+    'Value must be a boolean', {
 })

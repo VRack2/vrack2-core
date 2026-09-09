@@ -44,7 +44,7 @@ export default class ObjectType extends BasicType {
      * ```ts
      *  obj: Rule.object().fields({
      *       bool: Rule.boolean().require().default(true).description('Boolean checkbox')
-     *  }).description('TEst ibject description'),
+     *  }).description('Test object description'),
      * ```
     */
     fields(obj: { [key: string]: BasicType }) {
@@ -87,7 +87,7 @@ export default class ObjectType extends BasicType {
 
 ErrorManager.register(
     'Validator', 'zOPzOab9oLum', 'VR_IS_NOT_OBJECT',
-    'Value must be a object', {
+    'Value must be an object', {
 })
 
 ErrorManager.register(

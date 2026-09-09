@@ -66,7 +66,7 @@ export default class Bootstrap {
      * Loaded class list
      * 
      * ```ts
-     * { UniqueID: Classinstance }
+     * { UniqueID: ClassInstance }
      * ```
     */
     protected loaded: { [key: string]: BootClass } = {}

@@ -42,7 +42,7 @@ export default class Bootstrap {
      * Loaded class list
      *
      * ```ts
-     * { UniqueID: Classinstance }
+     * { UniqueID: ClassInstance }
      * ```
     */
     protected loaded: {
@@ -75,5 +75,5 @@ export default class Bootstrap {
      * @param id class identifier that was specified in the list
      * @param cs Class to be compared with when receiving
     */
-    getBootClass(id: string, cs: any): any;
+    getBootClass(id: string, cs: any): typeof cs;
 }

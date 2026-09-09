@@ -1,6 +1,6 @@
 import BasicAction from "./BasicAction";
 /**
- * Standart action class
+ * Standard action class
  *
  * @see BasicAction
 */

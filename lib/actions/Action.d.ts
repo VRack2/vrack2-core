@@ -6,7 +6,7 @@ import GlobalAction from "./GlobalAction";
 */
 export default class Action {
     /**
-     * The only type of action game at the moment. Does not have any special properties.
+     * The only type of action at the moment. Does not have any special properties.
      *
      * @see BasicAction
     */

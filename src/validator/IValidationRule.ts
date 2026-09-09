@@ -15,7 +15,7 @@ export default interface IValidationRule {
     description: string;
     /**
      * Template for error message string
-     * Use like a "{description} field must by like a '123' number "
+     * Use like a "{description} field must be like a '123' number "
      * You can use {description} {value} {default} in template 
      */
     message: string;

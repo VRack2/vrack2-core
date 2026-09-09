@@ -11,7 +11,7 @@ import IMetricSettings from "../metrics/IMetricSettings";
  * Uses the `device.metric` and `device.register.metric` events
  *
  * @see deviceMetric()
- * @see deviceRegiterMetric()
+ * @see deviceRegisterMetric()
 */
 export default class DeviceMetrics extends BootClass {
     /**
@@ -33,7 +33,7 @@ export default class DeviceMetrics extends BootClass {
      * @param name Registered metric name
      * @param period Period in the format 'now-6h:now' @see SingleDB.read
      * @param precision Accuracy interval '15m', '5s', '1h' or count of metrics 10, 200, 1500
-     * @param precision func Data aggregation function @see SingleDB.read
+     * @param func Data aggregation function @see SingleDB.read
     */
     read(device: string, name: string, period: string, precision: string | number, func?: string): import("vrack-db").IMetricReadResult;
     /**
@@ -46,9 +46,9 @@ export default class DeviceMetrics extends BootClass {
      * @see IMetricSettings
      * @see registerMetric
     */
-    protected deviceRegiterMetric(nEvent: IDeviceEvent): void;
+    protected deviceRegisterMetric(nEvent: IDeviceEvent): void;
     /**
-     * @see deviceRegiterMetric
+     * @see deviceRegisterMetric
      * */
     protected registerMetric(path: string, metric: IMetricSettings): void;
     /**

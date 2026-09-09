@@ -9,9 +9,9 @@ export default class UniversalWorker {
     static isForked: boolean;
     static isChild: boolean;
     /**
-     * Получение данных сверху, которые были переданны при создании воркера
+     * Получение данных сверху, которые были переданы при создании воркера
      * В случае использования worker_threads - workerData
-     * Если же это форк - парсит устаноленнюу переменную окружения VRACK2_WORKER_DATA
+     * Если же это форк - парсит установленную переменную окружения VRACK2_WORKER_DATA
     */
     static getWorkerData(): any;
     /**
@@ -24,14 +24,14 @@ export default class UniversalWorker {
     static onMessage(handler: WorkerMessageHandler): void;
     private impl;
     /**
-     * Создает новые воркер
+     * Создает новый воркер
      *
      * Если параметр isolated = true будет создан форк
      * иначе будет использоваться WorkerThread
     */
     constructor(options: UniversalWorkerOptions);
     /**
-     * Отправляет внутрь воркера обхект способный к сериализации
+     * Отправляет внутрь воркера объект способный к сериализации
     */
     send(msg: any): void;
     /**

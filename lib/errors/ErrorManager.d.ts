@@ -2,8 +2,8 @@ import BasicType from "../validator/types/BasicType";
 import CoreError from "./CoreError";
 /**
  * A simple class for creating errors.
- * This centralized class is useful because you can find out t
- * he list of all registered errors and which group/component they belong to.
+ * This centralized class is useful because you can find out the
+ * list of all registered errors and which group/component they belong to.
  */
 declare class ErrorManager {
     /**
@@ -36,11 +36,11 @@ declare class ErrorManager {
     convert(error: any): any;
     /**
      * Проверяет является ли ошибка VRack2 Error
-     * и соответсвует ли код переданной ошибке (проверяет vShort и vCode)
+     * и соответствует ли код переданной ошибке (проверяет vShort и vCode)
     */
     isCode(error: any, code: string): boolean;
     /**
-     * Проверяет - пренадлежит объект ошибки VRack2 Error
+     * Проверяет - принадлежит объект ошибки VRack2 Error
      *
      * Это не обязательно должен быть класс CoreError но и
      * любой сериализированный класс ошибки VRack2

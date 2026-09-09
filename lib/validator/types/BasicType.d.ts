@@ -28,7 +28,7 @@ export default class BasicType {
       *
       * @example
       * ```js
-      *  Rule.number().description('My number').message('{description} must by 1,2,3,4,5,6... not {value}')
+      *  Rule.number().description('My number').message('{description} must be 1,2,3,4,5,6... not {value}')
       * ```
       * Use {description} {value} {default} {example} in template
      */

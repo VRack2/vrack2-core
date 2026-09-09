@@ -63,7 +63,7 @@ export default class BasicType {
      *
      * @example
      * ```js
-     *  Rule.number().description('My number').message('{description} must by 1,2,3,4,5,6... not {value}')
+     *  Rule.number().description('My number').message('{description} must be 1,2,3,4,5,6... not {value}')
      * ```
      * Use {description} {value} {default} {example} in template 
     */
@@ -130,11 +130,11 @@ export default class BasicType {
      * @param key Key for getting value from object
     */
     protected  checkRequire(obj: {[key:string]: any}, key: string) {
-        if (obj[key] === undefined) throw ErrorManager.make('VR_ERROR_REQUAERED', { key })
+        if (obj[key] === undefined) throw ErrorManager.make('VR_ERROR_REQUIRED', { key })
     }
 }
 
 ErrorManager.register(
-    'Validator', 'Jwg5Mr1NqaSj', 'VR_ERROR_REQUAERED',
+    'Validator', 'Jwg5Mr1NqaSj', 'VR_ERROR_REQUIRED',
     'A value is required', {
 })

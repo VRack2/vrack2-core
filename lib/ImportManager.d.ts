@@ -8,8 +8,8 @@ export default class ImportManager {
     /**
      * Import class like a vrack2 device style
      *
-     * Разделяюет переданную строку пути на 2 части.
-     * Первая честь является названием модуля, а вторая часть классом внутри него
+     * Разделяет переданную строку пути на 2 части.
+     * Первая часть является названием модуля, а вторая часть классом внутри него
      *
      * @example ImportManager.importClass('vrack2-core.Container')
     */

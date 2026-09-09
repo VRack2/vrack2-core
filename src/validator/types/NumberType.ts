@@ -110,7 +110,7 @@ ErrorManager.register(
 
 ErrorManager.register(
     'Validator', 'fiUqanqqFlnt', 'VR_NUMBER_INTEGER',
-    'Value must be a integer', {
+    'Value must be an integer', {
 })
 
 ErrorManager.register(

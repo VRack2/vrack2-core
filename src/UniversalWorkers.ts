@@ -18,9 +18,9 @@ export default class UniversalWorker {
   static isChild = !isMainThread || typeof process.send === 'function';
 
   /**
-   * Получение данных сверху, которые были переданны при создании воркера
+   * Получение данных сверху, которые были переданы при создании воркера
    * В случае использования worker_threads - workerData
-   * Если же это форк - парсит устаноленнюу переменную окружения VRACK2_WORKER_DATA
+   * Если же это форк - парсит установленную переменную окружения VRACK2_WORKER_DATA
   */
   static getWorkerData(): any {
     if (!isMainThread) return workerData;
@@ -54,7 +54,7 @@ export default class UniversalWorker {
   };
 
   /**
-   * Создает новые воркер
+   * Создает новый воркер
    * 
    * Если параметр isolated = true будет создан форк 
    * иначе будет использоваться WorkerThread
@@ -88,7 +88,7 @@ export default class UniversalWorker {
   }
 
   /**
-   * Отправляет внутрь воркера обхект способный к сериализации
+   * Отправляет внутрь воркера объект способный к сериализации
   */
   send(msg: any): void {
     this.impl.send(msg);

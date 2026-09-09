@@ -2,7 +2,7 @@ export default class Utility {
     /**
      * Check device name (device ID)
      * */
-    static isDeviceName(name: string): Promise<boolean>;
+    static isDeviceName(name: string): boolean;
     /**
      * Форматирует любое значение в красивую строку (с отступами, подсветкой и т. д.).
      * Поддерживает: объекты, массивы, примитивы, Error, Map, Set, Buffer и др.

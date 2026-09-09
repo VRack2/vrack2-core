@@ -49,7 +49,7 @@ export interface IDeviceVendor {
  * 
  * @see getDeviceInfo
 */
-export interface IDeivceInfo {
+export interface IDeviceInfo {
     /** List of device actions    */
     actions: { [key: string]: IAction }
     /** List of device metrics */
@@ -60,7 +60,7 @@ export interface IDeivceInfo {
     outputs: { [key: string]: IPort }
     /** List of device options rules */
     options: { [key: string]: IValidationRule }
-    /** Device descriotion */
+    /** Device description */
     description: string
 }
 
@@ -168,14 +168,14 @@ export default class DeviceManager extends BootClass {
      * Exports all basic device parameters and collects them in one object
      * Used to generate documentation for the device
      * 
-     * @see IDeivceInfo
+     * @see IDeviceInfo
     */
     async getDeviceInfo(vendor: string, device: string) {
         const di = [vendor, device].join('.')
         const DeviceClass = await this.get(di)
         const dev = new DeviceClass('1', di, this) as Device
         
-        const result: IDeivceInfo = { actions: {}, metrics: {}, inputs: {}, outputs: {}, options: {}, description: '' }
+        const result: IDeviceInfo = { actions: {}, metrics: {}, inputs: {}, outputs: {}, options: {}, description: '' }
         try {
             const preOptions = dev.checkOptions();
             for (const oName in preOptions)
@@ -246,7 +246,7 @@ export default class DeviceManager extends BootClass {
                 const list: Array<string> = JSON.parse(fs.readFileSync(listPath).toString('utf-8'))
                 if (Array.isArray(list)) { // if device list like a [ 'DeviceName', 'DeviceTwo' ]
                     group.deviceList = this.arrayDeviceListPrepare(list, group);
-                } else if (typeof list === "object") { // if device list lie a { DeviceID?: 'PathToDevice' }
+                } else if (typeof list === "object") { // if device list like a { DeviceID?: 'PathToDevice' }
                     group.deviceList = this.objectDeviceListPrepare(list, group);
                 } else throw new Error()
             } catch (err) {
@@ -325,7 +325,7 @@ export default class DeviceManager extends BootClass {
      * ['DeviceName']
      * ```
      * 
-     * Set in this.devices for device name requiere path
+     * Set in this.devices for device name required path
     */
     protected objectDeviceListPrepare(list: { [key: string]: string }, group: IDeviceVendor) {
         for (const name in list) {

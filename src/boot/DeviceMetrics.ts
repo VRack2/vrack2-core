@@ -17,7 +17,7 @@ import IMetricSettings from "../metrics/IMetricSettings";
  * Uses the `device.metric` and `device.register.metric` events
  * 
  * @see deviceMetric()
- * @see deviceRegiterMetric()
+ * @see deviceRegisterMetric()
 */
 export default class DeviceMetrics extends BootClass {
     /**
@@ -27,7 +27,7 @@ export default class DeviceMetrics extends BootClass {
 
     process(): void {
         this.Container.on('device.metric', this.deviceMetric.bind(this))
-        this.Container.on('device.register.metric', this.deviceRegiterMetric.bind(this))
+        this.Container.on('device.register.metric', this.deviceRegisterMetric.bind(this))
     }
     
     /**
@@ -49,7 +49,7 @@ export default class DeviceMetrics extends BootClass {
      * @param name Registered metric name
      * @param period Period in the format 'now-6h:now' @see SingleDB.read
      * @param precision Accuracy interval '15m', '5s', '1h' or count of metrics 10, 200, 1500
-     * @param precision func Data aggregation function @see SingleDB.read
+     * @param func Data aggregation function @see SingleDB.read
     */
     read(device: string, name: string, period: string, precision: string | number, func?: string) {
         const path = this.getMetricPath(device, name)
@@ -66,12 +66,12 @@ export default class DeviceMetrics extends BootClass {
      * @see IMetricSettings
      * @see registerMetric
     */
-    protected deviceRegiterMetric(nEvent: IDeviceEvent) {
+    protected deviceRegisterMetric(nEvent: IDeviceEvent) {
         this.registerMetric(this.getMetricPath(nEvent.device, nEvent.data), nEvent.trace)
     }
 
     /**
-     * @see deviceRegiterMetric
+     * @see deviceRegisterMetric
      * */
     protected registerMetric(path: string, metric: IMetricSettings) {
         this.DB.metric({

@@ -28,8 +28,8 @@ interface RegisteredError {
 
 /**
  * A simple class for creating errors.
- * This centralized class is useful because you can find out t
- * he list of all registered errors and which group/component they belong to.
+ * This centralized class is useful because you can find out the
+ * list of all registered errors and which group/component they belong to.
  */
 class ErrorManager {
 
@@ -96,7 +96,7 @@ class ErrorManager {
 
     /**
      * Проверяет является ли ошибка VRack2 Error 
-     * и соответсвует ли код переданной ошибке (проверяет vShort и vCode)
+     * и соответствует ли код переданной ошибке (проверяет vShort и vCode)
     */
     isCode(error: any, code: string){
         if (!this.isError(error)) return false
@@ -105,7 +105,7 @@ class ErrorManager {
     }
 
     /**
-     * Проверяет - пренадлежит объект ошибки VRack2 Error
+     * Проверяет - принадлежит объект ошибки VRack2 Error
      * 
      * Это не обязательно должен быть класс CoreError но и 
      * любой сериализированный класс ошибки VRack2

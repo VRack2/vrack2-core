@@ -38,7 +38,7 @@ export interface IDeviceVendor {
  *
  * @see getDeviceInfo
 */
-export interface IDeivceInfo {
+export interface IDeviceInfo {
     /** List of device actions    */
     actions: {
         [key: string]: IAction;
@@ -59,7 +59,7 @@ export interface IDeivceInfo {
     options: {
         [key: string]: IValidationRule;
     };
-    /** Device descriotion */
+    /** Device description */
     description: string;
 }
 /**
@@ -111,9 +111,9 @@ export default class DeviceManager extends BootClass {
      * Exports all basic device parameters and collects them in one object
      * Used to generate documentation for the device
      *
-     * @see IDeivceInfo
+     * @see IDeviceInfo
     */
-    getDeviceInfo(vendor: string, device: string): Promise<IDeivceInfo>;
+    getDeviceInfo(vendor: string, device: string): Promise<IDeviceInfo>;
     /**
      * Method for updating the device list
      * Updates the available device lists.
@@ -182,7 +182,7 @@ export default class DeviceManager extends BootClass {
      * ['DeviceName']
      * ```
      *
-     * Set in this.devices for device name requiere path
+     * Set in this.devices for device name required path
     */
     protected objectDeviceListPrepare(list: {
         [key: string]: string;

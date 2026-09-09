@@ -78,7 +78,7 @@ export default class Device {
     /**
      * Device settings
      *
-     * Needs to be finalized"
+     * Needs to be finalized
     */
     settings(): IDeviceSettings;
     /**
@@ -173,8 +173,8 @@ export default class Device {
      *
      * Use like this object:
      * {
-     *    'group.portname': Port.standart(),
-     *    'group.portname': Port.standart()
+     *    'group.portname': Port.standard(),
+     *    'group.portname': Port.standard()
      * }
      *
     */
@@ -195,7 +195,7 @@ export default class Device {
      * The device will only go through the following device creation steps:
      *
      * - Creating a class
-     * - Assigning device prameters
+     * - Assigning device parameters
      *
      * Must be used to assign functions to call dynamic ports
      * of the device.
@@ -207,7 +207,7 @@ export default class Device {
      * The device will go through the following steps to create the device:
      *
      * - Creating a class
-     * - Assigning device prameters
+     * - Assigning device parameters
      * - Creating ports
      * - Assigning call functions
      * - Creating connections between devices
@@ -226,7 +226,7 @@ export default class Device {
     */
     processPromise(): Promise<void>;
     /**
-     * Myby todo?
+     * Maybe todo?
      *
      * stop() { return }
      * async stopPromise() { return }
