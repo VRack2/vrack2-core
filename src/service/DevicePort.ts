@@ -27,7 +27,7 @@ export default class DevicePort {
     /** Flag determines whether the port should be connected */
     required: boolean
 
-    /**  Ссылка на устройсто владельца */
+    /**  Ссылка на устройство владельца */
     Device: Device
 
     bind: ((data: any) => {}) | null = null;
@@ -35,7 +35,7 @@ export default class DevicePort {
     /**
      * Список слушателей порта
      * Используется для захвата порта. Если какие либо данные будут проброшены 
-     * в порт, они будут переданы для каждого вызнванного слушателя
+     * в порт, они будут переданы для каждого вызванного слушателя
     */
     listens = new Map<number, (data:any) => void>()
 
@@ -52,6 +52,19 @@ export default class DevicePort {
     addConnection(connection: DeviceConnect) {
         this.connected = true
         this.connections.push(connection)
+    }
+
+    /**
+     * Removing communication from a port.
+     * Used when a device is removed from the container
+     * to disconnect all its ports cleanly.
+     * 
+     * @param connection Connection to remove
+     */
+    removeConnection(connection: DeviceConnect) {
+        const idx = this.connections.indexOf(connection)
+        if (idx !== -1) this.connections.splice(idx, 1)
+        if (this.connections.length === 0) this.connected = false
     }
 
     /**
