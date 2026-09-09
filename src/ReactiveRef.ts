@@ -21,7 +21,7 @@ export default class ReactiveRef<T extends object> {
   private _value: T;
 
   /**
-   * Калбек для обработки при измении значения
+   * Колбэк для обработки при изменении значения
   */
   private watcher: () => void = () => {};
 
@@ -61,6 +61,10 @@ export default class ReactiveRef<T extends object> {
   private makeReactive<TObj extends object>(obj: TObj): TObj {
     if ((obj as any).__isReactive) return obj;
 
+    // Отмечаем "сырой" объект ДО создания прокси, чтобы отметка
+    // не прошла через set-trap (и не вызвала watcher)
+    (obj as any).__isReactive = true;
+
     const handler: ProxyHandler<TObj> = {
       set: (target, key, value) => {
         const oldValue = target[key as keyof TObj];
@@ -76,7 +80,14 @@ export default class ReactiveRef<T extends object> {
     };
 
     const proxy = new Proxy(obj, handler);
-    (proxy as any).__isReactive = true;
+
+    // Делаем уже существующие вложенные plain-объекты реактивными
+    // (пишем прямо в "сырой" объект, минуя trap, чтобы не уведомлять)
+    for (const key of Object.keys(obj)) {
+      const child = (obj as any)[key];
+      if (this.isPlainObject(child)) (obj as any)[key] = this.makeReactive(child);
+    }
+
     return proxy;
   }
 
