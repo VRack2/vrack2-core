@@ -12,6 +12,7 @@ export { default as Validator } from './validator/Validator'
 /* ---------------- BASE OF VRACK ------------------- */
 export { default as ImportManager } from './ImportManager';
 export { default as Container } from './Container';
+export { default as ServiceLoader } from './ServiceLoader';
 export { default as MainProcess } from './MainProcess';
 
 /* -------------- HELPERS EXTENSION ----------------- */
@@ -38,6 +39,9 @@ export { default as Port } from './ports/Port'
 export { default as Metric } from './metrics/Metric'
 
 export { default as BasicPort } from './ports/BasicPort'
+export { default as StandardPort } from './ports/StandardPort'
+export { default as StandartPort } from './ports/StandartPort' // @deprecated use StandardPort
+export { default as ReturnPort } from './ports/ReturnPort'
 export { default as BasicType } from './validator/types/BasicType'
 export { default as BasicMetric } from './metrics/BasicMetric'
 export { default as BasicAction } from './actions/BasicAction'
@@ -51,6 +55,7 @@ export { default as IValidationRule} from './validator/IValidationRule'
 export { default as IValidationSubrule} from './validator/IValidationSubrule'
 export { default as IServiceStructure} from './IServiceStructure'
 export { default as IStructureDevice} from './IStructureDevice'
+export { default as ICheckResult} from './ICheckResult'
 
 export { StorageTypes } from 'vrack-db';
 
