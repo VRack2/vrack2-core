@@ -20,7 +20,7 @@ export default class ReactiveRef<T extends object> {
     */
     private _value;
     /**
-     * Калбек для обработки при измении значения
+     * Колбэк для обработки при изменении значения
     */
     private watcher;
     /**
