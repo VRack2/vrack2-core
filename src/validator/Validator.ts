@@ -93,7 +93,7 @@ export default class Validator {
      * 
      * @example
      * ```js
-     *  Rule.number().description('My number').message('{description} must by 1,2,3,4,5,6... not {value}')
+     *  Rule.number().description('My number').message('{description} must be 1,2,3,4,5,6... not {value}')
      * ```
     */
     protected static makeMessage(rule: IValidationRule, value: any ): string {
@@ -102,10 +102,11 @@ export default class Validator {
         const example = Validator.toInspect(rule.example)
         const def = Validator.toInspect(rule.default)
         
-        message.replace('{value}', val)
-        message.replace('{example}', example)
-        message.replace('{default}', def)
-        message.replace('{description}', rule.description)
+        message = message
+            .replace('{value}', String(val))
+            .replace('{example}', String(example))
+            .replace('{default}', String(def))
+            .replace('{description}', rule.description)
         return message
     }
 
