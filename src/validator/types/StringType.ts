@@ -74,7 +74,7 @@ export default class StringType  extends BasicType {
     */
     protected checkMaxLength(obj: {[key:string]: any}, key: string, sub: IValidationSubrule){
         const val = obj[key]
-        if (val.length >= sub.args) throw ErrorManager.make('VR_STRING_MAX_LENGTH', { limit: sub.args, key })
+        if (val.length > sub.args) throw ErrorManager.make('VR_STRING_MAX_LENGTH', { limit: sub.args, key })
     }
 
     /**
@@ -82,7 +82,7 @@ export default class StringType  extends BasicType {
     */
     protected checkMinLength(obj: {[key:string]: any}, key: string, sub: IValidationSubrule){
         const val = obj[key]
-        if (val.length <= sub.args) throw ErrorManager.make('VR_STRING_MIN_LENGTH', { limit: sub.args, key })
+        if (val.length < sub.args) throw ErrorManager.make('VR_STRING_MIN_LENGTH', { limit: sub.args, key })
     }
 
 }
