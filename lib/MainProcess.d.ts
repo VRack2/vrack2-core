@@ -1,5 +1,6 @@
 import Bootstrap, { IBootListConfig } from "./Bootstrap";
 import Container from "./Container";
+import ServiceLoader from "./ServiceLoader";
 import IServiceStructure from "./IServiceStructure";
 interface IMainProcessInternalOptions {
     /** Container ID  */
@@ -27,6 +28,7 @@ export interface IMainProcessOptions {
 }
 export default class MainProcess {
     Container: Container;
+    Loader: ServiceLoader;
     options: IMainProcessInternalOptions;
     Bootstrap: Bootstrap;
     constructor(config: IMainProcessOptions);

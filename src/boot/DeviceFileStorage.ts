@@ -38,6 +38,17 @@ export default class DeviceFileStorage extends BootClass {
             }
         })
 
+        // Load storage for a hot-added device (added via ServiceLoader.addDevice)
+        this.Container.on('device.add', (id: string) => {
+            const dev = this.Container.devices[id]
+            if (!dev) return
+            try {
+                dev.storage = this.loadDeviceStorage(id)
+            } catch (error) {
+                this.Container.emit('system.error', error)
+            }
+        })
+
         // On device save - save storage data
         this.Container.on('device.save', (data: { device: string, data: string, trace: any }) => {
             try {
@@ -56,7 +67,7 @@ export default class DeviceFileStorage extends BootClass {
      * @param deviceId Device ID
      * @returns {any} Imported JSON
     */
-    async loadDeviceStorage(deviceId: string) {
+    loadDeviceStorage(deviceId: string) {
         const fp = this.makeDeviceStoragePath(deviceId)
         const fptmp = this.makeDeviceStoragePath(deviceId, '-tmp')
         if (!fs.existsSync(fp)) {

@@ -1,7 +1,5 @@
-/// <reference types="node" />
 import EventEmitter from "events";
-import IServiceStructure from "./IServiceStructure";
-import IStructureDevice from "./IStructureDevice";
+import ICheckResult from "./ICheckResult";
 import Device from "./service/Device";
 import BasicAction from "./actions/BasicAction";
 import IPort from "./ports/IPort";
@@ -82,11 +80,6 @@ export default class Container extends EventEmitter {
     /** Parent container if it exists */
     parent?: Container;
     /**
-     * Path to extended conf file for init loading
-     * @see fillConfFile()
-     * */
-    confFile?: string;
-    /**
      * Дополнительные метаданные
     */
     meta?: {
@@ -98,16 +91,8 @@ export default class Container extends EventEmitter {
      * A different bootstrap class must be created for each container
     */
     Bootstrap: Bootstrap;
-    /** inited flag */
-    protected inited: boolean;
     /** run flag */
     protected runned: boolean;
-    /**
-     * Service structure config
-     *
-     * @see constructor
-    */
-    protected service: IServiceStructure;
     /**
      * List of all device actions
      *
@@ -132,46 +117,47 @@ export default class Container extends EventEmitter {
     */
     protected structure: IContainerStructure;
     /**
-     * Create container needed service structure & device manager
-     *
-     * @param service Service structure
-     * @param bootstrap Bootstrap class Object
-     *
-     * */
-    constructor(id: string, service: IServiceStructure, Bootstrap: Bootstrap, confFile?: string);
-    /**
-     * Run container
+     * Set of device ids that are fully started
+     * (`process()` + `processPromise()` completed).
+     * Used to make `startDevice()` idempotent.
     */
-    run(): Promise<void>;
+    protected started: Set<string>;
     /**
-     * Extends service from config file
+     * Create a pure runtime container.
      *
-     * Sometimes there is a need to override the settings of some devices.
-     * To do this, you can use a special configuration file of the service.
-     * It contains the same as the main service file and replaces with its settings
-     * and parameters the settings and parameters of the main service.
+     * The container holds the device registry, the live `structure`,
+     * connection state and the staged start. It does **not** own the service
+     * config or device creation — those belong to `ServiceLoader`.
      *
-     * @see init()
-    */
-    protected fillConfFile(): void;
-    /**
-     * Creates device classes. Preprocesses the device,
-     * then adds ports to it and creates connections between ports.
-     *
-     * When adding and creating devices, ports and connections,
-     * the service structure is also created
-     *
-     * 1. Init device
-     * 2. Init individual device connections
-     * 3. Init other connections
-     *
-     * @see structure
-    */
-    init(): Promise<void>;
+     * @param id Container ID
+     * @param bootstrap Bootstrap class object
+     */
+    constructor(id: string, bootstrap: Bootstrap);
     /**
      * Run process & processPromise of all devices
+     *
+     * Staged start: first `process()` of every (not yet started) device,
+     * then `processPromise()` of every (not yet started) device.
+     * Devices that were already started via `startDevice()` are skipped,
+     * which makes this method safe to call after hot adds.
     */
     runProcess(): Promise<void>;
+    /**
+     * Start a single (already registered) device: run `process()` and then
+     * `processPromise()`.
+     *
+     * Idempotent — calling it again for the same device is a no-op.
+     * Used to hot-start a device that was added via `addDevice()`.
+     *
+     * @param id Device ID
+    */
+    startDevice(id: string): Promise<void>;
+    /**
+     * Whether a device has been fully started (`process` + `processPromise`).
+     *
+     * @param id Device ID
+    */
+    isStarted(id: string): boolean;
     /**
      * Check device action and run him
      *
@@ -185,29 +171,101 @@ export default class Container extends EventEmitter {
     */
     getStructure(): Promise<IContainerStructure>;
     /**
-     * Init one device
+     * Register a previously created & validated device instance into the
+     * container:
+     *  - add to the devices map
+     *  - create the structure entry
+     *  - run `preProcess()`
+     *  - register actions
+     *  - register metrics (emit `device.register.metric`)
+     *  - create input & output ports
      *
-     * 1. Make device class object
-     * 2. Fill device options
-     * 3. Run device prepareOptions method
-     * 4. Validating device options
-     * 5. Check device actions
-     * 6. make device inputs ports
-     * 7. make device outputs ports
-     **/
-    protected initDevice(dconf: IStructureDevice): Promise<void>;
+     * @param dev A device created via `ServiceLoader.createDevice()`
+     * @returns The registered device
+    */
+    registerDevice(dev: Device): Device;
     /**
      * Check device input handler
      * Make CTR_INPUT_HANDLER_NF error if not exists
-     * @see initDevice make inputPorts
+     * @see registerDevice make inputPorts
     */
     protected checkInputHandler(port: string, handler: string, device: Device): void;
     /**
-     * Init device connection
+     * Parse & validate a connection string against the current container
+     * state. Pure check — emits no events, commits nothing.
+     *
+     * @param conn Device connection string like a "DevID.port -> DevIDTO.port"
+     * @returns The parsed connection
+    */
+    protected checkConnectionCore(conn: string): {
+        outputDevice: string;
+        outputPort: string;
+        inputDevice: string;
+        inputPort: string;
+    };
+    /**
+     * Commit a validated connection: update the structure and create the
+     * `DeviceConnect`. Does not emit (the caller emits `connection`).
+     *
+     * @param cc Parsed connection (from `checkConnectionCore`)
+    */
+    protected makeConnection(cc: {
+        outputDevice: string;
+        outputPort: string;
+        inputDevice: string;
+        inputPort: string;
+    }): void;
+    /**
+     * Add a connection between two already-registered device ports.
+     *
+     * This is the hot-connection entry point. Validates the connection,
+     * emits `connection`, updates the structure and creates the
+     * `DeviceConnect`. Throws the specific VRack error on failure.
      *
      * @param conn Device connection string like a "DevID.port -> DevIDTO.port"
     */
-    protected initConnection(conn: string): void;
+    addConnection(conn: string): void;
+    /**
+     * Dry-run validation of a connection (no side effects, no `DeviceConnect`).
+     *
+     * @param conn Device connection string like a "DevID.port -> DevIDTO.port"
+     * @returns `ICheckResult` describing validity
+    */
+    checkConnection(conn: string): ICheckResult;
+    /**
+     * Convert a thrown error into an `ICheckResult`
+    */
+    protected toCheckResult(error: any): ICheckResult;
+    /**
+     * Remove a device from the container:
+     *  - call `beforeTerminate()`
+     *  - disconnect all its connections (both sides)
+     *  - remove its structure entry and all references to it
+     *  - remove it from the devices / actions / metrics maps & `started`
+     *  - emit `device.remove` (device id)
+     *
+     * The device's storage file is intentionally left on disk.
+     *
+     * @param id Device ID
+    */
+    removeDevice(id: string): void;
+    /**
+     * Whether a device with the given id is registered in the container.
+     *
+     * @param id Device ID
+    */
+    hasDevice(id: string): boolean;
+    /**
+     * Get a registered device by id.
+     *
+     * @param id Device ID
+     * @returns The device, or `undefined` if not registered
+    */
+    getDevice(id: string): Device | undefined;
+    /**
+     * List ids of all registered devices.
+    */
+    deviceList(): string[];
     /**
      * Container Helper - parse connection string to format object
      *

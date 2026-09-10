@@ -30,6 +30,9 @@ export default class ObjectType extends BasicType {
     /**
      * Method of validation of this type
      *
+     * An explicit null is rejected: typeof null is object but null
+     * is not a valid object value
+     *
      * @param obj Validation object
      * @param key Key for getting value from object
     */

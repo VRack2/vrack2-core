@@ -1,9 +1,7 @@
 import EventEmitter from "events";
-import DeviceManager from "./boot/DeviceManager";
+import ICheckResult from "./ICheckResult";
 
 import ErrorManager from "./errors/ErrorManager";
-import IServiceStructure from "./IServiceStructure";
-import IStructureDevice from "./IStructureDevice";
 import Device from "./service/Device";
 import Rule from "./validator/Rule";
 import CoreError from "./errors/CoreError";
@@ -19,24 +17,10 @@ import Bootstrap from "./Bootstrap";
 import IMetricSettings from "./metrics/IMetricSettings";
 import BasicMetric from "./metrics/BasicMetric";
 import IDeviceEvent from "./service/IDeviceEvent";
-import Utility from "./Utility";
-import { existsSync } from "fs";
 
 /***** ********      DEVICE ERROR      ********************/
 
-ErrorManager.register('Container', 'FBDRkSAWnlcc', 'CTR_ERROR_INIT_DEVICE', 'Device initialization error', {
-    deviceConfig: Rule.object().description('Device configuration')
-})
-
-ErrorManager.register('Container', '96UX24PTyFU7', 'CTR_ERROR_INIT_CONNECTION', 'Connection initialization error', {
-    connection: Rule.string().description('Connection string')
-})
-
-ErrorManager.register('Container', '0HVa3cO1E2vB', 'CTR_INCORRECT_DEVICE_ID', 'Incorrect device id', {})
-ErrorManager.register('Container', 'uF62e07wloS9', 'CTR_DEVICE_DUBLICATE', 'Device id is dublicated', {})
-ErrorManager.register('Container', '2RZznI3JDNUW', 'CTR_ERROR_PREPARE_OPTIONS', 'An error occurred while preparing options', {
-    message: Rule.string().description('Exception error string')
-})
+ErrorManager.register('Container', 'uF62e07wloS9', 'CTR_DEVICE_DUPLICATE', 'Device id is duplicated', {})
 
 ErrorManager.register('Container', 'NDW2oD7mFxqB', 'CTR_DEVICE_ACTION_NF', 'Action on device not found', {
     device: Rule.string().description('Device ID'),
@@ -104,8 +88,7 @@ ErrorManager.register('Container', 'XR1K10R0OOUC', 'CTR_INCOMPATIBLE_PORTS', 'In
 })
 
 
-ErrorManager.register('Container', 'MmVoDOQwaYkx', 'CTR_INCORRECT_BOOSTRAP', 'The required DeviceManager class is not specified correctly', {})
-ErrorManager.register('Container', 'e090R0MLyb7y', 'CTR_CONF_EXTENDS_PROBLEM', 'Problem with extending service configuration.', {})
+ErrorManager.register('Container', 'MmVoDOQwaYkx', 'CTR_INCORRECT_BOOTSTRAP', 'The required DeviceManager class is not specified correctly', {})
 
 ErrorManager.register('Container', 'LYC0VA1AWYKU', 'CTR_IGNORE_SERVICE_AUTORELOAD', 'Error that ignores service restart flag', {})
 
@@ -170,12 +153,6 @@ export default class Container extends EventEmitter {
     /** Parent container if it exists */
     parent?: Container
 
-    /** 
-     * Path to extended conf file for init loading 
-     * @see fillConfFile()
-     * */
-    confFile?: string
-
     /**
      * Дополнительные метаданные
     */
@@ -188,18 +165,8 @@ export default class Container extends EventEmitter {
     */
     Bootstrap: Bootstrap
 
-    /** inited flag */
-    protected inited = false
-
     /** run flag */
     protected runned = false
-
-    /**
-     * Service structure config
-     * 
-     * @see constructor
-    */
-    protected service: IServiceStructure
 
     /**
      * List of all device actions
@@ -220,122 +187,44 @@ export default class Container extends EventEmitter {
     protected structure: IContainerStructure = {}
 
     /**
-     * Create container needed service structure & device manager
-     * 
-     * @param service Service structure
-     * @param bootstrap Bootstrap class Object 
-     * 
-     * */
-    constructor(id: string, service: IServiceStructure, Bootstrap: Bootstrap, confFile?: string) {
+     * Set of device ids that are fully started
+     * (`process()` + `processPromise()` completed).
+     * Used to make `startDevice()` idempotent.
+    */
+    protected started: Set<string> = new Set()
+
+    /**
+     * Create a pure runtime container.
+     *
+     * The container holds the device registry, the live `structure`,
+     * connection state and the staged start. It does **not** own the service
+     * config or device creation — those belong to `ServiceLoader`.
+     *
+     * @param id Container ID
+     * @param bootstrap Bootstrap class object
+     */
+    constructor(id: string, bootstrap: Bootstrap) {
         super()
         this.id = id
-        this.service = service
         this.deviceActions = {}
         this.deviceMetrics = {}
-        this.confFile = confFile
-        this.Bootstrap = Bootstrap
-    }
-
-    /**
-     * Run container
-    */
-    async run() {
-        await this.init()
-        await this.runProcess()
-    }
-
-    /**
-     * Extends service from config file
-     * 
-     * Sometimes there is a need to override the settings of some devices.
-     * To do this, you can use a special configuration file of the service. 
-     * It contains the same as the main service file and replaces with its settings
-     * and parameters the settings and parameters of the main service.
-     * 
-     * @see init()
-    */
-    protected fillConfFile() {
-        if (!this.confFile || !existsSync(this.confFile)) return
-        const conf = ImportManager.importJSON(this.confFile)
-        if (conf.devices === undefined || !Array.isArray(conf.devices)) conf.devices = []
-        for (const device of conf.devices) {
-            if (!device.id || device.options === undefined || typeof device.options !== 'object') continue
-            for (const cdev of this.service.devices) {
-                if (cdev.id === device.id) {
-                    for (const pname in device.options) cdev.options[pname] = device.options[pname]
-                    if (device.connections) cdev.connections = device.connections
-                }
-            }
-        }
-    }
-
-
-    /**
-     * Creates device classes. Preprocesses the device, 
-     * then adds ports to it and creates connections between ports.
-     * 
-     * When adding and creating devices, ports and connections, 
-     * the service structure is also created
-     *  
-     * 1. Init device
-     * 2. Init individual device connections
-     * 3. Init other connections
-     * 
-     * @see structure
-    */
-    async init() {
-        if (this.inited) return
-        this.inited = true
-        this.emit('configure')
-        try {
-            this.fillConfFile()
-        } catch (err) {
-            if (err instanceof Error) {
-                const ner = ErrorManager.make('CTR_CONF_EXTENDS_PROBLEM', {}).setTrace(err as Error).add(err)
-                throw ner
-            }
-            throw err
-        }
-        this.emit('beforeInit')
-        this.emit('init')
-        for (const device of this.service.devices) {
-            try {
-                this.emit('initDevice', device)
-                await this.initDevice(device)
-            } catch (error ) {
-                const ner = ErrorManager.make('CTR_ERROR_INIT_DEVICE', { deviceConfig: device })
-                ner.add(error as Error)
-                throw ner
-            }
-        }
-        this.emit('afterInit')
-        this.emit('beforeConnections')
-        this.emit('connections')
-        for (const device of this.service.devices) {
-            if (!device.connections) continue
-            for (const conn of device.connections) {
-                this.emit('connection',conn)
-                this.initConnection(conn)
-            }
-        }
-
-        if (Array.isArray(this.service.connections)) {
-            for (const conn of this.service.connections) { 
-                
-                this.initConnection(conn)
-            }
-        }
-        this.emit('afterConnections')
+        this.Bootstrap = bootstrap
     }
 
     /**
      * Run process & processPromise of all devices
+     *
+     * Staged start: first `process()` of every (not yet started) device,
+     * then `processPromise()` of every (not yet started) device.
+     * Devices that were already started via `startDevice()` are skipped,
+     * which makes this method safe to call after hot adds.
     */
     async runProcess() {
         if (this.runned) return
         this.runned = true
         this.emit('beforeProcess')
         for (const key in this.devices) {
+            if (this.started.has(key)) continue
             try {
                 this.emit('process',key)
                 this.devices[key].process()
@@ -346,16 +235,54 @@ export default class Container extends EventEmitter {
         this.emit('afterProcess')
         this.emit('beforeProcessPromise')
         for (const key in this.devices) {
+            if (this.started.has(key)) continue
             try {
                 this.emit('processPromise', key)
                 await this.devices[key].processPromise()
             } catch (error) {
                 throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: key }).add(error as Error)
             }
+            this.started.add(key)
         }
         this.emit('afterProcessPromise')
         this.emit('beforeLoaded')
         this.emit('loaded')
+    }
+
+    /**
+     * Start a single (already registered) device: run `process()` and then
+     * `processPromise()`.
+     *
+     * Idempotent — calling it again for the same device is a no-op.
+     * Used to hot-start a device that was added via `addDevice()`.
+     *
+     * @param id Device ID
+    */
+    async startDevice(id: string): Promise<void> {
+        if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
+        if (this.started.has(id)) return
+        try {
+            this.emit('process', id)
+            this.devices[id].process()
+        } catch (error) {
+            throw ErrorManager.make('CTR_DEVICE_PROCESS_EXCEPTION', { device: id }).add(error as Error)
+        }
+        try {
+            this.emit('processPromise', id)
+            await this.devices[id].processPromise()
+        } catch (error) {
+            throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: id }).add(error as Error)
+        }
+        this.started.add(id)
+    }
+
+    /**
+     * Whether a device has been fully started (`process` + `processPromise`).
+     *
+     * @param id Device ID
+    */
+    isStarted(id: string): boolean {
+        return this.started.has(id)
     }
 
     /**
@@ -385,52 +312,25 @@ export default class Container extends EventEmitter {
     }
 
     /**
-     * Init one device
-     * 
-     * 1. Make device class object
-     * 2. Fill device options
-     * 3. Run device prepareOptions method
-     * 4. Validating device options
-     * 5. Check device actions
-     * 6. make device inputs ports
-     * 7. make device outputs ports
-     **/
-    protected async initDevice(dconf: IStructureDevice) {
-        const DM = this.Bootstrap.getBootClass('DeviceManager', DeviceManager) as DeviceManager
-        const cs = await DM.get(dconf.type)
-        // 
-        if (dconf.id === undefined || !dconf.id || typeof dconf.id !== 'string' || !Utility.isDeviceName(dconf.id)) {
-            throw ErrorManager.make('CTR_INCORRECT_DEVICE_ID')
-        }
-        // Device id is dublicated
-        if (dconf.id in this.devices) throw ErrorManager.make('CTR_DEVICE_DUBLICATE')
-
-        // Create device
-        const dev = new cs(dconf.id, dconf.type, this) as Device
-        this.devices[dconf.id] = dev
-
-        // Fill options
-        for (const key in dconf.options) dev.options[key] = dconf.options[key]
-
-        // try prepare options
-        try {
-            dev.prepareOptions()
-        } catch (error) {
-            let message = ''
-            if (error instanceof Error) message = error.toString()
-            const ner = ErrorManager.make('CTR_ERROR_PREPARE_OPTIONS', { message })
-            if (error instanceof CoreError) ner.add(error)
-            throw ner
-        }
-
-        const rules = dev.checkOptions()
-        // Validating
-        Validator.validate(rules, dev.options)
+     * Register a previously created & validated device instance into the
+     * container:
+     *  - add to the devices map
+     *  - create the structure entry
+     *  - run `preProcess()`
+     *  - register actions
+     *  - register metrics (emit `device.register.metric`)
+     *  - create input & output ports
+     *
+     * @param dev A device created via `ServiceLoader.createDevice()`
+     * @returns The registered device
+    */
+    registerDevice(dev: Device): Device {
+        this.devices[dev.id] = dev
 
         /** create structure */
-        this.structure[dconf.id] = {
-            id: dconf.id,
-            type: dconf.type,
+        this.structure[dev.id] = {
+            id: dev.id,
+            type: dev.type,
             actions: {},
             outputs: {},
             inputs: {},
@@ -447,10 +347,10 @@ export default class Container extends EventEmitter {
             const method = ImportManager.camelize('action.' + action)
             if (!(method in dev)) throw ErrorManager.make('CTR_DEVICE_ACTION_NF', { action, method })
             // add structure device action
-            this.structure[dconf.id].actions[action] = this.deviceActions[dev.id][action].export()
+            this.structure[dev.id].actions[action] = this.deviceActions[dev.id][action].export()
         }
 
-        this.structure[dconf.id].settings = dev.settings()
+        this.structure[dev.id].settings = dev.settings()
 
         // Make Metrics
         this.deviceMetrics[dev.id] = dev.metrics()
@@ -458,7 +358,7 @@ export default class Container extends EventEmitter {
             const raw = this.deviceMetrics[dev.id][metric].export()
             const nEvent: IDeviceEvent = { device: dev.id, data: metric, trace: raw }
             this.emit('device.register.metric', nEvent)
-            this.structure[dconf.id].metrics[metric] = raw
+            this.structure[dev.id].metrics[metric] = raw
         }
 
         // make inputPorts
@@ -473,8 +373,8 @@ export default class Container extends EventEmitter {
                 const ndp = new DevicePort(subkey, pList[subkey], dev)
                 dev.ports.input[subkey] = ndp
                 // add structure device input ports
-                this.structure[dconf.id].inputs[subkey] = []
-                this.structure[dconf.id].ports.push(
+                this.structure[dev.id].inputs[subkey] = []
+                this.structure[dev.id].ports.push(
                     Object.assign({ port: subkey, direct: 'input' }, pList[subkey])
                 )
                 
@@ -493,18 +393,20 @@ export default class Container extends EventEmitter {
                 const ndp = new DevicePort(subkey, pList[subkey], dev)
                 dev.ports.output[subkey] = ndp
                 // add structure device output ports
-                this.structure[dconf.id].outputs[subkey] = []
-                this.structure[dconf.id].ports.push(
+                this.structure[dev.id].outputs[subkey] = []
+                this.structure[dev.id].ports.push(
                     Object.assign({ port: subkey, direct: 'output' }, pList[subkey])
                 )
             }
         }
+
+        return dev
     }
 
     /**
      * Check device input handler 
      * Make CTR_INPUT_HANDLER_NF error if not exists
-     * @see initDevice make inputPorts
+     * @see registerDevice make inputPorts
     */
     protected checkInputHandler(port: string, handler: string, device: Device) {
         if (!(handler in device)) throw ErrorManager.make('CTR_INPUT_HANDLER_NF', { port, handler })
@@ -512,36 +414,169 @@ export default class Container extends EventEmitter {
 
 
     /**
-     * Init device connection
-     * 
+     * Parse & validate a connection string against the current container
+     * state. Pure check — emits no events, commits nothing.
+     *
+     * @param conn Device connection string like a "DevID.port -> DevIDTO.port"
+     * @returns The parsed connection
+    */
+    protected checkConnectionCore(conn: string) {
+        const cc = this.toConnection(conn)
+        if (!(cc.outputDevice in this.devices)) throw ErrorManager.make('CTR_CONNECTION_DEVICE_NF', { connection: conn, device: cc.outputDevice })
+        if (!(cc.outputPort in this.devices[cc.outputDevice].ports.output)) throw ErrorManager.make('CTR_CONNECTION_PORT_NF', { connection: conn, port: cc.outputPort })
+
+        if (!(cc.inputDevice in this.devices)) throw ErrorManager.make('CTR_CONNECTION_DEVICE_NF', { connection: conn, device: cc.inputDevice })
+        if (!(cc.inputPort in this.devices[cc.inputDevice].ports.input)) throw ErrorManager.make('CTR_CONNECTION_PORT_NF', { connection: conn, port: cc.inputPort })
+
+        if (this.devices[cc.inputDevice].ports.input[cc.inputPort].type !== this.devices[cc.outputDevice].ports.output[cc.outputPort].type) throw ErrorManager.make('CTR_INCOMPATIBLE_PORTS', { connection: conn })
+        return cc
+    }
+
+    /**
+     * Commit a validated connection: update the structure and create the
+     * `DeviceConnect`. Does not emit (the caller emits `connection`).
+     *
+     * @param cc Parsed connection (from `checkConnectionCore`)
+    */
+    protected makeConnection(cc: { outputDevice: string, outputPort: string, inputDevice: string, inputPort: string }) {
+        const outPort = this.devices[cc.outputDevice].ports.output[cc.outputPort]
+        const inPort = this.devices[cc.inputDevice].ports.input[cc.inputPort]
+
+        // Set structure connections
+        if (this.structure[cc.outputDevice].outputs[cc.outputPort] === undefined) this.structure[cc.outputDevice].outputs[cc.outputPort] = []
+        this.structure[cc.outputDevice].outputs[cc.outputPort].push({ device: cc.inputDevice, port: cc.inputPort })
+        if (this.structure[cc.inputDevice].inputs[cc.inputPort] === undefined) this.structure[cc.inputDevice].inputs[cc.inputPort] = []
+        this.structure[cc.inputDevice].inputs[cc.inputPort].push({ device: cc.outputDevice, port: cc.outputPort })
+        new DeviceConnect(outPort, inPort)
+    }
+
+    /**
+     * Add a connection between two already-registered device ports.
+     *
+     * This is the hot-connection entry point. Validates the connection,
+     * emits `connection`, updates the structure and creates the
+     * `DeviceConnect`. Throws the specific VRack error on failure.
+     *
      * @param conn Device connection string like a "DevID.port -> DevIDTO.port"
     */
-    protected initConnection(conn: string) {
+    addConnection(conn: string) {
+        const cc = this.checkConnectionCore(conn)
+        this.emit('connection', cc)
+        this.makeConnection(cc)
+    }
+
+    /**
+     * Dry-run validation of a connection (no side effects, no `DeviceConnect`).
+     *
+     * @param conn Device connection string like a "DevID.port -> DevIDTO.port"
+     * @returns `ICheckResult` describing validity
+    */
+    checkConnection(conn: string): ICheckResult {
         try {
-            const cc = this.toConnection(conn)
-            this.emit('connection',cc)
-            if (!(cc.outputDevice in this.devices)) throw ErrorManager.make('CTR_CONNECTION_DEVICE_NF', { connection: conn, device: cc.outputDevice })
-            if (!(cc.outputPort in this.devices[cc.outputDevice].ports.output)) throw ErrorManager.make('CTR_CONNECTION_PORT_NF', { connection: conn, port: cc.outputPort })
-
-            if (!(cc.inputDevice in this.devices)) throw ErrorManager.make('CTR_CONNECTION_DEVICE_NF', { connection: conn, device: cc.inputDevice })
-            if (!(cc.inputPort in this.devices[cc.inputDevice].ports.input)) throw ErrorManager.make('CTR_CONNECTION_PORT_NF', { connection: conn, port: cc.inputPort })
-
-            if (this.devices[cc.inputDevice].ports.input[cc.inputPort].type !== this.devices[cc.outputDevice].ports.output[cc.outputPort].type) throw ErrorManager.make('CTR_INCOMPATIBLE_PORTS', { connection: conn })
-
-            const outPort = this.devices[cc.outputDevice].ports.output[cc.outputPort]
-            const inPort = this.devices[cc.inputDevice].ports.input[cc.inputPort]
-
-            // Set structure connections
-            if (this.structure[cc.outputDevice].outputs[cc.outputPort] === undefined) this.structure[cc.outputDevice].outputs[cc.outputPort] = []
-            this.structure[cc.outputDevice].outputs[cc.outputPort].push({ device: cc.inputDevice, port: cc.inputPort })
-            if (this.structure[cc.inputDevice].inputs[cc.inputPort] === undefined) this.structure[cc.inputDevice].inputs[cc.inputPort] = []
-            this.structure[cc.inputDevice].inputs[cc.inputPort].push({ device: cc.outputDevice, port: cc.outputPort })
-            new DeviceConnect(outPort, inPort)
+            this.checkConnectionCore(conn)
+            return { valid: true }
         } catch (error) {
-            const ner = ErrorManager.make('CTR_ERROR_INIT_CONNECTION', { connection: conn })
-            if (error instanceof CoreError) ner.add(error)
-            throw ner
+            return this.toCheckResult(error)
         }
+    }
+
+    /**
+     * Convert a thrown error into an `ICheckResult`
+    */
+    protected toCheckResult(error: any): ICheckResult {
+        if (error instanceof CoreError) {
+            const res: ICheckResult = { valid: false, error: { code: error.vShort, message: error.message } }
+            const problems = (error as any).problems
+            if (Array.isArray(problems) && problems.length) res.problems = problems
+            return res
+        }
+        return {
+            valid: false,
+            error: { code: 'UNKNOWN', message: error instanceof Error ? error.message : String(error) }
+        }
+    }
+
+    /**
+     * Remove a device from the container:
+     *  - call `beforeTerminate()`
+     *  - disconnect all its connections (both sides)
+     *  - remove its structure entry and all references to it
+     *  - remove it from the devices / actions / metrics maps & `started`
+     *  - emit `device.remove` (device id)
+     *
+     * The device's storage file is intentionally left on disk.
+     *
+     * @param id Device ID
+    */
+    removeDevice(id: string) {
+        if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
+        const dev = this.devices[id]
+
+        // 1. Termination hook
+        dev.beforeTerminate()
+
+        // 2. Disconnect all connections touching this device (both sides)
+        const ports = [...Object.values(dev.ports.input), ...Object.values(dev.ports.output)]
+        const seen = new Set<DeviceConnect>()
+        for (const port of ports) {
+            for (const conn of [...port.connections]) {
+                if (seen.has(conn)) continue
+                seen.add(conn)
+                conn.outputLink.removeConnection(conn)
+                conn.inputLink.removeConnection(conn)
+            }
+        }
+
+        // 3. Structure: drop the device and every reference to it
+        delete this.structure[id]
+        for (const oid in this.structure) {
+            if (oid === id) continue
+            for (const pname in this.structure[oid].outputs) {
+                this.structure[oid].outputs[pname] = this.structure[oid].outputs[pname]
+                    .filter((t) => t.device !== id)
+                if (this.structure[oid].outputs[pname].length === 0) delete this.structure[oid].outputs[pname]
+            }
+            for (const pname in this.structure[oid].inputs) {
+                this.structure[oid].inputs[pname] = this.structure[oid].inputs[pname]
+                    .filter((t) => t.device !== id)
+                if (this.structure[oid].inputs[pname].length === 0) delete this.structure[oid].inputs[pname]
+            }
+        }
+
+        // 4. Remove from internal registries
+        delete this.devices[id]
+        delete this.deviceActions[id]
+        delete this.deviceMetrics[id]
+        this.started.delete(id)
+
+        // 5. Notify
+        this.emit('device.remove', id)
+    }
+
+    /**
+     * Whether a device with the given id is registered in the container.
+     *
+     * @param id Device ID
+    */
+    hasDevice(id: string): boolean {
+        return id in this.devices
+    }
+
+    /**
+     * Get a registered device by id.
+     *
+     * @param id Device ID
+     * @returns The device, or `undefined` if not registered
+    */
+    getDevice(id: string): Device | undefined {
+        return this.devices[id]
+    }
+
+    /**
+     * List ids of all registered devices.
+    */
+    deviceList(): string[] {
+        return Object.keys(this.devices)
     }
 
     /**
@@ -551,13 +586,13 @@ export default class Container extends EventEmitter {
     */
     private toConnection(con: string) {
         const act = con.split('->')
-        if (act.length !== 2) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have -> beetwen device" })
+        if (act.length !== 2) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have -> between device" })
 
         const outputDeviceActs = act[0].split('.')
         const inputDeviceActs = act[1].split('.')
 
-        if (outputDeviceActs.length > 3 || inputDeviceActs.length > 3) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have more 3 actets on side" })
-        if (outputDeviceActs.length < 2 || inputDeviceActs.length < 2) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have less 2 actets on side" })
+        if (outputDeviceActs.length > 3 || inputDeviceActs.length > 3) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have more 3 acts on side" })
+        if (outputDeviceActs.length < 2 || inputDeviceActs.length < 2) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have less 2 acts on side" })
 
         let outputDevice = outputDeviceActs.shift()?.trim()
         const outputPort = outputDeviceActs.join('.').trim()

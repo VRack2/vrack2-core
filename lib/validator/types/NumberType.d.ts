@@ -27,6 +27,9 @@ export default class NumberType extends BasicType {
     /**
      * Method of validation of this type
      *
+     * Accepts only finite numbers: NaN, Infinity and -Infinity are
+     * rejected with VR_IS_NOT_NUMBER
+     *
      * @param obj Validation object
      * @param key Key for getting value from object
     */

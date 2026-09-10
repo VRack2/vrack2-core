@@ -18,7 +18,7 @@ export default class DeviceFileStorage extends BootClass {
      * @param deviceId Device ID
      * @returns {any} Imported JSON
     */
-    loadDeviceStorage(deviceId: string): Promise<any>;
+    loadDeviceStorage(deviceId: string): any;
     /**
      * Save data device to storage
      * First, a temporary file is created,

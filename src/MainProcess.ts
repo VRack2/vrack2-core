@@ -1,5 +1,6 @@
 import Bootstrap, { IBootListConfig } from "./Bootstrap";
 import Container from "./Container";
+import ServiceLoader from "./ServiceLoader";
 import IServiceStructure from "./IServiceStructure";
 
 interface IMainProcessInternalOptions {
@@ -30,6 +31,7 @@ export interface IMainProcessOptions {
 
 export default class MainProcess  {
     Container: Container
+    Loader: ServiceLoader
     options: IMainProcessInternalOptions = {
         id: 'vrack2',
         service: { 
@@ -48,7 +50,11 @@ export default class MainProcess  {
     constructor(config: IMainProcessOptions){
         Object.assign(this.options, config)
         this.Bootstrap = new Bootstrap(this.options.bootstrap)
-        this.Container = new this.options.ContainerClass(this.options.id, this.options.service, this.Bootstrap, this.options.confFile)
+        // Container is a pure runtime container (no service / confFile)
+        this.Container = new this.options.ContainerClass(this.options.id, this.Bootstrap)
+        // ServiceLoader owns config loading, device creation, hot mutations
+        // and the `serviceLoaded` finalization event
+        this.Loader = new ServiceLoader(this.Container, this.options.service, this.options.confFile)
     }
 
     async run (){
@@ -58,6 +64,6 @@ export default class MainProcess  {
 
     async check(){
         await this.Bootstrap.loadBootList(this.Container)
-        await this.Container.init()
+        await this.Loader.load()
     }
 }

@@ -24,11 +24,11 @@ ErrorManager.register('StructureStorage', 'FKb5raEUDFgU', 'SS_STRUCT_NOT_FOUND',
  * @see getById
  * @see updateById
  * 
- * When the container is loaded it calls “beforeLoaded”. 
- * At this point it updates the structure from disk to the structure 
- * of the container itself and writes the changes
+ * The loader emits a single `serviceLoaded` finalization event after the
+ * initial `load()` and after each hot mutation (add/remove device/connection).
+ * StructureStorage reacts to it by persisting the container structure once.
  * 
- * @see beforeLoadedUpdate
+ * @see structureStorage
  * 
  * */
 export default class StructureStorage extends BootClass {
@@ -41,17 +41,18 @@ export default class StructureStorage extends BootClass {
 
     process(): void {
         if (!existsSync(this.options.structureDir)) mkdirSync(this.options.structureDir, { recursive: true })
-        this.Container.on('beforeLoaded', this.beforeLoadedUpdate.bind(this))
+        // Persist structure once on loader finalization (initial load + each hot mutation)
+        this.Container.on('serviceLoaded', this.structureStorage.bind(this))
     }
 
     /**
      * Updates the structure on disk using the structure of
-     * the container itself when it is loaded
+     * the container itself, triggered by the `serviceLoaded` event
      * 
      * 
      * @see StructureStorage.process
     */
-    async beforeLoadedUpdate(){
+    async structureStorage(){
         const fp = this.makeFilePath(this.Container.id)
         let structure: IContainerStructure = {}
         try {

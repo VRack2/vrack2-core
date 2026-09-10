@@ -10,11 +10,11 @@ import { IContainerStructure } from "../Container";
  * @see getById
  * @see updateById
  *
- * When the container is loaded it calls “beforeLoaded”.
- * At this point it updates the structure from disk to the structure
- * of the container itself and writes the changes
+ * The loader emits a single `serviceLoaded` finalization event after the
+ * initial `load()` and after each hot mutation (add/remove device/connection).
+ * StructureStorage reacts to it by persisting the container structure once.
  *
- * @see beforeLoadedUpdate
+ * @see structureStorage
  *
  * */
 export default class StructureStorage extends BootClass {
@@ -24,12 +24,12 @@ export default class StructureStorage extends BootClass {
     process(): void;
     /**
      * Updates the structure on disk using the structure of
-     * the container itself when it is loaded
+     * the container itself, triggered by the `serviceLoaded` event
      *
      *
      * @see StructureStorage.process
     */
-    beforeLoadedUpdate(): Promise<void>;
+    structureStorage(): Promise<void>;
     /**
      * Returns structure by container identifier
      *
