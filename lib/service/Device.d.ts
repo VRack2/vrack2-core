@@ -92,9 +92,11 @@ export default class Device {
      * to subscribers after the render() call.
      * After preProcess() the Container attaches auto-render: any change of shares
      * (a property write, a new property, delete, or a full reassignment) triggers render().
-     * Do not redeclare `shares` as a class field in a subclass (transpiler field-lowering
-     * differs between esbuild/tsc/Node) - initialize it with an assignment in preProcess()
-     * or in the constructor body.
+     * A subclass may declare `shares = {...}` as a class field - the value becomes the
+     * initial (default) shares: right after preProcess() the Container imports it into
+     * the reactive ref (refinements made in preProcess() are preserved) and normalizes
+     * it under ES2022 class-field semantics, where the field would otherwise shadow
+     * this accessor.
      *
      * @see render()
      * */

@@ -20,9 +20,9 @@ class ProbeDevice extends Device {
 }
 
 class FieldDevice extends Device {
-    // явная инициализация в теле конструктора (присваивание идет через setter).
-    // Поле-декларацию `shares = {...}` в подклассе использовать нельзя:
-    // lowering полей отличается между транспилерами (esbuild/tsc/Node)
+    // явная инициализация в теле конструктора (присваивание идет через setter) —
+    // безопасный паттерн во всех транспилерах; поле-декларацию `shares = {...}`
+    // в подклассе Container нормализует сам (см. блок ниже)
     constructor(id: string, c: Container) {
         super(id, 'test.Field', c)
         this.shares = { on: false }
@@ -139,5 +139,76 @@ describe('Device shares auto-render', () => {
         const dev = new ProbeDevice('P1', c)
         c.registerDevice(dev)
         expect(Object.keys(dev.shares)).toEqual(['on', 'count'])
+    })
+})
+
+describe('subclass `shares = {...}` field declaration', () => {
+    it('uses the field value as default shares and stays reactive', () => {
+        const { c, events } = makeContainer()
+        class FieldInit extends Device {
+            constructor(id: string, cc: Container) { super(id, 'test.FieldInit', cc) }
+            shares = { data: 1 }
+        }
+        const dev = new FieldInit('F1', c)
+        c.registerDevice(dev)
+        expect(events).toHaveLength(0)
+        expect(dev.shares).toEqual({ data: 1 })
+
+        dev.shares.data = 42
+        expect(events).toHaveLength(1)
+        expect(events[0].trace).toEqual({ data: 42 })
+    })
+
+    it('keeps preProcess() refinement of the field default', () => {
+        const { c, events } = makeContainer()
+        class FieldRefine extends Device {
+            constructor(id: string, cc: Container) { super(id, 'test.FieldRefine', cc) }
+            shares = { data: 1 }
+            preProcess() {
+                this.shares.data = 99
+            }
+        }
+        const dev = new FieldRefine('F2', c)
+        c.registerDevice(dev)
+        expect(events).toHaveLength(0)
+        expect(dev.shares).toEqual({ data: 99 })
+
+        dev.shares.data = 5
+        expect(events).toHaveLength(1)
+        expect(events[0].trace).toEqual({ data: 5 })
+    })
+
+    it('keeps preProcess() reassignment of the field default', () => {
+        const { c, events } = makeContainer()
+        class FieldReplace extends Device {
+            constructor(id: string, cc: Container) { super(id, 'test.FieldReplace', cc) }
+            shares = { data: 1 }
+            preProcess() {
+                this.shares = { data: 2, extra: true }
+            }
+        }
+        const dev = new FieldReplace('F3', c)
+        c.registerDevice(dev)
+        expect(events).toHaveLength(0)
+        expect(dev.shares).toEqual({ data: 2, extra: true })
+
+        dev.shares.extra = false
+        expect(events).toHaveLength(1)
+        expect(events[0].trace).toEqual({ data: 2, extra: false })
+    })
+
+    it('normalizes a bare `shares` annotation (no crash, base default {})', () => {
+        const { c, events } = makeContainer()
+        class FieldBare extends Device {
+            constructor(id: string, cc: Container) { super(id, 'test.FieldBare', cc) }
+            shares: { data: number }
+        }
+        const dev = new FieldBare('F4', c)
+        c.registerDevice(dev)
+        expect(dev.shares).toEqual({})
+
+        dev.shares.data = 5
+        expect(events).toHaveLength(1)
+        expect(events[0].trace).toEqual({ data: 5 })
     })
 })
