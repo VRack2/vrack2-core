@@ -8,6 +8,7 @@ export { default as ErrorManager } from './errors/ErrorManager'
 export { default as CoreError } from './errors/CoreError'
 export { default as Rule } from './validator/Rule'
 export { default as Validator } from './validator/Validator'
+export { SubruleNames } from './validator/IValidationSubrule'
 
 /* ---------------- BASE OF VRACK ------------------- */
 export { default as ImportManager } from './ImportManager';
@@ -53,6 +54,7 @@ export { default as IDeviceEvent } from './service/IDeviceEvent'
 export { default as IValidationProblem} from './validator/IValidationProblem'
 export { default as IValidationRule} from './validator/IValidationRule'
 export { default as IValidationSubrule} from './validator/IValidationSubrule'
+export type { SubruleName } from './validator/IValidationSubrule'
 export { default as IServiceStructure} from './IServiceStructure'
 export { default as IStructureDevice} from './IStructureDevice'
 export { default as ICheckResult} from './ICheckResult'

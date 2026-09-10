@@ -5,20 +5,21 @@
 
 import BasicType from "./BasicType";
 import ErrorManager from "../../errors/ErrorManager"
-import IValidationSubrule from "../IValidationSubrule";
+import IValidationSubrule, { SubruleNames } from "../IValidationSubrule";
 import Validator from "../Validator";
-import CoreError from "../../errors/CoreError";
 
 export default class ArrayType extends BasicType {
     constructor() {
         super()
         this.rule.type = 'array'
+        this.checkers.set(SubruleNames.contain, (obj, key, sub) => this.checkContent(obj, key, sub))
     }
 
     /**
      * Setting the default value
     */
     default(def: Array<any>) {
+        this.invalidateExport()
         this.rule.default = def
         return this
     }
@@ -36,7 +37,7 @@ export default class ArrayType extends BasicType {
      * 
     */
     content(t: BasicType) {
-        this.rule.rules.push({ name: 'contain', args: t })
+        this.addSubrule(SubruleNames.contain, t)
         return this
     }
 
@@ -46,6 +47,7 @@ export default class ArrayType extends BasicType {
      * @param ex Example valid value 
     */
     example(ex: Array<any>){
+        this.invalidateExport()
         this.rule.example = ex
         return this
     }
@@ -57,14 +59,9 @@ export default class ArrayType extends BasicType {
      * @param key Key for getting value from object
     */
     validate(obj: { [key: string]: any; }, key: string): boolean {
-        this.basicValidate(obj, key)
-        if (!Array.isArray(obj[key])) throw ErrorManager.make('VR_IS_NOT_ARRAY', {})
-        for (const subrule of this.rule.rules) {
-            switch (subrule.name) {
-                case 'contain':
-                    this.checkContent(obj, key, subrule)
-            }
-        }
+        if (!this.basicValidate(obj, key)) return true
+        if (!Array.isArray(obj[key])) throw ErrorManager.make('VR_IS_NOT_ARRAY', { key })
+        this.checkSubrules(obj, key)
         return true
     }
 
@@ -84,9 +81,9 @@ export default class ArrayType extends BasicType {
             try {
                 Validator.validate(tr, sw)
             } catch (error) {
-                if (error instanceof CoreError) {
-                    throw ErrorManager.make('VR_ARRAY_CONTENT_ERROR', { index }).add(error)
-                }
+                // Fail-closed: any exception on an element fails the array
+                const e = (error instanceof Error) ? error : new Error(String(error))
+                throw ErrorManager.make('VR_ARRAY_CONTENT_ERROR', { key, index }).add(e)
             }
         }
     }

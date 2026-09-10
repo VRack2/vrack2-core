@@ -5,12 +5,15 @@
 
 import BasicType from "./BasicType"
 import ErrorManager from "../../errors/ErrorManager"
-import IValidationSubrule from "../IValidationSubrule"
+import IValidationSubrule, { SubruleNames } from "../IValidationSubrule"
 
 export default class NumberType  extends BasicType {
     constructor() {
         super()
         this.rule.type = 'number'
+        this.checkers.set(SubruleNames.integer, (obj, key) => this.checkInteger(obj, key))
+        this.checkers.set(SubruleNames.max, (obj, key, sub) => this.checkMax(obj, key, sub))
+        this.checkers.set(SubruleNames.min, (obj, key, sub) => this.checkMin(obj, key, sub))
     }
 
     /**
@@ -19,6 +22,7 @@ export default class NumberType  extends BasicType {
      * @param ex Example valid value 
     */
     example(ex: number){
+        this.invalidateExport()
         this.rule.example = ex
         return this
     }
@@ -27,6 +31,7 @@ export default class NumberType  extends BasicType {
      * Setting the default value
     */
     default(def: number) {
+        this.invalidateExport()
         this.rule.default = def
         return this
     }
@@ -35,7 +40,7 @@ export default class NumberType  extends BasicType {
      * Adds an integer check
     */
     integer(){
-        this.rule.rules.push({ name: 'integer', args: {} })
+        this.addSubrule(SubruleNames.integer, {})
         return this;
     }
 
@@ -43,7 +48,7 @@ export default class NumberType  extends BasicType {
      * Defines the maximum value for the rule
     */
     max(max: number) {
-        this.rule.rules.push({ name: 'max', args: max })
+        this.addSubrule(SubruleNames.max, max)
         return this
     }
 
@@ -51,32 +56,23 @@ export default class NumberType  extends BasicType {
      * Defines the minimal value for the rule
     */
     min(min: number) {
-        this.rule.rules.push({ name: 'min', args: min })
+        this.addSubrule(SubruleNames.min, min)
         return this
     }
 
     /**
      * Method of validation of this type
      * 
+     * Accepts only finite numbers: NaN, Infinity and -Infinity are
+     * rejected with VR_IS_NOT_NUMBER
+     * 
      * @param obj Validation object
      * @param key Key for getting value from object
     */
     validate(obj: { [key: string]: any; }, key: string): boolean {
-        this.basicValidate(obj, key)
-        if (typeof obj[key] !== 'number') throw ErrorManager.make('VR_IS_NOT_NUMBER', { key })
-        for (const subrule of this.rule.rules){
-            switch (subrule.name){
-                case 'integer':
-                    this.checkInteger(obj, key)
-                    break
-                case 'max':
-                    this.checkMax(obj, key, subrule)
-                    break
-                case 'min':
-                    this.checkMin(obj, key, subrule)
-                    break
-            }
-        }
+        if (!this.basicValidate(obj, key)) return true
+        if (typeof obj[key] !== 'number' || !Number.isFinite(obj[key])) throw ErrorManager.make('VR_IS_NOT_NUMBER', { key })
+        this.checkSubrules(obj, key)
         return true
     }
 
@@ -84,21 +80,21 @@ export default class NumberType  extends BasicType {
      *  Checking the maximum value
     */
     protected checkMax(obj: {[key:string]: any}, key: string, sub: IValidationSubrule){
-        if (obj[key] > sub.args) throw ErrorManager.make('VR_NUMBER_MAX', { limit: sub.args })
+        if (obj[key] > sub.args) throw ErrorManager.make('VR_NUMBER_MAX', { limit: sub.args, key })
     }
 
     /**
      *  Checking the minimal value
     */
     protected checkMin(obj: {[key:string]: any}, key: string, sub: IValidationSubrule){
-        if (obj[key] < sub.args) throw ErrorManager.make('VR_NUMBER_MIN', { limit: sub.args })
+        if (obj[key] < sub.args) throw ErrorManager.make('VR_NUMBER_MIN', { limit: sub.args, key })
     }
 
     /**
      * Integer check
     */
     protected checkInteger(obj: {[key:string]: any}, key: string){
-        if (!Number.isInteger(obj[key])) throw ErrorManager.make('VR_NUMBER_INTEGER', {})
+        if (!Number.isInteger(obj[key])) throw ErrorManager.make('VR_NUMBER_INTEGER', { key })
     }
 }
 

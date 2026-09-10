@@ -16,6 +16,7 @@ export default class BooleanType  extends BasicType {
      * Setting the default value
     */
     default(def: boolean) {
+        this.invalidateExport()
         this.rule.default = def
         return this
     }
@@ -26,6 +27,7 @@ export default class BooleanType  extends BasicType {
      * @param ex Example valid value 
     */
     example(ex: boolean){
+        this.invalidateExport()
         this.rule.example = ex
         return this
     }
@@ -37,7 +39,7 @@ export default class BooleanType  extends BasicType {
      * @param key Key for getting value from object
     */
     validate(obj: { [key: string]: any; }, key: string): boolean {
-        this.basicValidate(obj, key)
+        if (!this.basicValidate(obj, key)) return true
         if (typeof obj[key] !== 'boolean') throw ErrorManager.make('VR_IS_NOT_BOOLEAN', { key })
         return true
     }

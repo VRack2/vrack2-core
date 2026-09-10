@@ -5,12 +5,14 @@
 
 import BasicType from "./BasicType"
 import ErrorManager from "../../errors/ErrorManager"
-import IValidationSubrule from "../IValidationSubrule"
+import IValidationSubrule, { SubruleNames } from "../IValidationSubrule"
 
 export default class StringType  extends BasicType {
     constructor() {
         super()
         this.rule.type = 'string'
+        this.checkers.set(SubruleNames.maxLength, (obj, key, sub) => this.checkMaxLength(obj, key, sub))
+        this.checkers.set(SubruleNames.minLength, (obj, key, sub) => this.checkMinLength(obj, key, sub))
     }
 
     /**
@@ -19,6 +21,7 @@ export default class StringType  extends BasicType {
      * @param ex Example valid value 
     */
     example(ex: string): this {
+        this.invalidateExport()
         this.rule.example = ex
         return this
     }
@@ -27,6 +30,7 @@ export default class StringType  extends BasicType {
      * Setting the default value
     */
     default(def: string) {
+        this.invalidateExport()
         this.rule.default = def
         return this
     }
@@ -35,7 +39,7 @@ export default class StringType  extends BasicType {
      * Sets the maximum length of the string
     */
     maxLength(max: number) {
-        this.rule.rules.push({ name: 'maxLength', args: max })
+        this.addSubrule(SubruleNames.maxLength, max)
         return this
     }
 
@@ -43,7 +47,7 @@ export default class StringType  extends BasicType {
      * Sets the minimum length of the string
     */
     minLength(min: number) {
-        this.rule.rules.push({ name: 'minLength', args: min })
+        this.addSubrule(SubruleNames.minLength, min)
         return this
     }
 
@@ -54,18 +58,9 @@ export default class StringType  extends BasicType {
      * @param key Key for getting value from object
     */
     validate(obj: {[key:string]: any}, key: string){
-        this.basicValidate(obj, key)
+        if (!this.basicValidate(obj, key)) return true
         if (typeof obj[key] !== 'string') throw ErrorManager.make('VR_IS_NOT_STRING', { key })
-        for (const subrule of this.rule.rules){
-            switch (subrule.name){
-                case 'maxLength':
-                    this.checkMaxLength(obj, key, subrule)
-                    break
-                case 'minLength':
-                    this.checkMinLength(obj, key, subrule)
-                    break
-            }
-        }
+        this.checkSubrules(obj, key)
         return true
     }
 

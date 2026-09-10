@@ -6,13 +6,13 @@
 import BasicType from "./BasicType"
 import ErrorManager from "../../errors/ErrorManager"
 import Validator from "../Validator";
-import IValidationSubrule from "../IValidationSubrule";
-import CoreError from "../../errors/CoreError";
+import IValidationSubrule, { SubruleNames } from "../IValidationSubrule";
 
 export default class ObjectType extends BasicType {
     constructor() {
         super()
         this.rule.type = 'object'
+        this.checkers.set(SubruleNames.fields, (obj, key, sub) => this.subValidate(obj, key, sub))
     }
 
 
@@ -22,6 +22,7 @@ export default class ObjectType extends BasicType {
      * @param ex Example valid value 
     */
     example(ex: any) {
+        this.invalidateExport()
         this.rule.example = ex
         return this
     }
@@ -31,6 +32,7 @@ export default class ObjectType extends BasicType {
      * Setting the default value
     */
     default(def: object) {
+        this.invalidateExport()
         this.rule.default = def
         return this
     }
@@ -48,26 +50,23 @@ export default class ObjectType extends BasicType {
      * ```
     */
     fields(obj: { [key: string]: BasicType }) {
-        this.rule.rules.push({ name: 'fields', args: obj })
+        this.addSubrule(SubruleNames.fields, obj)
         return this
     }
 
     /**
      * Method of validation of this type
      * 
+     * An explicit null is rejected: typeof null is object but null
+     * is not a valid object value
+     * 
      * @param obj Validation object
      * @param key Key for getting value from object
     */
     validate(obj: { [key: string]: any; }, key: string): boolean {
-        this.basicValidate(obj, key)
-        if (typeof obj[key] !== 'object') throw ErrorManager.make('VR_IS_NOT_OBJECT', {})
-        for (const subrule of this.rule.rules) {
-            switch (subrule.name) {
-                case 'fields':
-                    this.subValidate(obj, key, subrule)
-                    break
-            }
-        }
+        if (!this.basicValidate(obj, key)) return true
+        if (obj[key] === null || typeof obj[key] !== 'object') throw ErrorManager.make('VR_IS_NOT_OBJECT', { key })
+        this.checkSubrules(obj, key)
         return true
     }
 
@@ -78,9 +77,9 @@ export default class ObjectType extends BasicType {
         try {
             Validator.validate(sub.args, obj[key])
         } catch (error) {
-            if (error instanceof Error) {
-                throw ErrorManager.make('VR_ERROR_OBJECT_FIELDS', { key }).add(error)
-            }
+            // Fail-closed: any exception inside the fields fails the object
+            const e = (error instanceof Error) ? error : new Error(String(error))
+            throw ErrorManager.make('VR_ERROR_OBJECT_FIELDS', { key }).add(e)
         }
     }
 }

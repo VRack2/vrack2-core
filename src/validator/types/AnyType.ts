@@ -15,6 +15,7 @@ export default class AnyType  extends BasicType {
      * Setting the default value
     */
     default(def: any) {
+        this.invalidateExport()
         this.rule.default = def
         return this
     }

@@ -16,6 +16,7 @@ export default class FunctionType extends BasicType {
      * Setting the default value
     */
     default(def: () => any) {
+        this.invalidateExport()
         this.rule.default = def
         return this
     }
@@ -27,7 +28,7 @@ export default class FunctionType extends BasicType {
      * @param key Key for getting value from object
     */
     validate(obj: { [key: string]: any; }, key: string): boolean {
-        this.basicValidate(obj, key)
+        if (!this.basicValidate(obj, key)) return true
         if (typeof obj[key] !== 'function') throw ErrorManager.make('VR_IS_NOT_FUNCTION', { key })
         return true
     }

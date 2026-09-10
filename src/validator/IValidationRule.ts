@@ -1,22 +1,22 @@
 import  IValidationSubrule  from "./IValidationSubrule";
 
 export default interface IValidationRule {
-    /** VRack Error manager short code like a VS_ERROR_DATABASE_NF */
+    /** Rule type like a 'string', 'number', 'boolean', 'object', 'array', 'function' or 'any' */
     type: string;
-    /** VRack Error manager error code like a random string */
+    /** Whether the field is required: a missing (undefined) value fails with VR_ERROR_REQUIRED */
     require: boolean;
-    /** Error string (description) */
+    /** Default value applied to the data when the field is missing (undefined) */
     default: any;
-    /** Exported validation rule */
+    /** Subrules (constraints) of the rule like a minLength, max, contain, fields (names: SubruleNames) */
     rules: Array<IValidationSubrule>;
-    /** Additional arguments for error */
+    /** Example of a valid value */
     example: any;
-    /** key for getting value from object */
+    /** Description of the validated field */
     description: string;
     /**
      * Template for error message string
      * Use like a "{description} field must be like a '123' number "
-     * You can use {description} {value} {default} in template 
+     * You can use {description} {value} {default} {example} in template 
      */
     message: string;
 }
