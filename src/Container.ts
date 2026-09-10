@@ -341,6 +341,9 @@ export default class Container extends EventEmitter {
 
         dev.preProcess()
 
+        // Auto-render: from this point on any `shares` change emits `device.render`
+        dev.attachSharesRender()
+
         // Check actions 
         this.deviceActions[dev.id] = dev.actions()
         for (const action in this.deviceActions[dev.id]) {
@@ -511,6 +514,9 @@ export default class Container extends EventEmitter {
     removeDevice(id: string) {
         if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
         const dev = this.devices[id]
+
+        // 0. Detach auto-render: termination-time mutations must not render
+        dev.detachSharesRender()
 
         // 1. Termination hook
         dev.beforeTerminate()

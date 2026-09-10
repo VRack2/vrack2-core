@@ -73,4 +73,55 @@ describe('ReactiveRef', () => {
         state.value.x = 2
         expect(state.value.x).toBe(2)
     })
+
+    it('set() replaces the value, keeps it reactive and notifies', () => {
+        const spy = vi.fn()
+        const state = new ReactiveRef({ a: 1 })
+        state.watch(spy)
+
+        state.set({ b: { c: 2 } })
+        expect(spy).toHaveBeenCalledTimes(1)
+        expect(state.value.a).toBeUndefined()
+        expect(state.value.b.c).toBe(2)
+
+        state.value.b.c = 3
+        expect(spy).toHaveBeenCalledTimes(2) // новое значение тоже реактивное
+    })
+
+    it('set() with the same reference does not notify', () => {
+        const spy = vi.fn()
+        const state = new ReactiveRef({ a: 1 })
+        state.watch(spy)
+        state.set(state.value)
+        expect(spy).not.toHaveBeenCalled()
+    })
+
+    it('unwatch() stops notifications', () => {
+        const spy = vi.fn()
+        const state = new ReactiveRef({ a: 1 })
+        state.watch(spy)
+        state.unwatch()
+
+        state.value.a = 2
+        expect(spy).not.toHaveBeenCalled()
+        expect(state.value.a).toBe(2)
+    })
+
+    it('notifies on delete of an existing property only', () => {
+        const spy = vi.fn()
+        const state = new ReactiveRef({ a: 1 })
+        state.watch(spy)
+
+        delete state.value.a
+        expect(spy).toHaveBeenCalledTimes(1)
+        delete state.value.missing
+        expect(spy).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps the __isReactive marker out of Object.keys / spread / JSON', () => {
+        const state = new ReactiveRef({ a: 1, b: { c: 2 } })
+        expect(Object.keys(state.value)).toEqual(['a', 'b'])
+        expect({ ...state.value }).toEqual({ a: 1, b: { c: 2 } })
+        expect(JSON.parse(JSON.stringify(state.value))).toEqual({ a: 1, b: { c: 2 } })
+    })
 })

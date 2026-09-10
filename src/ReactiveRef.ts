@@ -2,6 +2,7 @@
  * Простой реактивный ref-аналог (как в Vue 3), но только для объектов.
  * Поддерживает глубокую реактивность вложенных plain-объектов.
  * Массивы НЕ отслеживаются внутри — только при переприсвоении свойства целиком.
+ * Удаление существующего свойства (delete) уведомляет так же, как запись.
  * 
  * @example
  * ```ts
@@ -12,6 +13,10 @@
  * state.value.user.name = 'Bob';        // вызовет callback
  * state.value.items = [1, 2, 3];        // вызовет callback
  * state.value.items.push(4);            // НЕ вызовет (мутация массива)
+ * delete state.value.user.name;         // вызовет callback
+ *
+ * state.set({ user: { name: 'Eve' } }); // полная замена значения, вызовет callback
+ * state.unwatch();                      // отключение обработчика
  * ```
  */
 export default class ReactiveRef<T extends object> {
@@ -40,10 +45,27 @@ export default class ReactiveRef<T extends object> {
   }
 
   /**
+   * Полная замена хранимого значения (новому значению тоже дается реактивность).
+   * Уведомляет обработчик. Установка той же ссылки — без уведомления.
+  */
+  set(value: T) {
+    if (this._value === value) return;
+    this._value = this.isPlainObject(value) ? this.makeReactive(value) : value;
+    this.watcher();
+  }
+
+  /**
    * Назначает обработчик который будет вызван при изменении объекта
   */
   watch(callback: () => void) {
     this.watcher = callback;
+  }
+
+  /**
+   * Отключает обработчик (дальнейшие изменения значения уведомлять не будут)
+  */
+  unwatch() {
+    this.watcher = () => {};
   }
 
   /**
@@ -62,8 +84,9 @@ export default class ReactiveRef<T extends object> {
     if ((obj as any).__isReactive) return obj;
 
     // Отмечаем "сырой" объект ДО создания прокси, чтобы отметка
-    // не прошла через set-trap (и не вызвала watcher)
-    (obj as any).__isReactive = true;
+    // не прошла через set-trap (и не вызвала watcher).
+    // Маркер неперечисляемый: Object.keys / spread / JSON.stringify его не видят
+    Object.defineProperty(obj, '__isReactive', { value: true, enumerable: false, configurable: true });
 
     const handler: ProxyHandler<TObj> = {
       set: (target, key, value) => {
@@ -76,6 +99,13 @@ export default class ReactiveRef<T extends object> {
         // Уведомляем только при изменении значения
         if (!isOwn || oldValue !== nextValue) this.watcher();
         return true;
+      },
+      deleteProperty: (target, key) => {
+        const hadOwn = Object.prototype.hasOwnProperty.call(target, key);
+        const result = Reflect.deleteProperty(target, key);
+        // Уведомляем только если свойство реально существовало и было удалено
+        if (hadOwn && result) this.watcher();
+        return result;
       },
     };
 

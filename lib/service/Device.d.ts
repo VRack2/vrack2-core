@@ -89,11 +89,29 @@ export default class Device {
     description(): string;
     /**
      * This is a fast updating data object - it will be sent
-     * to subscribers after the render() call
+     * to subscribers after the render() call.
+     * After preProcess() the Container attaches auto-render: any change of shares
+     * (a property write, a new property, delete, or a full reassignment) triggers render().
+     * Do not redeclare `shares` as a class field in a subclass (transpiler field-lowering
+     * differs between esbuild/tsc/Node) - initialize it with an assignment in preProcess()
+     * or in the constructor body.
      *
      * @see render()
      * */
-    shares: any;
+    get shares(): any;
+    set shares(value: any);
+    /**
+     * Reactive storage backing the `shares` accessor
+     */
+    private _sharesRef;
+    /**
+     * True while the Container-attached auto-render watcher is active
+     */
+    private _sharesRenderAttached;
+    /**
+     * True while `render()` is emitting (re-entrancy guard)
+     */
+    private _rendering;
     /**
      * This data will be loaded for the specific instance of the device.
      * The device itself determines this data and saves it at the right moment
@@ -237,6 +255,24 @@ export default class Device {
      * @see shares
     */
     render(): boolean;
+    /**
+     * Attach the auto-render watcher: from this moment on any change of `shares`
+     * (property write, new property, `delete`, or a full reassignment)
+     * automatically triggers `render()`.
+     *
+     * Called by the Container right after `preProcess()`, so the initialization
+     * writes inside `preProcess()` do not render.
+     *
+     * @see shares
+    */
+    attachSharesRender(): void;
+    /**
+     * Detach the auto-render watcher (called by the Container in `removeDevice()`).
+     * Explicit `render()` calls keep working after detaching.
+     *
+     * @see shares
+    */
+    detachSharesRender(): void;
     /**
      * Save device storage
      *
