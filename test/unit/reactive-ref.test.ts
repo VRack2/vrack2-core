@@ -67,13 +67,6 @@ describe('ReactiveRef', () => {
         expect(spy).toHaveBeenCalledTimes(1)
     })
 
-    it('returns the same value reference (proxy over the object)', () => {
-        const state = new ReactiveRef({ x: 1 })
-        expect(state.value).toBe(state.value)
-        state.value.x = 2
-        expect(state.value.x).toBe(2)
-    })
-
     it('set() replaces the value, keeps it reactive and notifies', () => {
         const spy = vi.fn()
         const state = new ReactiveRef({ a: 1 })

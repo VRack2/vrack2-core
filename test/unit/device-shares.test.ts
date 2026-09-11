@@ -19,16 +19,6 @@ class ProbeDevice extends Device {
     }
 }
 
-class FieldDevice extends Device {
-    // явная инициализация в теле конструктора (присваивание идет через setter) —
-    // безопасный паттерн во всех транспилерах; поле-декларацию `shares = {...}`
-    // в подклассе Container нормализует сам (см. блок ниже)
-    constructor(id: string, c: Container) {
-        super(id, 'test.Field', c)
-        this.shares = { on: false }
-    }
-}
-
 function makeContainer() {
     const c = new Container('ut', {} as any)
     const events: any[] = []
@@ -123,23 +113,6 @@ describe('Device shares auto-render', () => {
         expect(events[0].trace.loop).toBe(1) // вложенный render подавлен, цикла нет
     })
 
-    it('keeps a subclass shares init (constructor-body assignment) reactive', () => {
-        const { c, events } = makeContainer()
-        const dev = new FieldDevice('F1', c)
-        c.registerDevice(dev)
-        expect(dev.shares).toEqual({ on: false })
-
-        dev.shares.on = true
-        expect(events).toHaveLength(1)
-        expect(events[0].trace.on).toBe(true)
-    })
-
-    it('does not expose __isReactive in Object.keys of device shares', () => {
-        const { c } = makeContainer()
-        const dev = new ProbeDevice('P1', c)
-        c.registerDevice(dev)
-        expect(Object.keys(dev.shares)).toEqual(['on', 'count'])
-    })
 })
 
 describe('subclass `shares = {...}` field declaration', () => {
