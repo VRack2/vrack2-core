@@ -115,6 +115,39 @@ describe('Device shares auto-render', () => {
 
 })
 
+describe('device.render trace is worker-safe', () => {
+    it('trace is a plain snapshot (not a proxy) and can be structured-cloned', () => {
+        const { c, events } = makeContainer()
+        const dev = new ProbeDevice('P9', c)
+        c.registerDevice(dev)
+
+        dev.shares.nested = { deep: { value: 1 } }
+        expect(events).toHaveLength(1)
+
+        const e = events[0]
+        // не живая ссылка на shares и не прокси
+        expect(e.trace).not.toBe(dev.shares)
+        expect(e.trace.nested).not.toBe(dev.shares.nested)
+        // structured clone (так копирует postMessage / worker_threads) не должен падать
+        const cloned = structuredClone(e)
+        expect(cloned.trace).toEqual({ on: false, count: 0, nested: { deep: { value: 1 } } })
+    })
+
+    it('trace is a snapshot at the moment of render', () => {
+        const { c, events } = makeContainer()
+        const dev = new ProbeDevice('P10', c)
+        c.registerDevice(dev)
+
+        dev.shares.n = 1
+        const first = events[0]
+        dev.shares.n = 2
+        expect(events).toHaveLength(2)
+        // первый снимок не меняется от последующих записей
+        expect(first.trace.n).toBe(1)
+        expect(events[1].trace.n).toBe(2)
+    })
+})
+
 describe('subclass `shares = {...}` field declaration', () => {
     it('uses the field value as default shares and stays reactive', () => {
         const { c, events } = makeContainer()

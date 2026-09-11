@@ -118,3 +118,50 @@ describe('ReactiveRef', () => {
         expect(JSON.parse(JSON.stringify(state.value))).toEqual({ a: 1, b: { c: 2 } })
     })
 })
+
+describe('ReactiveRef.snapshot()', () => {
+    it('returns a deep plain copy without proxies', () => {
+        const state = new ReactiveRef({ a: 1, b: { c: 2 } })
+        const snap = state.snapshot()
+        expect(snap).toEqual({ a: 1, b: { c: 2 } })
+        expect(snap).not.toBe(state.value)
+        expect(snap.b).not.toBe(state.value.b)
+        // обычный объект: маркера реактивности нет
+        expect('__isReactive' in snap).toBe(false)
+        expect('__isReactive' in snap.b).toBe(false)
+    })
+
+    it('clones arrays, keeps non-plain values as-is', () => {
+        const date = new Date('2026-01-01T00:00:00Z')
+        const state = new ReactiveRef({ list: [1, { x: 1 }], at: date })
+        const snap = state.snapshot()
+        expect(snap.list).toEqual([1, { x: 1 }])
+        expect(snap.list[1]).not.toBe(state.value.list[1])
+        expect(snap.at).toBe(date)
+    })
+
+    it('reflects later mutations (snapshot is a copy at the call moment)', () => {
+        const state = new ReactiveRef({ n: 1 })
+        const snap = state.snapshot()
+        state.value.n = 2
+        expect(snap.n).toBe(1)
+        expect(state.snapshot().n).toBe(2)
+    })
+
+    it('tracks values added after set() replacement', () => {
+        const state = new ReactiveRef({ a: 1 })
+        state.set({ b: { c: 3 } })
+        const snap = state.snapshot()
+        expect(snap).toEqual({ b: { c: 3 } })
+        expect(snap.b).not.toBe(state.value.b)
+    })
+
+    it('preserves circular references', () => {
+        const root: any = { name: 'root' }
+        root.self = root
+        const state = new ReactiveRef(root)
+        const snap: any = state.snapshot()
+        expect(snap.name).toBe('root')
+        expect(snap.self).toBe(snap) // цикл сохранен в копии
+    })
+})

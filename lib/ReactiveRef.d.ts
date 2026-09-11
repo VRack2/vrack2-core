@@ -33,6 +33,39 @@ export default class ReactiveRef<T extends object> {
     */
     constructor(initialValue: T);
     /**
+     * Карта "прокси → исходный объект".
+     * Позволяет строить снимок значения без прокси (см. `snapshot()`)
+     */
+    private _targets;
+    /**
+     * Обратная карта "исходный объект → прокси"
+     */
+    private _rawToProxy;
+    /**
+     * Глубокий снимок текущего значения без реактивных прокси:
+     * plain-объекты и массивы клонируются, все остальные значения
+     * (примитивы, Date, Map, экземпляры классов и т. д.) передаются как есть.
+     * Циклические ссылки сохраняются.
+     *
+     * Нужен для передачи значения наружу: прокси нельзя сериализовать
+     * (structured clone / postMessage бросают DataCloneError).
+     *
+     * @example
+     * ```ts
+     * const state = new ReactiveRef({ user: { name: 'Alice' } });
+     * const snap = state.snapshot(); // { user: { name: 'Alice' } } — обычный объект
+     * ```
+     */
+    snapshot(): T;
+    /**
+     * Рекурсивное "разматывание" прокси в обычные объекты/массивы
+     */
+    private unwrap;
+    /**
+     * Клонирование plain-объекта по его исходному представлению
+     */
+    private clonePlain;
+    /**
      * Getter value
     */
     get value(): T;

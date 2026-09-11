@@ -253,6 +253,10 @@ export default class Device {
     */
     /**
      * Queues device shares data updates for external consumers
+     * The `trace` of the emitted `device.render` event is a deep plain snapshot
+     * of `shares` (no reactive proxies), so it stays read-only for subscribers
+     * and can safely cross a worker boundary (structured clone / postMessage).
+
      *
      * @see shares
     */
