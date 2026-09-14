@@ -33,6 +33,21 @@ export default class MainProcess {
     Bootstrap: Bootstrap;
     constructor(config: IMainProcessOptions);
     run(): Promise<void>;
+    /**
+     * Graceful service termination: stops all running devices
+     * (`stop()` + `await stopPromise()` for each, in reverse start order).
+     *
+     * The service structure, device registry and storage files remain
+     * intact — a new process can load the same service again.
+     * The framework does not manage the host process lifecycle (no
+     * `process.exit()`) — after `terminate()` the host decides what to do.
+     *
+     * Idempotent: if no device is running, this is a no-op.
+     * If one or more devices failed to stop, throws
+     * `CTR_DEVICE_STOP_ALL_EXCEPTION` with the device errors attached
+     * (`vAddErrors`).
+     */
+    terminate(): Promise<void>;
     check(): Promise<void>;
 }
 export {};

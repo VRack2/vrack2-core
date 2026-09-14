@@ -19,7 +19,7 @@ export default class BasicAction {
      *
      * ```ts
      * Action.global().requirements({
-     *       id: Rule.number().require().default(0).description('Unique ID'),
+     *       id: Rule.number().required().default(0).description('Unique ID'),
      * })
      * ```
      * @param req Object of BasicType rules
@@ -37,7 +37,7 @@ export default class BasicAction {
      *
      * ```ts
      * Action.global().returns({
-     *       id: Rule.number().require().default(0).description('Unique ID'),
+     *       id: Rule.number().required().default(0).description('Unique ID'),
      * })
      * ```
      *

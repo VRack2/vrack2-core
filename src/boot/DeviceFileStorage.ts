@@ -19,7 +19,7 @@ export default class DeviceFileStorage extends BootClass {
 
     checkOptions(): { [key: string]: BasicType; } {
         return {
-            storageDir: Rule.string().require().default('./storage')
+            storageDir: Rule.string().required().default('./storage')
                 .description('Dir for storage files')
         }
     }
@@ -33,7 +33,7 @@ export default class DeviceFileStorage extends BootClass {
                 try {
                     this.Container.devices[id].storage = this.loadDeviceStorage(id)
                 } catch (error) {
-                    this.Container.emit('system.error', error)
+                    this.error(error as Error)
                 }
             }
         })
@@ -45,7 +45,7 @@ export default class DeviceFileStorage extends BootClass {
             try {
                 dev.storage = this.loadDeviceStorage(id)
             } catch (error) {
-                this.Container.emit('system.error', error)
+                this.error(error as Error)
             }
         })
 
@@ -54,7 +54,7 @@ export default class DeviceFileStorage extends BootClass {
             try {
                 this.saveDeviceStorage(data.device, data.trace)
             } catch (error) {
-                this.Container.emit('system.error', error)
+                this.error(error as Error)
             }
         })
     }

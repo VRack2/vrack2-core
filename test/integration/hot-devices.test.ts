@@ -286,14 +286,16 @@ describe('removeDevice()', () => {
         const events: string[] = []
         mp.Container.on('device.remove', (id: string) => events.push(id))
 
-        // Tracker to record beforeTerminate
+        // Tracker to record stop() / stopPromise() / beforeTerminate()
         const tracker: any = await mp.Loader.addDevice({ id: 'Tracker1', type: 'testkit.Tracker', options: {} })
         await mp.Container.startDevice('Tracker1')
         expect(tracker.terminated).toBeUndefined()
-        mp.Loader.removeDevice('Tracker1')
+        await mp.Loader.removeDevice('Tracker1')
         expect(tracker.terminated).toBe(true)
+        // a running device is stopped first: stop -> stopPromise -> beforeTerminate
+        expect(tracker.order).toEqual(['preProcess', 'process', 'processPromise', 'stop', 'stopPromise', 'beforeTerminate'])
 
-        mp.Loader.removeDevice('Lamp1')
+        await mp.Loader.removeDevice('Lamp1')
 
         expect(events).toEqual(['Tracker1', 'Lamp1'])
         expect(mp.Container.hasDevice('Lamp1')).toBe(false)
@@ -315,7 +317,7 @@ describe('removeDevice()', () => {
         const mp = makeMP({ devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }], connections: [] })
         await mp.run()
         let err: any
-        try { mp.Loader.removeDevice('Nope') } catch (e) { err = e }
+        try { await mp.Loader.removeDevice('Nope') } catch (e) { err = e }
         expect(err).toBeDefined()
         expect(ErrorManager.isCode(err, 'CTR_DEVICE_NF')).toBe(true)
     })
@@ -381,7 +383,7 @@ describe('hot integration flow', () => {
         expect(struct['Counter1'].outputs['result']).toEqual([{ device: 'LampX', port: 'on' }])
 
         // 11. Remove the hot device -> persisted structure updated
-        mp.Loader.removeDevice('LampX')
+        await mp.Loader.removeDevice('LampX')
         await sleep(20)
         const afterRemove = readStruct()
         expect(afterRemove['LampX']).toBeUndefined()

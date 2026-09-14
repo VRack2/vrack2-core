@@ -45,7 +45,7 @@ export default class ObjectType extends BasicType {
      * @example
      * ```ts
      *  obj: Rule.object().fields({
-     *       bool: Rule.boolean().require().default(true).description('Boolean checkbox')
+     *       bool: Rule.boolean().required().default(true).description('Boolean checkbox')
      *  }).description('Test object description'),
      * ```
     */

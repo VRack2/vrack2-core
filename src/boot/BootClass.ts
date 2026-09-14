@@ -46,10 +46,9 @@ export default class BootClass {
     id: string;
 
     /**
-     * The path to a VRack2-style class that will be populated when the class is created inside Bootstrap. 
-     * Can be used to determine class membership
+     * The class name (the last segment of the VRack2-style path) that will be populated when the class is created inside Bootstrap. 
      * 
-     * @example 'vrack.KeyManager'
+     * @example 'KeyManager' (from the path 'vrack.KeyManager')
     */
     type: string;
 
@@ -71,7 +70,7 @@ export default class BootClass {
      * @example 
      * ```ts
      *   return {
-     *       keysPath: Rule.string().require().default('./keys.json')
+     *       keysPath: Rule.string().required().default('./keys.json')
      *   }
      * ```
     */

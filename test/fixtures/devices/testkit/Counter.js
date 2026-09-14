@@ -40,7 +40,7 @@ export default class Counter extends Device {
             reset: Action.global().description('Reset counter to zero'),
             'set.value': Action.global()
                 .requirements({
-                    value: Rule.number().require().description('New counter value'),
+                    value: Rule.number().required().description('New counter value'),
                 })
                 .description('Set the counter value directly'),
         }

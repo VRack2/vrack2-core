@@ -78,6 +78,13 @@ export default class Bootstrap {
     */
     protected config: IBootListConfig
 
+    /**
+     * True once `loadBootList()` has been executed (idempotency guard).
+     * Re-running it would re-instantiate the boot classes and re-subscribe
+     * their container event handlers (duplicate listeners).
+     */
+    protected booted = false
+
     constructor(config: IBootListConfig){
         this.config = config
     }
@@ -88,9 +95,14 @@ export default class Bootstrap {
      * Bootclass has some analogy to devices within VRack services.
      * They also have options, process, processPromise methods similar to devices
      * 
+     * Idempotent: a second call is a no-op — boot classes are not re-instantiated
+     * and their event handlers are not re-subscribed.
+     * 
      * @param Container Container for which loading is performed 
     */
     async loadBootList(Container: Container) {
+        if (this.booted) return
+        this.booted = true
         for (const cn in this.config) {
             const conf = this.config[cn]
             const ExClass = await ImportManager.importClass(conf.path)

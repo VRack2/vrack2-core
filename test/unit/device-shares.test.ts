@@ -85,14 +85,14 @@ describe('Device shares auto-render', () => {
         expect(events).toHaveLength(before + 2) // + явный render (BC: устройство просто ставится в очередь)
     })
 
-    it('mutations after removeDevice() do not render; explicit render() keeps working', () => {
+    it('mutations after removeDevice() do not render; explicit render() keeps working', async () => {
         const { c, events } = makeContainer()
         const dev = new ProbeDevice('P1', c)
         c.registerDevice(dev)
         dev.shares.count = 1
         expect(events).toHaveLength(1)
 
-        c.removeDevice('P1')
+        await c.removeDevice('P1')
         const after = events.length
         dev.shares.count = 99
         expect(events).toHaveLength(after) // watcher отключен

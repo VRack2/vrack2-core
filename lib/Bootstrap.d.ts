@@ -54,12 +54,21 @@ export default class Bootstrap {
      * @see IBootListConfig
     */
     protected config: IBootListConfig;
+    /**
+     * True once `loadBootList()` has been executed (idempotency guard).
+     * Re-running it would re-instantiate the boot classes and re-subscribe
+     * their container event handlers (duplicate listeners).
+     */
+    protected booted: boolean;
     constructor(config: IBootListConfig);
     /**
      * Load bootclasses
      *
      * Bootclass has some analogy to devices within VRack services.
      * They also have options, process, processPromise methods similar to devices
+     *
+     * Idempotent: a second call is a no-op — boot classes are not re-instantiated
+     * and their event handlers are not re-subscribed.
      *
      * @param Container Container for which loading is performed
     */

@@ -45,6 +45,21 @@ ErrorManager.register('Container', 'K65XWSYOBVFG', 'CTR_DEVICE_PROCESS_PROMISE_E
     device: Rule.string().description('Device ID'),
 })
 
+ErrorManager.register('Container', 'A3kQ9xYzW1cE', 'CTR_DEVICE_STOP_EXCEPTION', 'During stop execution - the device threw an exception', {
+    device: Rule.string().description('Device ID'),
+})
+
+ErrorManager.register('Container', 'B7mR2vTnD8fJ', 'CTR_DEVICE_STOP_PROMISE_EXCEPTION', 'During stopPromise execution - the device threw an exception', {
+    device: Rule.string().description('Device ID'),
+})
+
+ErrorManager.register('Container', 'D9tY3nZbK5qV', 'CTR_DEVICE_STOP_ALL_EXCEPTION', 'During stopAll execution - one or more devices failed to stop', {})
+
+ErrorManager.register('Container', 'C4pL6wXsH2gN', 'CTR_DEVICE_STOPPED', 'Device is not running - the action is rejected', {
+    device: Rule.string().description('Device ID'),
+    action: Rule.string().description('Device action name'),
+})
+
 
 /***** ********      PORTS ERROR      ********************/
 
@@ -136,8 +151,11 @@ export interface IDeviceStructurePort extends IPort {
 }
 
 /**
- * Service Load Class. It loads all devices in the list,
- * establishes connections between them, and performs device startup. 
+ * Pure runtime container.
+ *
+ * Holds the device registry, the live `structure`, connection state
+ * and the staged start. It does **not** own the service config or device
+ * creation — those belong to `ServiceLoader`.
  * 
  * This class is a bit complicated for a simple description. 
  * It is recommended to familiarize yourself with the source code
@@ -243,6 +261,7 @@ export default class Container extends EventEmitter {
                 throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: key }).add(error as Error)
             }
             this.started.add(key)
+            this.devices[key].running = true
         }
         this.emit('afterProcessPromise')
         this.emit('beforeLoaded')
@@ -274,6 +293,64 @@ export default class Container extends EventEmitter {
             throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
         this.started.add(id)
+        this.devices[id].running = true
+    }
+
+    /**
+     * Stop a single running device: call `stop()`, then `await stopPromise()`,
+     * then mark it stopped (`running = false`, removed from `started`).
+     *
+     * Reversible — the device can be started again with `startDevice()`.
+     * Idempotent — a device that is not running is a no-op.
+     *
+     * @param id Device ID
+     */
+    async stopDevice(id: string): Promise<void> {
+        if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
+        if (!this.started.has(id)) return
+        const dev = this.devices[id]
+        try {
+            this.emit('stop', id)
+            dev.stop()
+        } catch (error) {
+            throw ErrorManager.make('CTR_DEVICE_STOP_EXCEPTION', { device: id }).add(error as Error)
+        }
+        try {
+            await dev.stopPromise()
+        } catch (error) {
+            throw ErrorManager.make('CTR_DEVICE_STOP_PROMISE_EXCEPTION', { device: id }).add(error as Error)
+        }
+        this.started.delete(id)
+        dev.running = false
+    }
+
+    /**
+     * Stop all running devices in the reverse order of their start.
+     *
+     * Best-effort: every running device is stopped even if some of them fail;
+     * if nothing is running this is a no-op.
+     * If one or more devices failed, throws CTR_DEVICE_STOP_ALL_EXCEPTION
+     * with each device error attached (`vAddErrors`).
+     *
+     * Stopped devices can be started again with `startDevice()`.
+     */
+    async stopAll(): Promise<void> {
+        const ids = [...this.started].reverse()
+        const errors: Error[] = []
+        this.emit('beforeStop')
+        for (const id of ids) {
+            try {
+                await this.stopDevice(id)
+            } catch (error) {
+                errors.push(error as Error)
+            }
+        }
+        this.emit('afterStop')
+        if (errors.length > 0) {
+            let ner = ErrorManager.make('CTR_DEVICE_STOP_ALL_EXCEPTION')
+            for (const error of errors) ner = ner.add(error)
+            throw ner
+        }
     }
 
     /**
@@ -294,6 +371,7 @@ export default class Container extends EventEmitter {
     */
     async deviceAction(device: string, action: string, data: any) {
         if (!this.deviceActions[device]) throw ErrorManager.make('CTR_DEVICE_NF', { device })
+        if (!this.started.has(device)) throw ErrorManager.make('CTR_DEVICE_STOPPED', { device, action })
         const deviceClass = this.devices[device]
         const deviceActions = this.deviceActions[device]
         const method = ImportManager.camelize('action.' + action)
@@ -501,24 +579,33 @@ export default class Container extends EventEmitter {
 
     /**
      * Remove a device from the container:
+     *  - stop it first, if it is running: `stop()` + `await stopPromise()`
      *  - call `beforeTerminate()`
      *  - disconnect all its connections (both sides)
      *  - remove its structure entry and all references to it
      *  - remove it from the devices / actions / metrics maps & `started`
      *  - emit `device.remove` (device id)
      *
+     * The device is destroyed — unlike `stopDevice()`, it cannot be
+     * started again. If the stop hooks fail, the removal is aborted and
+     * the device stays in the container (fail-closed).
+     *
      * The device's storage file is intentionally left on disk.
      *
      * @param id Device ID
     */
-    removeDevice(id: string) {
+    async removeDevice(id: string): Promise<void> {
         if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
         const dev = this.devices[id]
 
-        // 0. Detach auto-render: termination-time mutations must not render
+        // 0. Detach auto-render: stop/termination mutations must not render
         dev.detachSharesRender()
 
-        // 1. Termination hook
+        // 1. Stop the device first, if it is running
+        // (no await at all for a not started device — the body stays synchronous)
+        if (this.started.has(id)) await this.stopDevice(id)
+
+        // 2. Termination hook
         dev.beforeTerminate()
 
         // 2. Disconnect all connections touching this device (both sides)
@@ -620,7 +707,7 @@ export default class Container extends EventEmitter {
     }
 
     /**
-     * Check Port name (strict format a-zA-Z0-9.)
+     * Check Port name (must contain at least one a-z, A-Z, 0-9 or '.' character)
      * 
      * @param port Port name
     */

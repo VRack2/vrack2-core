@@ -7,22 +7,44 @@
  *
  * Instance flags (set by the lifecycle methods, for assertions):
  *   preProcessCount / processCount / processPromiseCount : number of calls
+ *   stopCount / stopPromiseCount : number of stop calls
+ *   order : array of lifecycle calls in order (for sequence assertions)
  *   terminated : boolean (true once beforeTerminate() ran)
  *   count      : current counter value
  */
 import { Device, Port, Action } from 'vrack2-core'
 
 export default class Tracker extends Device {
-    preProcess() { this.preProcessCount = (this.preProcessCount || 0) + 1 }
+    preProcess() {
+        this.preProcessCount = (this.preProcessCount || 0) + 1
+        ;(this.order = this.order || []).push('preProcess')
+    }
 
     process() {
         this.processCount = (this.processCount || 0) + 1
         this.count = 0
+        ;(this.order = this.order || []).push('process')
     }
 
-    async processPromise() { this.processPromiseCount = (this.processPromiseCount || 0) + 1 }
+    async processPromise() {
+        this.processPromiseCount = (this.processPromiseCount || 0) + 1
+        ;(this.order = this.order || []).push('processPromise')
+    }
 
-    beforeTerminate() { this.terminated = true }
+    stop() {
+        this.stopCount = (this.stopCount || 0) + 1
+        ;(this.order = this.order || []).push('stop')
+    }
+
+    async stopPromise() {
+        this.stopPromiseCount = (this.stopPromiseCount || 0) + 1
+        ;(this.order = this.order || []).push('stopPromise')
+    }
+
+    beforeTerminate() {
+        this.terminated = true
+        ;(this.order = this.order || []).push('beforeTerminate')
+    }
 
     inputs() {
         return { data: Port.standard().description('Increment input') }

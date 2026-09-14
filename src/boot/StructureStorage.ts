@@ -13,7 +13,7 @@ import { IContainerStructure } from "../Container";
 import ErrorManager from "../errors/ErrorManager";
 
 ErrorManager.register('StructureStorage', 'FKb5raEUDFgU', 'SS_STRUCT_NOT_FOUND', 'Structure ID not found', {
-    id: Rule.string().require().example('vrack').description('Structure id')
+    id: Rule.string().required().example('vrack').description('Structure id')
 })
 /**
  * A boot class for storing the structure of a container.
@@ -35,7 +35,7 @@ export default class StructureStorage extends BootClass {
 
     checkOptions(): { [key: string]: BasicType; } {
         return {
-            structureDir: Rule.string().require().default('./structure')
+            structureDir: Rule.string().required().default('./structure')
         }
     }
 

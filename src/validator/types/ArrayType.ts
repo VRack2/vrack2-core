@@ -30,7 +30,7 @@ export default class ArrayType extends BasicType {
      * @example 
      * 
      * ```
-     * Rule.array().require().content(
+     * Rule.array().required().content(
      *    Rule.string().default('').maxLength(24).description('Element of list')
      * )
      * ```

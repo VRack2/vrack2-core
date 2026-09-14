@@ -153,6 +153,22 @@ describe('Bootstrap & boot classes', () => {
         expect(err).toBeDefined()
         expect(ErrorManager.isCode(err, 'BTSP_INSTANCE_OF_INCORRECT')).toBe(true)
     })
+
+    it('run() is idempotent: a second run does not re-instantiate boot classes / re-subscribe their handlers', async () => {
+        const mp = makeMP(EMPTY_SERVICE)
+        await mp.run()
+
+        // DeviceMetrics subscribes to these in its process()
+        const metricListeners = mp.Container.listenerCount('device.metric')
+        const registerListeners = mp.Container.listenerCount('device.register.metric')
+        expect(metricListeners).toBeGreaterThan(0)
+        expect(registerListeners).toBeGreaterThan(0)
+
+        await mp.run() // must be a no-op: no duplicate boot classes / listeners
+
+        expect(mp.Container.listenerCount('device.metric')).toBe(metricListeners)
+        expect(mp.Container.listenerCount('device.register.metric')).toBe(registerListeners)
+    })
 })
 /* ================================================================== */
 /*  CONTAINER: DEVICE INITIALIZATION                                  */
@@ -172,7 +188,7 @@ describe('Container: device initialization', () => {
 
         const dm = mp.Bootstrap.getBootClass('DeviceManager', DeviceManager)
         expect(dm.getVendorList()).toContain('testkit')
-        expect(dm.getVendorDeviceList('testkit').sort()).toEqual(['Counter', 'Lamp', 'NoHandler', 'ReturnSrc', 'Tracker'])
+        expect(dm.getVendorDeviceList('testkit').sort()).toEqual(['Counter', 'Lamp', 'NoHandler', 'ReturnSrc', 'StopFail', 'Tracker'])
 
         expect(mp.Container.devices).toHaveProperty('Counter1')
         expect(mp.Container.devices).toHaveProperty('Lamp1')
@@ -565,6 +581,85 @@ describe('StructureStorage', () => {
         }
         expect(err).toBeDefined()
         expect(ErrorManager.isCode(err, 'SS_STRUCT_NOT_FOUND')).toBe(true)
+    })
+})
+
+/* ================================================================== */
+/*  MAINPROCESS.TERMINATE()                                           */
+/* ================================================================== */
+
+describe('MainProcess.terminate()', () => {
+
+    it('stops all running devices: stop() + stopPromise(), but no beforeTerminate()', async () => {
+        const mp = makeMP({
+            devices: [
+                { id: 'T1', type: 'testkit.Tracker', options: {} },
+                { id: 'T2', type: 'testkit.Tracker', options: {} },
+            ],
+            connections: [],
+        })
+        await mp.run()
+
+        const t1: any = mp.Container.devices['T1']
+        const t2: any = mp.Container.devices['T2']
+
+        await mp.terminate()
+
+        // stop hooks ran exactly once, after start
+        expect(t1.order).toEqual(['preProcess', 'process', 'processPromise', 'stop', 'stopPromise'])
+        expect(t2.order).toEqual(['preProcess', 'process', 'processPromise', 'stop', 'stopPromise'])
+        // termination is not a removal: beforeTerminate() must not be called
+        expect(t1.terminated).toBeUndefined()
+        expect(t2.terminated).toBeUndefined()
+        // devices stay registered in the container, just not running
+        expect(mp.Container.hasDevice('T1')).toBe(true)
+        expect(mp.Container.hasDevice('T2')).toBe(true)
+        expect(mp.Container.isStarted('T1')).toBe(false)
+        expect(mp.Container.isStarted('T2')).toBe(false)
+    })
+
+    it('is idempotent: the second call does not re-run stop hooks', async () => {
+        const mp = makeMP({
+            devices: [{ id: 'T1', type: 'testkit.Tracker', options: {} }],
+            connections: [],
+        })
+        await mp.run()
+
+        await mp.terminate()
+        await mp.terminate() // must be a no-op
+
+        const t1: any = mp.Container.devices['T1']
+        expect(t1.stopCount).toBe(1)
+        expect(t1.stopPromiseCount).toBe(1)
+        expect(t1.order.filter((o: string) => o === 'stop')).toHaveLength(1)
+    })
+
+    it('propagates stop failures: CTR_DEVICE_STOP_ALL_EXCEPTION, other devices still stopped', async () => {
+        const mp = makeMP({
+            devices: [
+                { id: 'Bad', type: 'testkit.StopFail', options: {} },
+                { id: 'Good', type: 'testkit.Tracker', options: {} },
+            ],
+            connections: [],
+        })
+        await mp.run()
+
+        let err: any
+        try {
+            await mp.terminate()
+        } catch (e) {
+            err = e
+        }
+
+        expect(err).toBeDefined()
+        expect(ErrorManager.isCode(err, 'CTR_DEVICE_STOP_ALL_EXCEPTION')).toBe(true)
+        expect(hasCode(err, 'CTR_DEVICE_STOP_EXCEPTION')).toBe(true)
+        // best-effort: the healthy device was stopped despite the failure
+        const good: any = mp.Container.devices['Good']
+        expect(good.stopCount).toBe(1)
+        expect(mp.Container.isStarted('Good')).toBe(false)
+        // the failing device also stays registered (it was not removed)
+        expect(mp.Container.hasDevice('Bad')).toBe(true)
     })
 })
 

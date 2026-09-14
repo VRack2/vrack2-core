@@ -70,9 +70,13 @@ export default class ServiceLoader {
     /**
      * Hot-remove a device from the container and emit `serviceLoaded`.
      *
+     * If the device is running, it is stopped first
+     * (`stop()` + `await stopPromise()`) and then destroyed
+     * (`beforeTerminate()` + cleanup).
+     *
      * @param id Device ID
      */
-    removeDevice(id: string): void;
+    removeDevice(id: string): Promise<void>;
     /**
      * Hot-add a connection and emit `serviceLoaded`.
      *

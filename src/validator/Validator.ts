@@ -37,7 +37,7 @@ export default class Validator {
      * 
      * ```ts
      * const rules = {
-     *    bool: Rule.boolean().require().default(true).description('Boolean checkbox')
+     *    bool: Rule.boolean().required().default(true).description('Boolean checkbox')
      * }
      * ```
      * 

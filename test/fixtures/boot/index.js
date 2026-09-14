@@ -36,7 +36,7 @@ class NotABoot {
 class OptionsBoot extends BootClass {
     checkOptions() {
         return {
-            token: Rule.string().require().description('Required token'),
+            token: Rule.string().required().description('Required token'),
         }
     }
 }

@@ -69,7 +69,7 @@ ErrorManager.register(
     'S5dBTBKTnVbF',
     'DM_DEVICE_NOT_FOUND',
     'Device not found', {
-    device: Rule.string().require().example('Master').description('Device name')
+    device: Rule.string().required().example('Master').description('Device name')
 })
 
 ErrorManager.register(
@@ -77,7 +77,7 @@ ErrorManager.register(
     '2CJSDE95V9O1',
     'DM_LIST_NOT_FOUND',
     'list.json not found', {
-    vendor: Rule.string().require().example('vrack').description('Device group name')
+    vendor: Rule.string().required().example('vrack').description('Device group name')
 })
 
 ErrorManager.register(
@@ -85,7 +85,7 @@ ErrorManager.register(
     'BPX96F93ZCJA',
     'DM_LIST_INCORRECT',
     'list.json is not correct', {
-    vendor: Rule.string().require().example('vrack').description('Device group name')
+    vendor: Rule.string().required().example('vrack').description('Device group name')
 })
 
 ErrorManager.register(
@@ -93,7 +93,7 @@ ErrorManager.register(
     'H1NDNVCOLWST',
     'DM_VENDOR_NOT_FOUND',
     'Vendor not found', {
-    vendor: Rule.string().require().example('vrack').description('Vendor name')
+    vendor: Rule.string().required().example('vrack').description('Vendor name')
 })
 
 ErrorManager.register('DeviceManager', 'HQ62LW1YLTDE', 'DM_GET_INFO_EXCEPTION', 'Error retrieving device data, see error in attachment', {})
@@ -129,8 +129,8 @@ export default class DeviceManager extends BootClass {
 
     checkOptions(): { [key: string]: BasicType; } {
         return {
-            dir: Rule.string().require().default('./devices'),
-            systemDir: Rule.string().require().default(ImportManager.systemPath()),
+            dir: Rule.string().required().default('./devices'),
+            systemDir: Rule.string().required().default(ImportManager.systemPath()),
         }
     }
 

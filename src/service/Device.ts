@@ -56,11 +56,16 @@ export default class Device {
     type: string;
 
     /**
-     * Флаг общей работы
-     * Если флаг === false = все порты перестают принимать или отправлять данные/события
-     * 
-    */
-    works: boolean
+     * Device running state (managed by the Container — do not set it directly).
+     *
+     * `true` after `Container.startDevice()` / `runProcess()` finished
+     * (`process()` + `processPromise()`), `false` after
+     * `Container.stopDevice()` / `stopAll()` (`stop()` + `stopPromise()`).
+     *
+     * A device that is not running accepts no port data and its actions
+     * are rejected with the CTR_DEVICE_STOPPED error.
+     */
+    running: boolean
 
     /**
      * Allows access to port management. 
@@ -91,7 +96,7 @@ export default class Device {
         this.id = id
         this.type = type
         this.Container = Container
-        this.works = true
+        this.running = false
         this.ports = {
             input: {},
             output: {}
@@ -171,7 +176,7 @@ export default class Device {
      * ```
      *  return {
      *      'test.action': Action.global().requirements({
-     *          id: Rule.string().require().default('www').description('Some id')
+     *          id: Rule.string().required().default('www').description('Some id')
      *      }).description('Test action')
      *  }
      * ```
@@ -202,12 +207,6 @@ export default class Device {
      * @param data  data for action
     */
     beforeAction(action: string, data: any) { return true }
-    
-    /**
-     * Должен вызываться перед завершением сервиса
-     * Но может не вызываться (зависит от реализации)
-    */
-    beforeTerminate(){ return }
 
     /**
      * Prepare options 
@@ -289,11 +288,34 @@ export default class Device {
     async processPromise() { return }
 
     /**
-     * Maybe todo?
-     * 
-     * stop() { return }
-     * async stopPromise() { return }
-    */
+     * The synchronous part of device stopping.
+     *
+     * Called by the Container (`stopDevice()` / `stopAll()`) when the device
+     * is running. The device is **not destroyed** — it can be started again
+     * with `Container.startDevice()` (which re-runs `process()` + `processPromise()`).
+     *
+     * Use it to pause the device work: stop timers, pause consumers, etc.
+     */
+    stop() { return }
+
+    /**
+     * Similar to `stop` but asynchronous — the Container awaits it
+     * before the device is considered stopped.
+     *
+     * Use it for async cleanup that must complete before the device is
+     * stopped: closing reusable connections, flushing pending work, etc.
+     */
+    async stopPromise() { return }
+
+    /**
+     * Destruction hook: called by the Container (`removeDevice()`)
+     * right before the device is removed from the container.
+     * Not called by `stopDevice()` — a stopped device is reusable.
+     *
+     * The device is about to be destroyed — close everything, flush, save.
+     * Note: it may not be called at all (depends on how the service exits)
+     */
+    beforeTerminate(){ return }
 
     /**
      * Queues device shares data updates for external consumers

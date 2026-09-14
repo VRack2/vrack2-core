@@ -68,10 +68,12 @@ export default class DevicePort {
     }
 
     /**
-     * Calling the incoming port when calling a connection 
+     * Calling the incoming port when calling a connection.
+     * A stopped device (running = false) does not accept data —
+     * the push is dropped silently.
     */
     push(data: any): any { 
-        if (!this.Device.works) return
+        if (!this.Device.running) return
         if (this.bind !== null) return this.bind(data)
 
         // Если у нас есть слушатели порта

@@ -188,10 +188,14 @@ export default class ServiceLoader {
     /**
      * Hot-remove a device from the container and emit `serviceLoaded`.
      *
+     * If the device is running, it is stopped first
+     * (`stop()` + `await stopPromise()`) and then destroyed
+     * (`beforeTerminate()` + cleanup).
+     *
      * @param id Device ID
      */
-    removeDevice(id: string): void {
-        this.Container.removeDevice(id)
+    async removeDevice(id: string): Promise<void> {
+        await this.Container.removeDevice(id)
         this.pending.delete(id)
         this.Container.emit('serviceLoaded')
     }

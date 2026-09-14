@@ -64,8 +64,11 @@ export interface IDeviceStructurePort extends IPort {
     direct: string;
 }
 /**
- * Service Load Class. It loads all devices in the list,
- * establishes connections between them, and performs device startup.
+ * Pure runtime container.
+ *
+ * Holds the device registry, the live `structure`, connection state
+ * and the staged start. It does **not** own the service config or device
+ * creation — those belong to `ServiceLoader`.
  *
  * This class is a bit complicated for a simple description.
  * It is recommended to familiarize yourself with the source code
@@ -153,6 +156,27 @@ export default class Container extends EventEmitter {
     */
     startDevice(id: string): Promise<void>;
     /**
+     * Stop a single running device: call `stop()`, then `await stopPromise()`,
+     * then mark it stopped (`running = false`, removed from `started`).
+     *
+     * Reversible — the device can be started again with `startDevice()`.
+     * Idempotent — a device that is not running is a no-op.
+     *
+     * @param id Device ID
+     */
+    stopDevice(id: string): Promise<void>;
+    /**
+     * Stop all running devices in the reverse order of their start.
+     *
+     * Best-effort: every running device is stopped even if some of them fail;
+     * if nothing is running this is a no-op.
+     * If one or more devices failed, throws CTR_DEVICE_STOP_ALL_EXCEPTION
+     * with each device error attached (`vAddErrors`).
+     *
+     * Stopped devices can be started again with `startDevice()`.
+     */
+    stopAll(): Promise<void>;
+    /**
      * Whether a device has been fully started (`process` + `processPromise`).
      *
      * @param id Device ID
@@ -238,17 +262,22 @@ export default class Container extends EventEmitter {
     protected toCheckResult(error: any): ICheckResult;
     /**
      * Remove a device from the container:
+     *  - stop it first, if it is running: `stop()` + `await stopPromise()`
      *  - call `beforeTerminate()`
      *  - disconnect all its connections (both sides)
      *  - remove its structure entry and all references to it
      *  - remove it from the devices / actions / metrics maps & `started`
      *  - emit `device.remove` (device id)
      *
+     * The device is destroyed — unlike `stopDevice()`, it cannot be
+     * started again. If the stop hooks fail, the removal is aborted and
+     * the device stays in the container (fail-closed).
+     *
      * The device's storage file is intentionally left on disk.
      *
      * @param id Device ID
     */
-    removeDevice(id: string): void;
+    removeDevice(id: string): Promise<void>;
     /**
      * Whether a device with the given id is registered in the container.
      *
@@ -273,7 +302,7 @@ export default class Container extends EventEmitter {
     */
     private toConnection;
     /**
-     * Check Port name (strict format a-zA-Z0-9.)
+     * Check Port name (must contain at least one a-z, A-Z, 0-9 or '.' character)
      *
      * @param port Port name
     */

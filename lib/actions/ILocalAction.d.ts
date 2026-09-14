@@ -1,6 +1,6 @@
 import BasicType from "../validator/types/BasicType";
 /**
- * Internal (raw exported) Action interface
+ * Internal (raw) Action interface
 */
 export default interface ILocalAction {
     /** Type of action ('global' as default) */

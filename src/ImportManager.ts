@@ -57,8 +57,9 @@ export default class ImportManager {
     /**
      * Import class like a vrack2 device style
      * 
-     * Разделяет переданную строку пути на 2 части. 
-     * Первая часть является названием модуля, а вторая часть классом внутри него 
+     * Разделяет переданную строку пути на части. 
+     * Первая часть является названием модуля, а следующие части — 
+     * путём к вложенному классу внутри него 
      * 
      * @example ImportManager.importClass('vrack2-core.Container')
     */
@@ -153,7 +154,7 @@ export default class ImportManager {
     }
 
     /**
-     * Checks if a path is a directory
+     * Checks if a path is a file
      * 
      * @param f path to file
     */
@@ -165,7 +166,7 @@ export default class ImportManager {
     /**
      * Try JSON parse
      * 
-     * Returns an CoreError[IM_JSON_INCORRECT] if there is a parsing error.
+     * Throws CoreError[IM_JSON_INCORRECT] if there is a parsing error.
      * 
      * @param jsonRaw JSON raw string
      * 

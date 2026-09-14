@@ -48,7 +48,7 @@ describe('vrack2-core smoke', () => {
 
     it('Validator validates rules', () => {
         const rules = {
-            name: Rule.string().require().description('Name'),
+            name: Rule.string().required().description('Name'),
             count: Rule.number().min(0).description('Count'),
         }
         // valid

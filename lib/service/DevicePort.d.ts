@@ -39,7 +39,9 @@ export default class DevicePort {
      */
     removeConnection(connection: DeviceConnect): void;
     /**
-     * Calling the incoming port when calling a connection
+     * Calling the incoming port when calling a connection.
+     * A stopped device (running = false) does not accept data —
+     * the push is dropped silently.
     */
     push(data: any): any;
 }
