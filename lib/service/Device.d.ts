@@ -43,12 +43,19 @@ export default class Device {
     /**
      * Device running state (managed by the Container — do not set it directly).
      *
-     * `true` after `Container.startDevice()` / `runProcess()` finished
-     * (`process()` + `processPromise()`), `false` after
-     * `Container.stopDevice()` / `stopAll()` (`stop()` + `stopPromise()`).
+     * `true` from construction (as the old `works` was) — so a not-started
+     * device and a device that is starting up (inside `process()` /
+     * `processPromise()`) accept port data: startup traffic (for example
+     * command registration) flows. `Container.startDevice()` / `runProcess()`
+     * restore it before `process()` runs (restart after a stop).
      *
-     * A device that is not running accepts no port data and its actions
+     * `false` after `Container.stopDevice()` / `stopAll()` (`stop()` +
+     * `stopPromise()`) and after `removeDevice()` — a stopped device
+     * accepts no port data (pushes are dropped silently) and its actions
      * are rejected with the CTR_DEVICE_STOPPED error.
+     *
+     * Actions on a device that is not started are rejected with the
+     * CTR_DEVICE_STOPPED error (the Container checks its `started` set).
      */
     running: boolean;
     /**

@@ -243,6 +243,7 @@ export default class Container extends EventEmitter {
         this.emit('beforeProcess')
         for (const key in this.devices) {
             if (this.started.has(key)) continue
+            this.devices[key].running = true
             try {
                 this.emit('process',key)
                 this.devices[key].process()
@@ -261,7 +262,6 @@ export default class Container extends EventEmitter {
                 throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: key }).add(error as Error)
             }
             this.started.add(key)
-            this.devices[key].running = true
         }
         this.emit('afterProcessPromise')
         this.emit('beforeLoaded')
@@ -280,6 +280,7 @@ export default class Container extends EventEmitter {
     async startDevice(id: string): Promise<void> {
         if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
         if (this.started.has(id)) return
+        this.devices[id].running = true
         try {
             this.emit('process', id)
             this.devices[id].process()
@@ -293,7 +294,6 @@ export default class Container extends EventEmitter {
             throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
         this.started.add(id)
-        this.devices[id].running = true
     }
 
     /**
@@ -604,6 +604,8 @@ export default class Container extends EventEmitter {
         // 1. Stop the device first, if it is running
         // (no await at all for a not started device — the body stays synchronous)
         if (this.started.has(id)) await this.stopDevice(id)
+        // a removed device never accepts port data again
+        dev.running = false
 
         // 2. Termination hook
         dev.beforeTerminate()

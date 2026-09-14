@@ -9,6 +9,9 @@
  *  - `stopDevice()` is idempotent; unknown id -> CTR_DEVICE_NF
  *  - stopped device: input ports drop pushed data, actions are rejected
  *    with CTR_DEVICE_STOPPED
+ *  - a device that is NOT started is NOT stopped: its ports stay active
+ *    (a push made inside `process()` reaches the connected receiver —
+ *    the service-side command registration flow)
  *  - restart: `startDevice()` after `stopDevice()` re-runs
  *    `process()` + `processPromise()` and re-enables ports & actions
  *  - `Container.stopAll()`: stops everything in reverse start order,
@@ -98,6 +101,22 @@ class SlowStop extends Device {
     }
 }
 
+/* Device that pushes to its output port during process() — like the
+   service-side command registration (e.g. Guard -> ServiceManager):
+   its own startup is not finished yet, but it is not stopped,
+   so the push must reach the connected receiver */
+class RegSender extends Device {
+    constructor(id: string, c: Container) { super(id, 'test.RegSender', c) }
+
+    process() { this.ports.output.reg.push(42) }
+
+    inputs() { return { data: Port.standard() } }
+
+    outputs() { return { reg: Port.standard() } }
+
+    inputData(data: any) { return data }
+}
+
 function makeContainer() {
     return new Container('stop-test', {} as any)
 }
@@ -164,7 +183,8 @@ describe('Container.stopDevice()', () => {
         await c.stopDevice('T1')
 
         expect(dev.order).toEqual([])
-        expect(dev.running).toBe(false)
+        // never stopped: the no-op stop does not touch running (the old `works = true` semantics)
+        expect(dev.running).toBe(true)
         expect(c.isStarted('T1')).toBe(false)
     })
 
@@ -237,6 +257,30 @@ describe('stopped device behavior', () => {
         await c.startDevice('T1') // restart: process() resets the counter
         dev.ports.input.data.push(3)
         expect(dev.count).toBe(3) // flowing again
+    })
+
+    it('a not started device accepts port pushes (it is not stopped — startup traffic flows)', () => {
+        const c = makeContainer()
+        const dev = new TTracker('T1', c)
+        c.registerDevice(dev)
+
+        // registered but never started: the port accepts data (the old `works = true` semantics)
+        dev.ports.input.data.push(5)
+        expect(dev.count).toBe(5)
+        expect(dev.running).toBe(true)
+    })
+
+    it('a push made during process() reaches the connected receiver (command registration flow)', async () => {
+        const c = makeContainer()
+        const sender = new RegSender('S1', c)
+        const recv = new TTracker('R1', c)
+        c.registerDevice(sender)
+        c.registerDevice(recv)
+        c.addConnection('S1.reg -> R1.data')
+
+        await c.startDevice('S1') // sender is not stopped: its process() push must be delivered
+
+        expect(recv.count).toBe(42) // the push from inside process() was delivered
     })
 
     it('actions are rejected with CTR_DEVICE_STOPPED while stopped, work again after restart', async () => {

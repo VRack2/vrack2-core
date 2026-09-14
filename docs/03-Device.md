@@ -28,7 +28,7 @@ export default class MyDevice extends Device {
 | `ports.input` / `ports.output` | `registerDevice()` | Объекты портов; `push(data)` — на выходных. |
 | `storage` | `beforeProcess` / `device.add` | Персистентное состояние; сохраняется `save()`. |
 | `shares` | `attachSharesRender()` | Реактивный объект быстро-меняющихся данных; любое изменение вызывает событие `device.render`. |
-| `running` | `startDevice()` / `runProcess()` (`true`), `stopDevice()` / `stopAll()` (`false`) | Состояние работы устройства — **управляется контейнером**, не устройством. Не-running устройство не принимает данные портов, а его actions отклоняются ошибкой `CTR_DEVICE_STOPPED`. |
+| `running` | конструктор (`true`, как старый `works`); `stopDevice()` / `stopAll()` / `removeDevice()` (`false`); `startDevice()` / `runProcess()` — снова (`true`, **до** `process()`) | Состояние работы устройства — **управляется контейнером**, не устройством. `false` только у явно остановленного устройства: его порты отбрасывают `push`, а actions отклоняются ошибкой `CTR_DEVICE_STOPPED`. Не-запущенное (или ещё запускающееся внутри `process()`/`processPromise()`) устройство остановленным **не считается** — его порты активны, и старт-трафик (например, регистрация команд) проходит. |
 
 ## Жизненный цикл
 

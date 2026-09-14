@@ -40,8 +40,12 @@ export default class DevicePort {
     removeConnection(connection: DeviceConnect): void;
     /**
      * Calling the incoming port when calling a connection.
-     * A stopped device (running = false) does not accept data —
+     * A stopped device (running = false, set by Container.stopDevice() /
+     * removeDevice()) does not accept data —
      * the push is dropped silently.
+     * A device that is not yet started (or is still starting up inside
+     * process()/processPromise()) is not stopped, so startup traffic
+     * (for example command registration) flows.
     */
     push(data: any): any;
 }
