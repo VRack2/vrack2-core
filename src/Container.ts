@@ -28,7 +28,7 @@ ErrorManager.register('Container', 'NDW2oD7mFxqB', 'CTR_DEVICE_ACTION_NF', 'Acti
     method: Rule.string().description('Method name'),
 })
 
-ErrorManager.register('Container', 'XOXLMVCN9OBI', 'CTR_DEVICE_NF', 'Device in container found', {
+ErrorManager.register('Container', 'XOXLMVCN9OBI', 'CTR_DEVICE_NF', 'Device in container NOT found', {
     device: Rule.string().description('Device ID'),
 })
 
