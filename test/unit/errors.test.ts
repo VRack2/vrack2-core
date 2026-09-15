@@ -4,14 +4,14 @@
  * Field mapping (CoreError):
  *  - name   -> error group (e.g. 'Validator')
  *  - message-> error description
- *  - vCode  -> random unique code
+ *  - vShort -> the single canonical short identifier (the ID of the error)
  *  - vShort -> readable short code (e.g. 'VR_NOT_PASS')
  */
 import { describe, it, expect } from 'vitest'
 import { ErrorManager, CoreError } from 'vrack2-core'
 
 // Test error codes. Must be unique for the whole process!
-ErrorManager.register('UnitTest', 'eT3stUn1tErr01', 'UT_TEST_A', 'Test error A', {
+ErrorManager.register('UnitTest', 'UT_TEST_A', 'Test error A', {
     // rules do not validate additional data, they only document it
 })
 
@@ -21,7 +21,7 @@ describe('ErrorManager', () => {
         expect(err).toBeInstanceOf(CoreError)
         expect(err.name).toBe('UnitTest')
         expect(err.message).toBe('Test error A')
-        expect(err.vCode).toBe('eT3stUn1tErr01')
+        expect((err as any).vCode).toBeUndefined()
         expect(err.vShort).toBe('UT_TEST_A')
         expect(err.vError).toBe(true)
     })
@@ -37,12 +37,12 @@ describe('ErrorManager', () => {
         const err = ErrorManager.make('UT_TEST_A')
         expect(ErrorManager.isError(err)).toBe(true)
         expect(ErrorManager.isCode(err, 'UT_TEST_A')).toBe(true)
-        expect(ErrorManager.isCode(err, 'eT3stUn1tErr01')).toBe(true)
+        expect(ErrorManager.isCode(err, 'UT_TEST_A')).toBe(true)
         expect(ErrorManager.isCode(err, 'SOME_OTHER_CODE')).toBe(false)
 
         // serialized (network) error object
-        expect(ErrorManager.isError({ vError: true, vCode: 'x', vShort: 'y' })).toBe(true)
-        expect(ErrorManager.isCode({ vError: true, vCode: 'x', vShort: 'y' }, 'y')).toBe(true)
+        expect(ErrorManager.isError({ vError: true, vShort: 'y' })).toBe(true)
+        expect(ErrorManager.isCode({ vError: true, vShort: 'y' }, 'y')).toBe(true)
 
         expect(ErrorManager.isError({ foo: 1 })).toBe(false)
         expect(ErrorManager.isError('just a string')).toBe(false)
@@ -62,25 +62,15 @@ describe('ErrorManager', () => {
 
     it('register() is idempotent for the same code+short pair', () => {
         expect(() =>
-            ErrorManager.register('UnitTest', 'eT3stUn1tErr01', 'UT_TEST_A', 'Test error A'),
+            ErrorManager.register('UnitTest', 'UT_TEST_A', 'Test error A'),
         ).not.toThrow()
     })
 
     it('register() with a conflicting code/short throws EM_CODE_EXISTS', () => {
         let err: any
-        // same code, different short
+        // same short, different description
         try {
-            ErrorManager.register('Other', 'eT3stUn1tErr01', 'UT_CONFLICT_ONE', 'conflict')
-        } catch (e) {
-            err = e
-        }
-        expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'EM_CODE_EXISTS')).toBe(true)
-
-        // same short, different code
-        err = undefined
-        try {
-            ErrorManager.register('Other', 'zZzZzZzZ9999', 'UT_TEST_A', 'conflict')
+            ErrorManager.register('Other', 'UT_TEST_A', 'conflict')
         } catch (e) {
             err = e
         }
@@ -120,11 +110,11 @@ describe('ErrorManager', () => {
         const raw = JSON.parse(JSON.stringify(err.export()))
 
         // simulate receiving the error over the network
-        const revived = new CoreError('x', 'x', 'x', 'x').import(raw)
+        const revived = new CoreError('x', 'x', 'x').import(raw)
         expect(ErrorManager.isError(revived)).toBe(true)
         expect(revived.name).toBe('UnitTest')
         expect(revived.message).toBe('Test error A')
-        expect(revived.vCode).toBe('eT3stUn1tErr01')
+        expect((revived as any).vCode).toBeUndefined()
         expect(revived.vShort).toBe('UT_TEST_A')
         expect(revived.foo).toBe(1)
     })

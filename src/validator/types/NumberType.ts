@@ -100,21 +100,21 @@ export default class NumberType  extends BasicType {
 
 
 ErrorManager.register(
-    'Validator', 'pn7B9po1UGRp', 'VR_IS_NOT_NUMBER',
+    'Validator', 'VR_IS_NOT_NUMBER',
     'Value must be a number', {
 })
 
 ErrorManager.register(
-    'Validator', 'fiUqanqqFlnt', 'VR_NUMBER_INTEGER',
+    'Validator', 'VR_NUMBER_INTEGER',
     'Value must be an integer', {
 })
 
 ErrorManager.register(
-    'Validator', 'ZFSMAes0qdzC', 'VR_NUMBER_MAX',
+    'Validator', 'VR_NUMBER_MAX',
     'Number out of limit', {
 })
 
 ErrorManager.register(
-    'Validator', 'B3zqsPub40HH', 'VR_NUMBER_MIN',
+    'Validator', 'VR_NUMBER_MIN',
     'Number out of limit', {
 })

@@ -14,11 +14,10 @@ declare class ErrorManager {
      * Error registration. An error must be registered before creating it
      *
      * @param name Property for error grouping
-     * @param code Unique random string code ID
-     * @param short Readable unique identifier
+     * @param short Readable unique identifier (the canonical error ID)
      * @param description Error string (description)
     */
-    register(name: string, code: string, short: string, description: string, rules?: {
+    register(name: string, short: string, description: string, rules?: {
         [key: string]: BasicType;
     }): void;
     /**
@@ -36,7 +35,7 @@ declare class ErrorManager {
     convert(error: any): any;
     /**
      * Проверяет является ли ошибка VRack2 Error
-     * и соответствует ли код переданной ошибке (проверяет vShort и vCode)
+     * и соответствует ли код переданной ошибке (проверяет vShort)
     */
     isCode(error: any, code: string): boolean;
     /**

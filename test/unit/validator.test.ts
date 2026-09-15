@@ -187,7 +187,7 @@ describe('Rule + Validator: messages and export', () => {
         const err = validateError({ n: Rule.number().min(5) }, { n: 1 })
         const p = problemOf(err, 'n')
         expect(p.type).toBe('VR_NUMBER_MIN')
-        expect(typeof p.code).toBe('string')
+        expect((p as any).code).toBeUndefined()
         expect(p.fieldKey).toBe('n')
         expect(p.description).toBeTypeOf('string')
         expect(p.rule).toEqual(expect.objectContaining({ type: 'number' }))

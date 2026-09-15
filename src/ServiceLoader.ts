@@ -20,19 +20,19 @@ import { existsSync } from "fs";
 
 /***** ********      LOADER ERROR      ********************/
 
-ErrorManager.register('ServiceLoader', 'FBDRkSAWnlcc', 'CTR_ERROR_INIT_DEVICE', 'Device initialization error', {
+ErrorManager.register('ServiceLoader', 'CTR_ERROR_INIT_DEVICE', 'Device initialization error', {
     deviceConfig: Rule.object().description('Device configuration')
 })
 
-ErrorManager.register('ServiceLoader', '96UX24PTyFU7', 'CTR_ERROR_INIT_CONNECTION', 'Connection initialization error', {
+ErrorManager.register('ServiceLoader', 'CTR_ERROR_INIT_CONNECTION', 'Connection initialization error', {
     connection: Rule.string().description('Connection string')
 })
 
-ErrorManager.register('ServiceLoader', 'e090R0MLyb7y', 'CTR_CONF_EXTENDS_PROBLEM', 'Problem with extending service configuration.', {})
+ErrorManager.register('ServiceLoader', 'CTR_CONF_EXTENDS_PROBLEM', 'Problem with extending service configuration.', {})
 
-ErrorManager.register('ServiceLoader', '0HVa3cO1E2vB', 'CTR_INCORRECT_DEVICE_ID', 'Incorrect device id', {})
+ErrorManager.register('ServiceLoader', 'CTR_INCORRECT_DEVICE_ID', 'Incorrect device id', {})
 
-ErrorManager.register('ServiceLoader', '2RZznI3JDNUW', 'CTR_ERROR_PREPARE_OPTIONS', 'An error occurred while preparing options', {
+ErrorManager.register('ServiceLoader', 'CTR_ERROR_PREPARE_OPTIONS', 'An error occurred while preparing options', {
     message: Rule.string().description('Exception error string')
 })
 

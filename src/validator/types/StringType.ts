@@ -83,16 +83,16 @@ export default class StringType  extends BasicType {
 }
 
 ErrorManager.register(
-    'Validator', 'klmjxHyQrWuH', 'VR_IS_NOT_STRING',
+    'Validator', 'VR_IS_NOT_STRING',
     'Value must be a string', {
 })
 
 ErrorManager.register(
-    'Validator', 'BL5lxR4BinkA', 'VR_STRING_MAX_LENGTH',
+    'Validator', 'VR_STRING_MAX_LENGTH',
     'The maximum string length is limited', {
 })
 
 ErrorManager.register(
-    'Validator', 'KsijTdsbd2YN', 'VR_STRING_MIN_LENGTH',
+    'Validator', 'VR_STRING_MIN_LENGTH',
     'The minimum string length is limited', {
 })

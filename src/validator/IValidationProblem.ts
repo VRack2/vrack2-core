@@ -1,10 +1,8 @@
 import IValidationRule from "./IValidationRule";
 
 export default interface IValidationProblem {
-    /** VRack Error manager short code like a VS_ERROR_DATABASE_NF */
+    /** VRack Error manager short code like a VS_ERROR_DATABASE_NF (the single canonical ID) */
     type: string;
-    /** VRack Error manager error code like a random string */
-    code: string;
     /** Error string (description) with the message template applied */
     description: string;
     /** Exported validation rule */

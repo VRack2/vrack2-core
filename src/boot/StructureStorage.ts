@@ -12,7 +12,7 @@ import ImportManager from "../ImportManager";
 import { IContainerStructure } from "../Container";
 import ErrorManager from "../errors/ErrorManager";
 
-ErrorManager.register('StructureStorage', 'FKb5raEUDFgU', 'SS_STRUCT_NOT_FOUND', 'Structure ID not found', {
+ErrorManager.register('StructureStorage', 'SS_STRUCT_NOT_FOUND', 'Structure ID not found', {
     id: Rule.string().required().example('vrack').description('Structure id')
 })
 /**

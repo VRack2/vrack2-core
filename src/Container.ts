@@ -20,42 +20,42 @@ import IDeviceEvent from "./service/IDeviceEvent";
 
 /***** ********      DEVICE ERROR      ********************/
 
-ErrorManager.register('Container', 'uF62e07wloS9', 'CTR_DEVICE_DUPLICATE', 'Device id is duplicated', {})
+ErrorManager.register('Container', 'CTR_DEVICE_DUPLICATE', 'Device id is duplicated', {})
 
-ErrorManager.register('Container', 'NDW2oD7mFxqB', 'CTR_DEVICE_ACTION_NF', 'Action on device not found', {
+ErrorManager.register('Container', 'CTR_DEVICE_ACTION_NF', 'Action on device not found', {
     device: Rule.string().description('Device ID'),
     action: Rule.string().description('Action name'),
     method: Rule.string().description('Method name'),
 })
 
-ErrorManager.register('Container', 'XOXLMVCN9OBI', 'CTR_DEVICE_NF', 'Device in container NOT found', {
+ErrorManager.register('Container', 'CTR_DEVICE_NF', 'Device in container NOT found', {
     device: Rule.string().description('Device ID'),
 })
 
-ErrorManager.register('Container', '570RD59JEYVN', 'CTR_DEVICE_ACTION_HANDLER_NF', 'Device handler action not found', {
+ErrorManager.register('Container', 'CTR_DEVICE_ACTION_HANDLER_NF', 'Device handler action not found', {
     device: Rule.string().description('Device ID'),
     action: Rule.string().description('Device action name'),
 })
 
-ErrorManager.register('Container', 'RJV0KT2DFZBZ', 'CTR_DEVICE_PROCESS_EXCEPTION', 'During process execution - the device threw an exception', {
+ErrorManager.register('Container', 'CTR_DEVICE_PROCESS_EXCEPTION', 'During process execution - the device threw an exception', {
     device: Rule.string().description('Device ID'),
 })
 
-ErrorManager.register('Container', 'K65XWSYOBVFG', 'CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', 'During processPromise execution - the device threw an exception', {
+ErrorManager.register('Container', 'CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', 'During processPromise execution - the device threw an exception', {
     device: Rule.string().description('Device ID'),
 })
 
-ErrorManager.register('Container', 'A3kQ9xYzW1cE', 'CTR_DEVICE_STOP_EXCEPTION', 'During stop execution - the device threw an exception', {
+ErrorManager.register('Container', 'CTR_DEVICE_STOP_EXCEPTION', 'During stop execution - the device threw an exception', {
     device: Rule.string().description('Device ID'),
 })
 
-ErrorManager.register('Container', 'B7mR2vTnD8fJ', 'CTR_DEVICE_STOP_PROMISE_EXCEPTION', 'During stopPromise execution - the device threw an exception', {
+ErrorManager.register('Container', 'CTR_DEVICE_STOP_PROMISE_EXCEPTION', 'During stopPromise execution - the device threw an exception', {
     device: Rule.string().description('Device ID'),
 })
 
-ErrorManager.register('Container', 'D9tY3nZbK5qV', 'CTR_DEVICE_STOP_ALL_EXCEPTION', 'During stopAll execution - one or more devices failed to stop', {})
+ErrorManager.register('Container', 'CTR_DEVICE_STOP_ALL_EXCEPTION', 'During stopAll execution - one or more devices failed to stop', {})
 
-ErrorManager.register('Container', 'C4pL6wXsH2gN', 'CTR_DEVICE_STOPPED', 'Device is not running - the action is rejected', {
+ErrorManager.register('Container', 'CTR_DEVICE_STOPPED', 'Device is not running - the action is rejected', {
     device: Rule.string().description('Device ID'),
     action: Rule.string().description('Device action name'),
 })
@@ -63,49 +63,49 @@ ErrorManager.register('Container', 'C4pL6wXsH2gN', 'CTR_DEVICE_STOPPED', 'Device
 
 /***** ********      PORTS ERROR      ********************/
 
-ErrorManager.register('Container', 'jkIpU1p4z5uz', 'CTR_INCORRECT_DYNAMIC_PN', 'Incorrect dynamic port name', {
+ErrorManager.register('Container', 'CTR_INCORRECT_DYNAMIC_PN', 'Incorrect dynamic port name', {
     port: Rule.string().description('Incorrect port name')
 })
 
-ErrorManager.register('Container', 'e8m8dUVVOEU7', 'CTR_INCORRECT_PN', 'Incorrect port name', {
+ErrorManager.register('Container', 'CTR_INCORRECT_PN', 'Incorrect port name', {
     port: Rule.string().description('Incorrect port name')
 })
 
-ErrorManager.register('Container', 'qPevPU6SRJ18', 'CTR_INPUT_HANDLER_NF', 'Port input handler not found', {
+ErrorManager.register('Container', 'CTR_INPUT_HANDLER_NF', 'Port input handler not found', {
     port: Rule.string().description('Port name for handler'),
     handler: Rule.string().description('Handler name')
 })
 
 
-ErrorManager.register('Container', 'QlcUh744VzAG', 'CTR_DEVICE_PORT_NF', 'Port on device not found', {
+ErrorManager.register('Container', 'CTR_DEVICE_PORT_NF', 'Port on device not found', {
     port: Rule.string().description('Port name'),
 })
 
 /***** ********      CONNECTION ERROR      ********************/
 
-ErrorManager.register('Container', 'Kp74OuVGNU0u', 'CTR_CONNECTION_INCORRECT', 'Incorrect connection format', {
+ErrorManager.register('Container', 'CTR_CONNECTION_INCORRECT', 'Incorrect connection format', {
     connection: Rule.string().description('Connection string'),
     error: Rule.string().description('String of error problem'),
 })
 
-ErrorManager.register('Container', 'eMrJEISxvali', 'CTR_CONNECTION_DEVICE_NF', 'Connection device not found', {
+ErrorManager.register('Container', 'CTR_CONNECTION_DEVICE_NF', 'Connection device not found', {
     connection: Rule.string().description('Connection string'),
     device: Rule.string().description('Device name not found')
 })
 
-ErrorManager.register('Container', 'CwFj1G47H45E', 'CTR_CONNECTION_PORT_NF', 'Connection port not found', {
+ErrorManager.register('Container', 'CTR_CONNECTION_PORT_NF', 'Connection port not found', {
     connection: Rule.string().description('Connection string'),
     port: Rule.string().description('Port name not found')
 })
 
-ErrorManager.register('Container', 'XR1K10R0OOUC', 'CTR_INCOMPATIBLE_PORTS', 'Incompatible ports', {
+ErrorManager.register('Container', 'CTR_INCOMPATIBLE_PORTS', 'Incompatible ports', {
     connection: Rule.string().description('Connection string'),
 })
 
 
-ErrorManager.register('Container', 'MmVoDOQwaYkx', 'CTR_INCORRECT_BOOTSTRAP', 'The required DeviceManager class is not specified correctly', {})
+ErrorManager.register('Container', 'CTR_INCORRECT_BOOTSTRAP', 'The required DeviceManager class is not specified correctly', {})
 
-ErrorManager.register('Container', 'LYC0VA1AWYKU', 'CTR_IGNORE_SERVICE_AUTORELOAD', 'Error that ignores service restart flag', {})
+ErrorManager.register('Container', 'CTR_IGNORE_SERVICE_AUTORELOAD', 'Error that ignores service restart flag', {})
 
 
 

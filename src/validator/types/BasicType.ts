@@ -240,6 +240,6 @@ export default class BasicType {
 }
 
 ErrorManager.register(
-    'Validator', 'Jwg5Mr1NqaSj', 'VR_ERROR_REQUIRED',
+    'Validator', 'VR_ERROR_REQUIRED',
     'A value is required', {
 })

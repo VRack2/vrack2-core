@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026.09.15 — 2.0.0 (breaking)
+
+### Major
+
+- **Убрано поле `CoreError.vCode`** (случайный машинный код). Единственный канонический идентификатор ошибки — `vShort` (читаемый код, например `VR_NOT_PASS`): на него смотрят `ErrorManager.isCode()` и документы.
+- **Сигнатура `ErrorManager.register()`**: `(name, short, description, rules?)` — аргумент `code` удалён. Повторная регистрация идентичной записи — без действия; другая запись с тем же `short` — `EM_CODE_EXISTS`.
+- Конструктор `CoreError` принимает 3 аргумента: `(name, message, short)`.
+- Из `IValidationProblem` удалено поле `code` (валидатор уже передаёт тип проблемы в `type`).
+- Все коды ошибок в `src/` зарегистрированы по `short` (12-символьные литералы `code` удалены).
+
+### Patch
+
+- `docs/08-Errors.md`: убрана колонка/поле `vCode`, описаны `rules`/`vAdd`; `docs/00-Overview.md`: глоссарий ссылки на `vShort`.
+- Тесты: `test/unit/error-docs.test.ts` сканирует `short` как второй аргумент `register()`; `errors.test.ts` / `smoke.test.ts` проверены на отсутствие `vCode`.
+
 ## 2026.09.13
 
 ### Major

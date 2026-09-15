@@ -10,7 +10,7 @@
  *    token) must be registered in src/.
  *
  * The check is source-scanning (no new public API): all `register()` calls
- * keep the `short` code in the first line of the call.
+ * keep the `short` code as the second argument on the first line of the call.
  */
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
@@ -34,7 +34,7 @@ function registeredCodes(): Array<string> {
     const codes = new Set<string>()
     for (const fp of listTsFiles(path.join(ROOT, 'src'))) {
         const src = fs.readFileSync(fp, 'utf-8')
-        for (const m of src.matchAll(/ErrorManager\.register\(\s*'[^']+',\s*'[^']+',\s*'([A-Z0-9_]+)'/g)) {
+        for (const m of src.matchAll(/ErrorManager\.register\(\s*'[^']+',\s*'([A-Z0-9_]+)'/g)) {
             codes.add(m[1])
         }
     }

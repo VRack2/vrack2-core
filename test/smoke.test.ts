@@ -32,7 +32,7 @@ describe('vrack2-core smoke', () => {
     })
 
     it('ErrorManager registers and makes errors with codes', () => {
-        ErrorManager.register('smoke-test', 'aBcDeFgH1234', 'SMOKE_TEST_ERR', 'Smoke test error', {})
+        ErrorManager.register('smoke-test', 'SMOKE_TEST_ERR', 'Smoke test error', {})
 
         const err = ErrorManager.make('SMOKE_TEST_ERR')
         expect(err).toBeInstanceOf(CoreError)
@@ -42,7 +42,7 @@ describe('vrack2-core smoke', () => {
         expect(err.vError).toBe(true)
         expect(err.name).toBe('smoke-test')
         expect(err.message).toBe('Smoke test error')
-        expect(err.vCode).toBe('aBcDeFgH1234')
+        expect((err as any).vCode).toBeUndefined()
         expect(err.vShort).toBe('SMOKE_TEST_ERR')
     })
 

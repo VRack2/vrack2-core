@@ -5,28 +5,28 @@ import ErrorManager from "./errors/ErrorManager";
 import Rule from "./validator/Rule";
 
 
-ErrorManager.register('ImportManager', 'kwRobwFPzc5g', 'IM_FILE_NOT_FOUND',
+ErrorManager.register('ImportManager', 'IM_FILE_NOT_FOUND',
     'Import file not found', {
     filePath: Rule.string().description('Path to file')
 })
 
-ErrorManager.register('ImportManager', 'dMJfR6rmC7o6', 'IM_JSON_INCORRECT',
+ErrorManager.register('ImportManager', 'IM_JSON_INCORRECT',
     'Import file json incorrect', {
     jsonRaw: Rule.string().description('Raw json data'),
     parsingError: Rule.string().description('Json parse error string')
 })
 
-ErrorManager.register('ImportManager', 'u3dsX3vZpKrz', 'IM_CLASS_PATH_ERROR',
+ErrorManager.register('ImportManager', 'IM_CLASS_PATH_ERROR',
     'Error import class - No acts', {
     path: Rule.string().description('Class path string')
 })
 
-ErrorManager.register('ImportManager', 'PscFAcmXr11U', 'IM_CLASS_VENDOR_ERROR',
+ErrorManager.register('ImportManager', 'IM_CLASS_VENDOR_ERROR',
     'Error import class - vendor not found', {
     path: Rule.string().description('Class path string')
 })
 
-ErrorManager.register('ImportManager', 'm9MJNeKv3xYW', 'IM_CLASS_ACT_ERROR',
+ErrorManager.register('ImportManager', 'IM_CLASS_ACT_ERROR',
     'Error import class - class act = undefined', {
     path: Rule.string().description('Class path string')
 })

@@ -85,11 +85,11 @@ export default class ObjectType extends BasicType {
 }
 
 ErrorManager.register(
-    'Validator', 'zOPzOab9oLum', 'VR_IS_NOT_OBJECT',
+    'Validator', 'VR_IS_NOT_OBJECT',
     'Value must be an object', {
 })
 
 ErrorManager.register(
-    'Validator', 'p7qSfRGixV0M', 'VR_ERROR_OBJECT_FIELDS',
+    'Validator', 'VR_ERROR_OBJECT_FIELDS',
     'Error of validation of fields inside the object', {}
 )

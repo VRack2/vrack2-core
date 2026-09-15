@@ -28,17 +28,17 @@ export interface IBootListConfig {
     }
 }
 
-ErrorManager.register('Bootstrap', 'yNHeX5fwDH5P', 'BTSP_CLASS_ID_NOT_FOUND',
+ErrorManager.register('Bootstrap', 'BTSP_CLASS_ID_NOT_FOUND',
     'Bootstrap class id not found', {
     id: Rule.string().description('Class identify')
 })
 
-ErrorManager.register('Bootstrap', 'ack6kwHSBtcf', 'BTSP_INSTANCE_OF_INCORRECT',
+ErrorManager.register('Bootstrap', 'BTSP_INSTANCE_OF_INCORRECT',
     'Bootstrap class id is not a class defined by check', {
     id: Rule.string().description('Class identify')
 })
 
-ErrorManager.register('Bootstrap', 'DMloqbZG9J36', 'BTSP_MUST_BE_BOOTCLASS',
+ErrorManager.register('Bootstrap', 'BTSP_MUST_BE_BOOTCLASS',
     'The class must be inherited from BootClass', {
     path: Rule.string().description('Class path')
 })

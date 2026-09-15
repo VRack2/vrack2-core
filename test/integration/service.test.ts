@@ -65,7 +65,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 function hasCode(err: any, code: string): boolean {
     if (!err) return false
     if (err.vShort === code) return true
-    if (err.vCode === code) return true
+    if (err.vShort === code) return true
     if (Array.isArray(err.vAddErrors)) return err.vAddErrors.some((e: any) => hasCode(e, code))
     return false
 }

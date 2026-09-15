@@ -10,9 +10,10 @@ import CoreError from "./CoreError"
 interface RegisteredError {
     /** Property for error grouping */
     name: string,
-    /** Unique random string code ID  like a random string  */
-    code: string,
-    /** Readable unique identifier like a VS_ERROR_DATABASE_NF  */
+    /**
+     * The single canonical identifier of the error — a short readable word
+     * (like a VS_ERROR_DATABASE_NF). This is what lookups and docs use.
+     */
     short: string,
     /** Error string (description) */
     description: string,
@@ -42,22 +43,20 @@ class ErrorManager {
      * Error registration. An error must be registered before creating it 
      * 
      * @param name Property for error grouping
-     * @param code Unique random string code ID
-     * @param short Readable unique identifier 
+     * @param short Readable unique identifier (the canonical error ID)
      * @param description Error string (description)
     */
-    register(name: string, code: string, short: string, description: string, rules: { [key: string]: BasicType } = {}) {
-        const reg1 = this.getRegistered(code)
-        const reg2 = this.getRegistered(short)
-        if (reg1 !== null || reg2 !== null) { 
+    register(name: string, short: string, description: string, rules: { [key: string]: BasicType } = {}) {
+        const reg = this.getRegistered(short)
+        if (reg !== null) {
             // Если уже есть идентичная запись - просто игнорим
-            if (reg1?.code === reg2?.code && reg1?.short === reg2?.short){
+            if (reg.name === name && reg.short === short && reg.description === description && JSON.stringify(reg.rules) === JSON.stringify(rules)) {
                 return
             }else {
-                throw this.make('EM_CODE_EXISTS', { code, short })
+                throw this.make('EM_CODE_EXISTS', { short })
             }
         }
-        const nr = { name, code, short, description, rules }
+        const nr = { name, short, description, rules }
         this.registeredList.push(nr)
     }
 
@@ -70,7 +69,7 @@ class ErrorManager {
     make(short: string, additional = {}) {
         const reg = this.getRegistered(short)
         if (reg === null) throw this.make('EM_CODE_NOT_FOUND')
-        const ne = new CoreError(reg.name, reg.description, reg.code, reg.short)
+        const ne = new CoreError(reg.name, reg.description, reg.short)
 
         // Убираем из стека вызовы ErrorManager.make()
         if (typeof Error.captureStackTrace === 'function') {
@@ -96,11 +95,11 @@ class ErrorManager {
 
     /**
      * Проверяет является ли ошибка VRack2 Error 
-     * и соответствует ли код переданной ошибке (проверяет vShort и vCode)
+     * и соответствует ли код переданной ошибке (проверяет vShort)
     */
     isCode(error: any, code: string){
         if (!this.isError(error)) return false
-        if (error.vShort === code || error.vCode === code) return true
+        if (error.vShort === code) return true
         return false
     }
 
@@ -112,7 +111,7 @@ class ErrorManager {
     */
     isError(error: any){
         if (error instanceof CoreError) return true
-        if (error.vError && error.vCode !== undefined && error.vShort !== undefined) return true
+        if (error.vError && error.vShort !== undefined) return true
         return false
     }
 
@@ -122,7 +121,7 @@ class ErrorManager {
      * @param short Short error code or search error code
     */
     private getRegistered(short: string): RegisteredError | null {
-        for (const registered of this.registeredList) if (registered.code === short || registered.short === short) return registered
+        for (const registered of this.registeredList) if (registered.short === short) return registered
         return null
     }
 }
@@ -130,7 +129,7 @@ class ErrorManager {
 
 
 const GlobalErrorManager = new ErrorManager()
-GlobalErrorManager.register('ErrorManager', 'NcZIb9QvQRcq', 'EM_CODE_EXISTS', 'Has anyone else encountered this error code? Possible duplication of the error code and short word in different registrations.')
-GlobalErrorManager.register('ErrorManager', 'uLYv4mE1Yo50', 'EM_CODE_NOT_FOUND', 'No such error found')
-GlobalErrorManager.register('ErrorManager', 'RIl3BUrxWOzP', 'EM_ERROR_CONVERT', 'Converted error')
+GlobalErrorManager.register('ErrorManager', 'EM_CODE_EXISTS', 'Has anyone else encountered this error code? Possible duplication of the error code and short word in different registrations.')
+GlobalErrorManager.register('ErrorManager', 'EM_CODE_NOT_FOUND', 'No such error found')
+GlobalErrorManager.register('ErrorManager', 'EM_ERROR_CONVERT', 'Converted error')
 export default GlobalErrorManager

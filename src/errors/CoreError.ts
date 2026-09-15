@@ -21,22 +21,27 @@ class CoreError extends Error{
     /** Flag that the error belongs to VRack */
     vError = true
 
-    /** Error code */
-    vCode = ""
-
-    /** Short code */
+    /**
+     * The single canonical identifier of the error (a short human-readable
+     * word, e.g. `VLDR_WRONG_TYPE`). This is what `ErrorManager.isCode` and
+     * the docs reference; there is no separate random "code" field.
+     */
     vShort = ""
 
-    /** List of additional parameters */
+    /**
+     * Keys of dynamic parameters that were merged in at error creation time
+     * (declared in the registered definition's `rules`) or added via
+     * `import()` from a network payload. Used on the importing side to
+     * distinguish dynamic fields from the base class shape.
+     */
     vAdd: Array<string> = []
 
     /** Nested errors */
     vAddErrors: Array<Error> = []
 
-    constructor(name: string, message: string, code: string, short: string) {
+    constructor(name: string, message: string, short: string) {
         super(message)
         this.name = name
-        this.vCode = code
         this.vShort = short
     }
     

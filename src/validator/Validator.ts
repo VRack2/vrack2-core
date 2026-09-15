@@ -12,17 +12,17 @@ import IValidationProblem from './IValidationProblem';
 import IValidationRule from "./IValidationRule";
 
 ErrorManager.register(
-    'Validator', 'VXLeMLVnIXGf', 'VR_TYPE_NOT_EXISTS',
+    'Validator', 'VR_TYPE_NOT_EXISTS',
     'Type not exists', {
 })
 
 ErrorManager.register(
-    'Validator', 'X1UP4P2HRHWd', 'VR_NOT_PASS',
+    'Validator', 'VR_NOT_PASS',
     'Validation error - data not pass', {
 })
 
 ErrorManager.register(
-    'Validator', 'q8WzK3tR6mPv', 'VR_VALIDATION_INTERNAL',
+    'Validator', 'VR_VALIDATION_INTERNAL',
     'An unexpected error occurred during validation', {
 })
 
@@ -153,7 +153,7 @@ export default class Validator {
     protected static makeProblem(err: CoreError, key: string, rule: IValidationRule, value: any) : IValidationProblem {
         if (rule.message) err.message = this.makeMessage(rule, value)
         const nvp:IValidationProblem = {
-            type: err.vShort, code: err.vCode, fieldKey: key, description: err.message, rule, arg: {}
+            type: err.vShort, fieldKey: key, description: err.message, rule, arg: {}
         }
         for (const sk of err.vAdd) nvp.arg[sk] = err[sk as keyof CoreError]
         return nvp

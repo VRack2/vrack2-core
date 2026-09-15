@@ -35,6 +35,6 @@ export default class FunctionType extends BasicType {
 }
 
 ErrorManager.register(
-    'Validator', 'P2K7PE7C3JRU', 'VR_IS_NOT_FUNCTION',
+    'Validator', 'VR_IS_NOT_FUNCTION',
     'Value must be a function', {
 })

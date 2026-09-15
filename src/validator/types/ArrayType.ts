@@ -91,11 +91,11 @@ export default class ArrayType extends BasicType {
 }
 
 ErrorManager.register(
-    'Validator', '3U9s3ZsTH6FA', 'VR_IS_NOT_ARRAY',
+    'Validator', 'VR_IS_NOT_ARRAY',
     'Value must be an array', {
 })
 
 ErrorManager.register(
-    'Validator', 'Eg9cIXlxi1yP', 'VR_ARRAY_CONTENT_ERROR',
+    'Validator', 'VR_ARRAY_CONTENT_ERROR',
     'Validation error inside the array data', {
 })
