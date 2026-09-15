@@ -20,21 +20,31 @@ import { existsSync } from "fs";
 
 /***** ********      LOADER ERROR      ********************/
 
-ErrorManager.register('ServiceLoader', 'CTR_ERROR_INIT_DEVICE', 'Device initialization error', {
-    deviceConfig: Rule.object().description('Device configuration')
-})
-
-ErrorManager.register('ServiceLoader', 'CTR_ERROR_INIT_CONNECTION', 'Connection initialization error', {
-    connection: Rule.string().description('Connection string')
-})
-
-ErrorManager.register('ServiceLoader', 'CTR_CONF_EXTENDS_PROBLEM', 'Problem with extending service configuration.', {})
-
-ErrorManager.register('ServiceLoader', 'CTR_INCORRECT_DEVICE_ID', 'Incorrect device id', {})
-
-ErrorManager.register('ServiceLoader', 'CTR_ERROR_PREPARE_OPTIONS', 'An error occurred while preparing options', {
-    message: Rule.string().description('Exception error string')
-})
+ErrorManager.registerMany('ServiceLoader', [
+    {
+        short: 'CTR_ERROR_INIT_DEVICE',
+        description: 'Device initialization error',
+        rules: { deviceConfig: Rule.object().description('Device configuration') }
+    },
+    {
+        short: 'CTR_ERROR_INIT_CONNECTION',
+        description: 'Connection initialization error',
+        rules: { connection: Rule.string().description('Connection string') }
+    },
+    {
+        short: 'CTR_CONF_EXTENDS_PROBLEM',
+        description: 'Problem with extending service configuration.'
+    },
+    {
+        short: 'CTR_INCORRECT_DEVICE_ID',
+        description: 'Incorrect device id'
+    },
+    {
+        short: 'CTR_ERROR_PREPARE_OPTIONS',
+        description: 'An error occurred while preparing options',
+        rules: { message: Rule.string().description('Exception error string') }
+    },
+])
 
 /**
  * ServiceLoader — device creation & validation from config, hot add/remove,

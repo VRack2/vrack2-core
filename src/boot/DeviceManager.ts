@@ -64,35 +64,40 @@ export interface IDeviceInfo {
     description: string
 }
 
-ErrorManager.register(
-    'DeviceManager',
-    'DM_DEVICE_NOT_FOUND',
-    'Device not found', {
-    device: Rule.string().required().example('Master').description('Device name')
-})
-
-ErrorManager.register(
-    'DeviceManager',
-    'DM_LIST_NOT_FOUND',
-    'list.json not found', {
-    vendor: Rule.string().required().example('vrack').description('Device group name')
-})
-
-ErrorManager.register(
-    'DeviceManager',
-    'DM_LIST_INCORRECT',
-    'list.json is not correct', {
-    vendor: Rule.string().required().example('vrack').description('Device group name')
-})
-
-ErrorManager.register(
-    'DeviceManager',
-    'DM_VENDOR_NOT_FOUND',
-    'Vendor not found', {
-    vendor: Rule.string().required().example('vrack').description('Vendor name')
-})
-
-ErrorManager.register('DeviceManager', 'DM_GET_INFO_EXCEPTION', 'Error retrieving device data, see error in attachment', {})
+ErrorManager.registerMany('DeviceManager', [
+    {
+        short: 'DM_DEVICE_NOT_FOUND',
+        description: 'Device not found',
+        rules: {
+            device: Rule.string().required().example('Master').description('Device name')
+        }
+    },
+    {
+        short: 'DM_LIST_NOT_FOUND',
+        description: 'list.json not found',
+        rules: {
+            vendor: Rule.string().required().example('vrack').description('Device group name')
+        }
+    },
+    {
+        short: 'DM_LIST_INCORRECT',
+        description: 'list.json is not correct',
+        rules: {
+            vendor: Rule.string().required().example('vrack').description('Device group name')
+        }
+    },
+    {
+        short: 'DM_VENDOR_NOT_FOUND',
+        description: 'Vendor not found',
+        rules: {
+            vendor: Rule.string().required().example('vrack').description('Vendor name')
+        }
+    },
+    {
+        short: 'DM_GET_INFO_EXCEPTION',
+        description: 'Error retrieving device data, see error in attachment'
+    },
+])
 
 
 /**

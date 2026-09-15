@@ -4,13 +4,14 @@
  * AGENTS.md rule #3: error codes are documented ONLY in docs/08-Errors.md.
  * This test enforces that mechanically (in both directions):
  *
- *  - every code registered in src/ (via `ErrorManager.register(...)`)
- *    must be present in docs/08-Errors.md;
+ *  - every code registered in src/ (via `ErrorManager.register(...)` or
+ *    `ErrorManager.registerMany(name, [...])`) must be present in docs/08-Errors.md;
  *  - every documented error code (a backticked `ALL_CAPS_WITH_UNDERSCORE`
  *    token) must be registered in src/.
  *
- * The check is source-scanning (no new public API): all `register()` calls
- * keep the `short` code as the second argument on the first line of the call.
+ * The check is source-scanning (no new public API): `register()` calls keep
+ * the `short` code as the second argument on the first line; `registerMany()`
+ * entries keep it as the `short:` property on their first line.
  */
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
@@ -34,8 +35,15 @@ function registeredCodes(): Array<string> {
     const codes = new Set<string>()
     for (const fp of listTsFiles(path.join(ROOT, 'src'))) {
         const src = fs.readFileSync(fp, 'utf-8')
+        // register('Name', 'CODE', ...) — short is the 2nd arg on the first line
         for (const m of src.matchAll(/ErrorManager\.register\(\s*'[^']+',\s*'([A-Z0-9_]+)'/g)) {
             codes.add(m[1])
+        }
+        // registerMany('Name', [... { short: 'CODE' ... } ...]) — short property of entries
+        for (const m of src.matchAll(/ErrorManager\.registerMany\(\s*'[^']+',\s*\[[\s\S]*?\]\)/g)) {
+            for (const e of m[0].matchAll(/short:\s*'([A-Z0-9_]+)'/g)) {
+                codes.add(e[1])
+            }
         }
     }
     return [...codes].sort()

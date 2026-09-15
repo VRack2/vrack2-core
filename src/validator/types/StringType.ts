@@ -82,17 +82,17 @@ export default class StringType  extends BasicType {
 
 }
 
-ErrorManager.register(
-    'Validator', 'VR_IS_NOT_STRING',
-    'Value must be a string', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_STRING_MAX_LENGTH',
-    'The maximum string length is limited', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_STRING_MIN_LENGTH',
-    'The minimum string length is limited', {
-})
+ErrorManager.registerMany('Validator', [
+    {
+        short: 'VR_IS_NOT_STRING',
+        description: 'Value must be a string'
+    },
+    {
+        short: 'VR_STRING_MAX_LENGTH',
+        description: 'The maximum string length is limited'
+    },
+    {
+        short: 'VR_STRING_MIN_LENGTH',
+        description: 'The minimum string length is limited'
+    },
+])

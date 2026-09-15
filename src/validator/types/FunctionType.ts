@@ -34,7 +34,9 @@ export default class FunctionType extends BasicType {
     }
 }
 
-ErrorManager.register(
-    'Validator', 'VR_IS_NOT_FUNCTION',
-    'Value must be a function', {
-})
+ErrorManager.registerMany('Validator', [
+    {
+        short: 'VR_IS_NOT_FUNCTION',
+        description: 'Value must be a function'
+    },
+])

@@ -25,6 +25,7 @@
 | Метод | Значение |
 |---|---|
 | `register(name, short, description, rules?)` | Регистрация ошибки (до создания). Повторная регистрация идентичной записи — без действия; другой записи с тем же short — `EM_CODE_EXISTS`. |
+| `registerMany(name, list)` | Массовая регистрация кодов одного компонента: `name` — группа, `list` — массив `{ short, description, rules? }`. Атомарная: если любой элемент конфликтует (дубликат short внутри списка или уже зарегистрированный short), ничего не регистрируется — `EM_CODE_EXISTS`. |
 | `make(short, additional?)` | Создание экземпляра; неизвестный код — `EM_CODE_NOT_FOUND`. |
 | `add(err)` (на `CoreError`) | Вложить ошибку в `vAddErrors`. |
 | `convert(error)` | Преобразовать чужую ошибку в VRack-ошибку (`EM_ERROR_CONVERT`); VRack-ошибку возвращает как есть. |

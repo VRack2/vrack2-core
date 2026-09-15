@@ -99,22 +99,21 @@ export default class NumberType  extends BasicType {
 }
 
 
-ErrorManager.register(
-    'Validator', 'VR_IS_NOT_NUMBER',
-    'Value must be a number', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_NUMBER_INTEGER',
-    'Value must be an integer', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_NUMBER_MAX',
-    'Number out of limit', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_NUMBER_MIN',
-    'Number out of limit', {
-})
+ErrorManager.registerMany('Validator', [
+    {
+        short: 'VR_IS_NOT_NUMBER',
+        description: 'Value must be a number'
+    },
+    {
+        short: 'VR_NUMBER_INTEGER',
+        description: 'Value must be an integer'
+    },
+    {
+        short: 'VR_NUMBER_MAX',
+        description: 'Number out of limit'
+    },
+    {
+        short: 'VR_NUMBER_MIN',
+        description: 'Number out of limit'
+    },
+])

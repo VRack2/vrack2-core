@@ -61,6 +61,31 @@ class ErrorManager {
     }
 
     /**
+     * Bulk error registration: registers every entry of the list at once.
+     * `name` is the group (component) common for the whole list.
+     * Atomic: if any entry conflicts with an already registered error
+     * (or duplicates a short inside the list), nothing is registered
+     * and EM_CODE_EXISTS is thrown.
+     *
+     * @param name Property for error grouping (component, common for the whole list)
+     * @param list Array of { short, description, rules? }
+    */
+    registerMany(name: string, list: Array<{ short: string, description: string, rules?: { [key: string]: BasicType } }>) {
+        // 1) Проверяем конфликтность: дубли short внутри списка + совпадение с уже зарегистрированными
+        const seen = new Set<string>()
+        for (const entry of list) {
+            if (seen.has(entry.short)) throw this.make('EM_CODE_EXISTS', { short: entry.short })
+            seen.add(entry.short)
+            if (this.getRegistered(entry.short) !== null) throw this.make('EM_CODE_EXISTS', { short: entry.short })
+        }
+        // 2) Атомарно регистрируем (конфликтов нет — просто пушим)
+        for (const entry of list) {
+            const nr: RegisteredError = { name, short: entry.short, description: entry.description, rules: entry.rules ?? {} }
+            this.registeredList.push(nr)
+        }
+    }
+
+    /**
      * Creating an instance of an error
      * 
      * @param short 
@@ -129,7 +154,9 @@ class ErrorManager {
 
 
 const GlobalErrorManager = new ErrorManager()
-GlobalErrorManager.register('ErrorManager', 'EM_CODE_EXISTS', 'Has anyone else encountered this error code? Possible duplication of the error code and short word in different registrations.')
-GlobalErrorManager.register('ErrorManager', 'EM_CODE_NOT_FOUND', 'No such error found')
-GlobalErrorManager.register('ErrorManager', 'EM_ERROR_CONVERT', 'Converted error')
+GlobalErrorManager.registerMany('ErrorManager', [
+    { short: 'EM_CODE_EXISTS', description: 'Registering a different record with an already registered short identifier.' },
+    { short: 'EM_CODE_NOT_FOUND', description: 'No such error found' },
+    { short: 'EM_ERROR_CONVERT', description: 'Converted error' },
+])
 export default GlobalErrorManager

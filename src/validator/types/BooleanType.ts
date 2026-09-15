@@ -45,7 +45,9 @@ export default class BooleanType  extends BasicType {
     }
 }
 
-ErrorManager.register(
-    'Validator', 'VR_IS_NOT_BOOLEAN',
-    'Value must be a boolean', {
-})
+ErrorManager.registerMany('Validator', [
+    {
+        short: 'VR_IS_NOT_BOOLEAN',
+        description: 'Value must be a boolean'
+    },
+])

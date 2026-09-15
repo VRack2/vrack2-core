@@ -28,20 +28,23 @@ export interface IBootListConfig {
     }
 }
 
-ErrorManager.register('Bootstrap', 'BTSP_CLASS_ID_NOT_FOUND',
-    'Bootstrap class id not found', {
-    id: Rule.string().description('Class identify')
-})
-
-ErrorManager.register('Bootstrap', 'BTSP_INSTANCE_OF_INCORRECT',
-    'Bootstrap class id is not a class defined by check', {
-    id: Rule.string().description('Class identify')
-})
-
-ErrorManager.register('Bootstrap', 'BTSP_MUST_BE_BOOTCLASS',
-    'The class must be inherited from BootClass', {
-    path: Rule.string().description('Class path')
-})
+ErrorManager.registerMany('Bootstrap', [
+    {
+        short: 'BTSP_CLASS_ID_NOT_FOUND',
+        description: 'Bootstrap class id not found',
+        rules: { id: Rule.string().description('Class identify') }
+    },
+    {
+        short: 'BTSP_INSTANCE_OF_INCORRECT',
+        description: 'Bootstrap class id is not a class defined by check',
+        rules: { id: Rule.string().description('Class identify') }
+    },
+    {
+        short: 'BTSP_MUST_BE_BOOTCLASS',
+        description: 'The class must be inherited from BootClass',
+        rules: { path: Rule.string().description('Class path') }
+    },
+])
 
 /**
  * Bootstrap is a class for running bootclasses, 

@@ -5,31 +5,36 @@ import ErrorManager from "./errors/ErrorManager";
 import Rule from "./validator/Rule";
 
 
-ErrorManager.register('ImportManager', 'IM_FILE_NOT_FOUND',
-    'Import file not found', {
-    filePath: Rule.string().description('Path to file')
-})
-
-ErrorManager.register('ImportManager', 'IM_JSON_INCORRECT',
-    'Import file json incorrect', {
-    jsonRaw: Rule.string().description('Raw json data'),
-    parsingError: Rule.string().description('Json parse error string')
-})
-
-ErrorManager.register('ImportManager', 'IM_CLASS_PATH_ERROR',
-    'Error import class - No acts', {
-    path: Rule.string().description('Class path string')
-})
-
-ErrorManager.register('ImportManager', 'IM_CLASS_VENDOR_ERROR',
-    'Error import class - vendor not found', {
-    path: Rule.string().description('Class path string')
-})
-
-ErrorManager.register('ImportManager', 'IM_CLASS_ACT_ERROR',
-    'Error import class - class act = undefined', {
-    path: Rule.string().description('Class path string')
-})
+ErrorManager.registerMany('ImportManager', [
+    {
+        short: 'IM_FILE_NOT_FOUND',
+        description: 'Import file not found',
+        rules: { filePath: Rule.string().description('Path to file') }
+    },
+    {
+        short: 'IM_JSON_INCORRECT',
+        description: 'Import file json incorrect',
+        rules: {
+            jsonRaw: Rule.string().description('Raw json data'),
+            parsingError: Rule.string().description('Json parse error string')
+        }
+    },
+    {
+        short: 'IM_CLASS_PATH_ERROR',
+        description: 'Error import class - No acts',
+        rules: { path: Rule.string().description('Class path string') }
+    },
+    {
+        short: 'IM_CLASS_VENDOR_ERROR',
+        description: 'Error import class - vendor not found',
+        rules: { path: Rule.string().description('Class path string') }
+    },
+    {
+        short: 'IM_CLASS_ACT_ERROR',
+        description: 'Error import class - class act = undefined',
+        rules: { path: Rule.string().description('Class path string') }
+    },
+])
 
 
 export default class ImportManager {

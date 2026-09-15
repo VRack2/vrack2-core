@@ -8,7 +8,7 @@
  *  - vShort -> readable short code (e.g. 'VR_NOT_PASS')
  */
 import { describe, it, expect } from 'vitest'
-import { ErrorManager, CoreError } from 'vrack2-core'
+import { ErrorManager, CoreError, Rule } from 'vrack2-core'
 
 // Test error codes. Must be unique for the whole process!
 ErrorManager.register('UnitTest', 'UT_TEST_A', 'Test error A', {
@@ -71,6 +71,51 @@ describe('ErrorManager', () => {
         // same short, different description
         try {
             ErrorManager.register('Other', 'UT_TEST_A', 'conflict')
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeDefined()
+        expect(ErrorManager.isCode(err, 'EM_CODE_EXISTS')).toBe(true)
+    })
+
+    it('registerMany() registers a list of errors atomically', () => {
+        ErrorManager.registerMany('UnitTest', [
+            { short: 'UT_MANY_A', description: 'Bulk error A' },
+            { short: 'UT_MANY_B', description: 'Bulk error B', rules: { foo: Rule.string() } },
+        ])
+        expect(ErrorManager.make('UT_MANY_A').message).toBe('Bulk error A')
+        expect(ErrorManager.make('UT_MANY_B').message).toBe('Bulk error B')
+    })
+
+    it('registerMany() is atomic: a conflicting entry registers nothing', () => {
+        let err: any
+        try {
+            ErrorManager.registerMany('Other', [
+                { short: 'UT_MANY_A', description: 'conflict' },
+                { short: 'UT_MANY_C', description: 'should not be registered' },
+            ])
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeDefined()
+        expect(ErrorManager.isCode(err, 'EM_CODE_EXISTS')).toBe(true)
+        // The second entry of the failed list must NOT have been registered
+        let found: any
+        try {
+            ErrorManager.make('UT_MANY_C')
+        } catch (e) {
+            found = e
+        }
+        expect(ErrorManager.isCode(found, 'EM_CODE_NOT_FOUND')).toBe(true)
+    })
+
+    it('registerMany() rejects duplicate shorts inside the list', () => {
+        let err: any
+        try {
+            ErrorManager.registerMany('UnitTest', [
+                { short: 'UT_MANY_DUP', description: 'first' },
+                { short: 'UT_MANY_DUP', description: 'duplicate' },
+            ])
         } catch (e) {
             err = e
         }

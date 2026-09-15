@@ -11,20 +11,20 @@ import CoreError from "../errors/CoreError";
 import IValidationProblem from './IValidationProblem';
 import IValidationRule from "./IValidationRule";
 
-ErrorManager.register(
-    'Validator', 'VR_TYPE_NOT_EXISTS',
-    'Type not exists', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_NOT_PASS',
-    'Validation error - data not pass', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_VALIDATION_INTERNAL',
-    'An unexpected error occurred during validation', {
-})
+ErrorManager.registerMany('Validator', [
+    {
+        short: 'VR_TYPE_NOT_EXISTS',
+        description: 'Type not exists'
+    },
+    {
+        short: 'VR_NOT_PASS',
+        description: 'Validation error - data not pass'
+    },
+    {
+        short: 'VR_VALIDATION_INTERNAL',
+        description: 'An unexpected error occurred during validation'
+    },
+])
 
 export default class Validator {
     

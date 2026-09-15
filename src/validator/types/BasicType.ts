@@ -239,7 +239,9 @@ export default class BasicType {
     }
 }
 
-ErrorManager.register(
-    'Validator', 'VR_ERROR_REQUIRED',
-    'A value is required', {
-})
+ErrorManager.registerMany('Validator', [
+    {
+        short: 'VR_ERROR_REQUIRED',
+        description: 'A value is required'
+    },
+])

@@ -21,6 +21,23 @@ declare class ErrorManager {
         [key: string]: BasicType;
     }): void;
     /**
+     * Bulk error registration: registers every entry of the list at once.
+     * `name` is the group (component) common for the whole list.
+     * Atomic: if any entry conflicts with an already registered error
+     * (or duplicates a short inside the list), nothing is registered
+     * and EM_CODE_EXISTS is thrown.
+     *
+     * @param name Property for error grouping (component, common for the whole list)
+     * @param list Array of { short, description, rules? }
+    */
+    registerMany(name: string, list: Array<{
+        short: string;
+        description: string;
+        rules?: {
+            [key: string]: BasicType;
+        };
+    }>): void;
+    /**
      * Creating an instance of an error
      *
      * @param short

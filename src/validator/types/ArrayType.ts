@@ -90,12 +90,13 @@ export default class ArrayType extends BasicType {
 
 }
 
-ErrorManager.register(
-    'Validator', 'VR_IS_NOT_ARRAY',
-    'Value must be an array', {
-})
-
-ErrorManager.register(
-    'Validator', 'VR_ARRAY_CONTENT_ERROR',
-    'Validation error inside the array data', {
-})
+ErrorManager.registerMany('Validator', [
+    {
+        short: 'VR_IS_NOT_ARRAY',
+        description: 'Value must be an array'
+    },
+    {
+        short: 'VR_ARRAY_CONTENT_ERROR',
+        description: 'Validation error inside the array data'
+    },
+])

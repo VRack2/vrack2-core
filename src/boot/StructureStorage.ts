@@ -12,9 +12,15 @@ import ImportManager from "../ImportManager";
 import { IContainerStructure } from "../Container";
 import ErrorManager from "../errors/ErrorManager";
 
-ErrorManager.register('StructureStorage', 'SS_STRUCT_NOT_FOUND', 'Structure ID not found', {
-    id: Rule.string().required().example('vrack').description('Structure id')
-})
+ErrorManager.registerMany('StructureStorage', [
+    {
+        short: 'SS_STRUCT_NOT_FOUND',
+        description: 'Structure ID not found',
+        rules: {
+            id: Rule.string().required().example('vrack').description('Structure id')
+        }
+    },
+])
 /**
  * A boot class for storing the structure of a container.
  * 
