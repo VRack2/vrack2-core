@@ -4,6 +4,7 @@ import BasicAction from "../actions/BasicAction";
 import BasicPort from "../ports/BasicPort";
 import DevicePort from "./DevicePort";
 import BasicMetric from "../metrics/BasicMetric";
+import ReactiveRef from "../ReactiveRef";
 export declare enum EDeviceMessageTypes {
     terminal = "terminal",
     info = "info",
@@ -100,24 +101,32 @@ export default class Device {
      * */
     description(): string;
     /**
+     * Reactive storage backing `shares` (a deep-reactive plain object).
+     * Internal: the reactive accessors installed on Device.prototype read/write it.
+     */
+    _sharesRef: ReactiveRef<Record<string, any>>;
+    /**
      * This is a fast updating data object - it will be sent
      * to subscribers after the render() call.
      * After preProcess() the Container attaches auto-render: any change of shares
      * (a property write, a new property, delete, or a full reassignment) triggers render().
-     * A subclass may declare `shares = {...}` as a class field - the value becomes the
-     * initial (default) shares: right after preProcess() the Container imports it into
-     * the reactive ref (refinements made in preProcess() are preserved) and normalizes
-     * it under ES2022 class-field semantics, where the field would otherwise shadow
-     * this accessor.
+     *
+     * A subclass declares its shape as a plain class field - inside the class
+     * `this.shares` keeps the declared typing (not Record<string, any>):
+     * ```ts
+     * class MyDevice extends Device {
+     *     shares = { data: 1, name: 'x' }          // initial state + its type
+     *     work() { const n: number = this.shares.data }   // fully typed in the IDE
+     * }
+     * ```
+     * The field's value becomes the default shares: right after preProcess() the
+     * Container imports it into the reactive ref (refinements made in preProcess() are
+     * preserved) and drops the shadow, so reactivity takes over. Without a field the
+     * default is an empty `{}`; writes in constructor/preProcess() work as well.
      *
      * @see render()
-     * */
-    get shares(): any;
-    set shares(value: any);
-    /**
-     * Reactive storage backing the `shares` accessor
      */
-    private _sharesRef;
+    shares: Record<string, any>;
     /**
      * True while the Container-attached auto-render watcher is active
      */

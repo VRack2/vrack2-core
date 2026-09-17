@@ -27,7 +27,7 @@ export default class MyDevice extends Device {
 | `options` | конструктор + `createDevice()` | Опции, проверенные `checkOptions()`. |
 | `ports.input` / `ports.output` | `registerDevice()` | Объекты портов; `push(data)` — на выходных. |
 | `storage` | `beforeProcess` / `device.add` | Персистентное состояние; сохраняется `save()`. |
-| `shares` | `attachSharesRender()` | Реактивный объект быстро-меняющихся данных; любое изменение вызывает событие `device.render`. |
+| `shares` | `attachSharesRender()` (после `preProcess()`) | Реактивный объект быстро-меняющихся данных; подкласс может задать его обычным типизированным полем, любое изменение вызывает событие `device.render`. |
 | `running` | конструктор (`true`, как старый `works`); `stopDevice()` / `stopAll()` / `removeDevice()` (`false`); `startDevice()` / `runProcess()` — снова (`true`, **до** `process()`) | Состояние работы устройства — **управляется контейнером**, не устройством. `false` только у явно остановленного устройства: его порты отбрасывают `push`, а actions отклоняются ошибкой `CTR_DEVICE_STOPPED`. Не-запущенное (или ещё запускающееся внутри `process()`/`processPromise()`) устройство остановленным **не считается** — его порты активны, и старт-трафик (например, регистрация команд) проходит. |
 
 ## Жизненный цикл
@@ -212,12 +212,35 @@ addActionHandler('set.value', (data) => { /* ... */ })  // → actionSetValue
 
 ## Как работает `shares` (auto-render)
 
-`shares` опирается на `ReactiveRef` (см. [09-Utils](09-Utils.md)). Авто-рендер включается после `preProcess()` (`attachSharesRender()`):
+`shares` опирается на `ReactiveRef` (см. [09-Utils](09-Utils.md)). Реактивные accessors установлены на prototype базового класса, а в модели типов `shares` — обычное свойство; поэтому подкласс может объявить его своим типизированным полем — это легально и в TS:
+
+```ts
+class MyDevice extends Device {
+    shares = { data: 1, name: 'x' }          // начальное состояние + его форма
+
+    work() { const n: number = this.shares.data }   // типизировано в IDE
+}
+```
+
+Механика: до `attachSharesRender()` (после `preProcess()`) поле-тень живёт как обычный объект — там можно уточнять состояние (`this.options` к этому моменту уже установлены). Затем Container импортирует его значение в реактивный ref и снимает тень. Без поля дефолт — пустой `{}` (записи в конструкторе/`preProcess()` тоже работают).
+
+Поведение:
 
 - Уведомление вызывают: запись в существующее свойство, добавление нового, `delete` свойства, полная замена `this.shares = {...}`, изменение вложенных plain-объектов (рекурсивно).
 - **Массивы внутри `shares` НЕ отслеживаются**: `this.shares.list.push(x)` рендер не вызывает — переприсвойте массив целиком.
 - Записи в `shares` внутри `preProcess()` рендер НЕ вызывают (watcher подключается позже).
-- В подклассе можно объявить `shares = {...}` полем класса — это становится дефолтным значением (Container нормализует затеняющие class fields).
+
+**Типизация `options` (TS).** Базовые `options` — `Record<string, any>`. Чтобы получить подсказки внутри класса, сузьте тип только декларацией — на рантайм это не влияет (`declare` не эмитит код):
+
+```ts
+type MyOptions = { scale: number }
+
+class Counter extends Device {
+    declare options: MyOptions
+
+    work() { const s: number = this.options.scale }   // IDE подсказывает
+}
+```
 - В событии `device.render` поле `trace` — **снимок** `shares` на момент рендера: глубокая обычная копия без прокси (безопасно для `postMessage` / structured clone). Считать read-only.
 - В `shares` держите plain-данные: `Date`, `Map`, экземпляры классов реактивностью не оборачиваются и передаются как есть.
 - После `removeDevice()` авто-рендер отключается; явный `render()` продолжает работать.

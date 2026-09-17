@@ -12,6 +12,7 @@ before running tests.
 | `npm test`         | Run the full test suite once (unit + integration)  |
 | `npm run test:watch` | Run tests in watch mode (re-run on change)       |
 | `npm run typecheck`| TypeScript type check (`tsc --noEmit`)             |
+| `npm run typecheck:types` | Type-level tests against the public API typing (subclass typed `shares` fields; unknown keys / wrong types are compile errors) |
 | `npm run build`    | Compile the library to `lib/` (CommonJS)           |
 
 Run a single file:
@@ -23,6 +24,8 @@ npx vitest run test/unit/validator.test.ts
 ## Test layout
 
 - `test/smoke.test.ts` — public API surface of the `vrack2-core` entrypoint.
+- `test/typing/device-shares.ts` — type-level fixture for typed `Device.shares` (subclass fields
+  with declared shapes); compiled by `npm run typecheck:types`, not executed.
 - `test/unit/` — unit tests: `ErrorManager`/`CoreError`, `Rule`/`Validator`,
   ports, `ReactiveRef`, `ImportManager`.
 - `test/integration/service.test.ts` — boots a real `MainProcess`

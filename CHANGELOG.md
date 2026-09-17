@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026.09.17
+
+### Minor
+
+- Типизация `Device.shares` по классу без generic и хуков: подкласс объявляет `shares = {...}` обычным типизированным полем — внутри класса `this.shares` имеет ровно его форму (IDE подсказывает). Реактивные accessors установлены на prototype базового класса, а в модели типов `shares` — обычное свойство, поэтому поле наследника легально.
+- Механика: после `preProcess()` Container импортирует значение поля в реактивный ref (`attachSharesRender()`) и снимает тень (ES2022 class fields) — уточнения из `preProcess()` сохраняются; без поля дефолт `{}`. Storage — обычное инстансное поле `_sharesRef` (без WeakMap и прототипных хаков).
+- Type-level тест: `test/typing/device-shares.ts` + `tsconfig.typetest.json`; скрипт `npm run typecheck:types`.
+
+### Chores
+
+- Миграция ESLint-конфига с `.eslintrc.js` на flat `eslint.config.js` (ESLint 9 по умолчанию не находит legacy-формат, из-за чего `npm run lint` падал ещё до проверки файлов). Явно настроены Node-globals, для TS-файлов включён `@typescript-eslint/no-unused-vars` (вместо базового), исключена `lib/`.
+- Отключено правило `no-explicit-any` (`any` в проекте — осознанный выбор стиля); удалены мёртвые импорты (`ChildProcess`, `BasicAction`, `SingleDB`).
+
 ## 2026.09.15 — 2.0.0 (breaking)
 
 ### Major
