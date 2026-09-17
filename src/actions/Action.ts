@@ -3,7 +3,6 @@
  * Licensed under the Apache License, Version 2.0
 */
 
-import BasicAction from "./BasicAction";
 import GlobalAction from "./GlobalAction";
 
 /**

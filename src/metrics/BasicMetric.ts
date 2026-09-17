@@ -4,7 +4,7 @@
 */
 
 
-import { StorageTypes, SingleDB } from "vrack-db"
+import { StorageTypes } from "vrack-db"
 import  IMetricSettings  from "./IMetricSettings"
 
 /**
