@@ -100,7 +100,7 @@ metrics(): { [key: string]: BasicMetric } {
 description(): string { return 'A simple counter' }
 
 settings(): IDeviceSettings {
-    return { channels: ['terminal', 'notify', 'event', 'action', 'alert', 'error', 'render'] }
+    return { channels: ['terminal', 'notify', 'event', 'action', 'alert', 'error', 'render', 'status'] }
 }
 ```
 
@@ -124,7 +124,9 @@ settings(): IDeviceSettings {
 
 > **Не путайте:** `Device.terminate(error, action)` — это **сообщение** о критической ошибке (событие `device.terminate`); оно само по себе **не останавливает** устройство. Остановка устройства — `Container.stopDevice()` / `stopAll()`; graceful-остановка всего сервиса — `MainProcess.terminate()` (см. [01-Architecture](01-Architecture.md)).
 
-Метод `settings()` объявляет каналы, которыми пользуется устройство — по умолчанию все: `terminal`, `notify`, `event`, `action`, `alert`, `error`, `render`.
+Метод `settings()` объявляет каналы, которыми пользуется устройство — по умолчанию все: `terminal`, `notify`, `event`, `action`, `alert`, `error`, `render`, `status`.
+
+Канал **`status`** — автоматический: устройство его не вызывает и в коде не обрабатывает. Контейнер сам ведёт систематизированный статус каждого устройства (состояние жизненного цикла, время последнего изменения, последний alert/error) и эмитит полный снапшот на событие `device.status` при каждом изменении — поля и триггеры описаны в [06-Container](06-Container.md), раздел «Статус устройства».
 
 ## Полный пример
 

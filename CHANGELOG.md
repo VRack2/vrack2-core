@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026.09.19
+
+### Major
+
+- Систематизированный статус устройства: контейнер ведёт запись `IDeviceStatus` на каждое зарегистрированное устройство — состояние `state` (`registered`/`started`/`stopped`), время последнего изменения, последнее сообщение alert/error (`{ data, trace, at }`) и счётчики `alertCount`/`errorCount`.
+- Новый канал `status`: при каждом изменении статуса контейнер эмитит событие `device.status` с полным снапшотом в стандартном конверте `{ device, data: 'status', trace: IDeviceStatus }`. Триггеры: регистрация устройства, успешный старт (`runProcess()`/`startDevice()`), остановка (`stopDevice()`), события `device.alert`/`device.error`/`device.terminate`.
+- Новые методы контейнера: `getDeviceStatus(id)` (копия статуса или `undefined`) и `deviceStatusList()` (копии статусов всех устройств). Типы `IDeviceStatus` / `IDeviceStatusMessage` экспортируются из публичного API.
+- `'status'` добавлен в каналы по умолчанию `Device.settings().channels`.
+
+### Minor
+
+- Тесты: новый интеграционный срез `test/integration/device-status.test.ts` (10 тестов).
+- Документация: 03-Device — автоматический канал `status`; 06-Container — раздел «Статус устройства», методы доступа, событие в таблице.
+
 ## 2026.09.17
 
 ### Minor

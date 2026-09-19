@@ -34,8 +34,9 @@ interface IDeviceSettings {
      *  - alert
      *  - error
      *  - render
+     *  - status (automatic — maintained by the Container, see IDeviceStatus)
     */
-    channels: Array<'terminal' | 'notify' | 'event' | 'action' | 'alert' | 'error' | 'render'>;
+    channels: Array<'terminal' | 'notify' | 'event' | 'action' | 'alert' | 'error' | 'render' | 'status'>;
 }
 
 export default class Device {
@@ -117,7 +118,7 @@ export default class Device {
     */
     settings(): IDeviceSettings {
         return {
-            channels: ['terminal', 'notify', 'event', 'action', 'alert', 'error', 'render']
+            channels: ['terminal', 'notify', 'event', 'action', 'alert', 'error', 'render', 'status']
         }
     }
 

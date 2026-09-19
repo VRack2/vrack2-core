@@ -17,6 +17,7 @@ import Bootstrap from "./Bootstrap";
 import IMetricSettings from "./metrics/IMetricSettings";
 import BasicMetric from "./metrics/BasicMetric";
 import IDeviceEvent from "./service/IDeviceEvent";
+import IDeviceStatus from "./service/IDeviceStatus";
 
 /***** ********      DEVICE ERROR      ********************/
 
@@ -257,6 +258,14 @@ export default class Container extends EventEmitter {
     protected started: Set<string> = new Set()
 
     /**
+     * Systematized device status records: [deviceID]: IDeviceStatus.
+     * Maintained by the Container on lifecycle transitions and on channel
+     * messages (`device.alert` / `device.error` / `device.terminate`); a full
+     * snapshot is emitted on the 'device.status' channel at every change.
+     */
+    protected deviceStatus: { [key: string]: IDeviceStatus } = {}
+
+    /**
      * Create a pure runtime container.
      *
      * The container holds the device registry, the live `structure`,
@@ -272,6 +281,12 @@ export default class Container extends EventEmitter {
         this.deviceActions = {}
         this.deviceMetrics = {}
         this.Bootstrap = bootstrap
+        // Status channel: keep the last alert/error of each device and emit a
+        // full snapshot on every status change (event 'device.status').
+        this.on('device.alert', (e: IDeviceEvent) => this.noteDeviceMessage(e.device, 'alert', e.data, e.trace))
+        this.on('device.error', (e: IDeviceEvent) => this.noteDeviceMessage(e.device, 'error', e.data, e.trace))
+        // device.terminate is a critical error message — it lands in lastError too.
+        this.on('device.terminate', (e: IDeviceEvent) => this.noteDeviceMessage(e.device, 'error', e.data, e.trace))
     }
 
     /**
@@ -307,6 +322,9 @@ export default class Container extends EventEmitter {
                 throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: key }).add(error as Error)
             }
             this.started.add(key)
+            const st = this.deviceStatus[key]
+            if (st) st.state = 'started'
+            this.emitDeviceStatus(key)
         }
         this.emit('afterProcessPromise')
         this.emit('beforeLoaded')
@@ -339,6 +357,9 @@ export default class Container extends EventEmitter {
             throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
         this.started.add(id)
+        const st = this.deviceStatus[id]
+        if (st) st.state = 'started'
+        this.emitDeviceStatus(id)
     }
 
     /**
@@ -367,6 +388,9 @@ export default class Container extends EventEmitter {
         }
         this.started.delete(id)
         dev.running = false
+        const st = this.deviceStatus[id]
+        if (st) st.state = 'stopped'
+        this.emitDeviceStatus(id)
     }
 
     /**
@@ -526,6 +550,19 @@ export default class Container extends EventEmitter {
                 )
             }
         }
+
+        // Initial status record: registered, not started yet.
+        this.deviceStatus[dev.id] = {
+            id: dev.id,
+            type: dev.type,
+            state: 'registered',
+            since: 0,
+            lastAlert: null,
+            lastError: null,
+            alertCount: 0,
+            errorCount: 0,
+        }
+        this.emitDeviceStatus(dev.id)
 
         return dev
     }
@@ -689,6 +726,7 @@ export default class Container extends EventEmitter {
         delete this.deviceActions[id]
         delete this.deviceMetrics[id]
         this.started.delete(id)
+        delete this.deviceStatus[id]
 
         // 5. Notify
         this.emit('device.remove', id)
@@ -718,6 +756,79 @@ export default class Container extends EventEmitter {
     */
     deviceList(): string[] {
         return Object.keys(this.devices)
+    }
+
+    /**
+     * Get the systematized status of a registered device.
+     * 
+     * The record is maintained by the Container on lifecycle transitions
+     * (register / start / stop) and on `device.alert` / `device.error` /
+     * `device.terminate` messages — see the 'device.status' channel.
+     * 
+     * @param id Device ID
+     * @returns A copy of the status record, or `undefined` if not registered
+     */
+    getDeviceStatus(id: string): IDeviceStatus | undefined {
+        return this.copyDeviceStatus(id)
+    }
+
+    /**
+     * List copies of the status records of all registered devices.
+     */
+    deviceStatusList(): Array<IDeviceStatus> {
+        const list: Array<IDeviceStatus> = []
+        for (const id in this.deviceStatus) {
+            const st = this.copyDeviceStatus(id)
+            if (st) list.push(st)
+        }
+        return list
+    }
+
+    /**
+     * A plain copy of a status record — safe for external mutation and for
+     * structured clone / postMessage. `undefined` when the device has no record.
+     */
+    private copyDeviceStatus(id: string): IDeviceStatus | undefined {
+        const st = this.deviceStatus[id]
+        if (!st) return undefined
+        return {
+            ...st,
+            lastAlert: st.lastAlert ? { ...st.lastAlert } : null,
+            lastError: st.lastError ? { ...st.lastError } : null,
+        }
+    }
+
+    /**
+     * Emit a full status snapshot on the 'device.status' channel.
+     * No-op when the device has no record (removed devices stay silent).
+     */
+    private emitDeviceStatus(id: string) {
+        const st = this.deviceStatus[id]
+        if (!st) return
+        st.since = Date.now()
+        const snapshot = this.copyDeviceStatus(id)
+        if (!snapshot) return
+        this.emit('device.status', { device: id, data: 'status', trace: snapshot })
+    }
+
+    /**
+     * Record a channel message (`device.alert` / `device.error` /
+     * `device.terminate`) in the device status and emit an updated snapshot.
+     */
+    private noteDeviceMessage(id: string, channel: 'alert' | 'error', data: string, trace: any) {
+        const st = this.deviceStatus[id]
+        if (!st) return
+        // normalize Error traces (device.terminate passes a raw Error object)
+        if (channel === 'error' && trace instanceof Error) trace = CoreError.objectify(trace)
+        const message = { data, trace, at: Date.now() }
+        if (channel === 'alert') {
+            st.lastAlert = message
+            st.alertCount += 1
+        } else {
+            st.lastError = message
+            st.errorCount += 1
+        }
+        this.emitDeviceStatus(id)
     }
 
     /**

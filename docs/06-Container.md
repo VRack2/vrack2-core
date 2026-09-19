@@ -14,7 +14,8 @@
 - реестром устройств (`devices`) и их actions/метрик;
 - живой структурой (`structure`);
 - состоянием соединений (через `DevicePort` / `DeviceConnect`);
-- запуском и остановкой устройств (`runProcess` / `startDevice` / `stopDevice` / `stopAll`).
+- запуском и остановкой устройств (`runProcess` / `startDevice` / `stopDevice` / `stopAll`);
+- статусами устройств (`deviceStatus`) — по записи `IDeviceStatus` на каждое зарегистрированное устройство.
 
 Конфигурацией сервиса и созданием устройств не владеет — это `ServiceLoader` ([01-Architecture](01-Architecture.md), § «MainProcess + ServiceLoader»).
 
@@ -33,6 +34,7 @@ constructor(id: string, bootstrap: Bootstrap)
 | `deviceMetrics` | `{ [id]: { [metric]: BasicMetric } }`. |
 | `structure` | Живая структура `IContainerStructure`. |
 | `started` | `Set<string>` — полностью стартованные устройства. |
+| `deviceStatus` | `{ [id]: IDeviceStatus }` — систематизированные статусы устройств (см. «Статус устройства»). |
 
 ## Регистрация: `registerDevice(dev)`
 
@@ -190,8 +192,29 @@ if (!(id in devices)) throw CTR_DEVICE_NF
 | `hasDevice(id)` | `true`, если устройство зарегистрировано. |
 | `getDevice(id)` | Экземпляр устройства или `undefined`. |
 | `deviceList()` | Массив id всех устройств. |
+| `getDeviceStatus(id)` | Копия статуса устройства (`IDeviceStatus`) или `undefined`, если устройство не зарегистрировано. |
+| `deviceStatusList()` | Копии статусов всех зарегистрированных устройств (для UI/мониторинга). |
 
-## События контейнера
+## Статус устройства
+
+Контейнер ведёт систематизированный статус каждого зарегистрированного устройства — тип `IDeviceStatus` (экспортируется из `vrack2-core`). Запись создаётся при регистрации и уничтожается вместе с устройством (`removeDevice()`); сообщения удалённого устройства статус не создают.
+
+| Поле | Значение |
+|---|---|
+| `id`, `type` | Id и тип устройства (`vendor.Class`). |
+| `state` | `'registered'` / `'started'` / `'stopped'` — единственное поле жизненного цикла; сырые флаги (`Device.running`, started-множество) от него выводятся без потерь и в статус не дублируются. |
+| `since` | `Date.now()` последнего изменения статуса (мс). |
+| `lastAlert`, `lastError` | Последнее сообщение alert/error — `{ data, trace, at }`; `null`, если не было. Для `device.terminate` попадает в `lastError` (`data` — имя action); `trace` всегда обычный объект. |
+| `alertCount`, `errorCount` | Количество сообщений с момента регистрации (terminate считается ошибкой). |
+
+Статус меняется, и при каждом изменении **полный снапшот** эмитится на канал `status` — событие `device.status`, конверт `{ device, data: 'status', trace: <IDeviceStatus> }`:
+
+1. `registerDevice()` — начальный статус (`state = 'registered'`);
+2. успешный `startDevice()` / `runProcess()` — `state = 'started'`;
+3. успешная `stopDevice()` — `state = 'stopped'`;
+4. события `device.alert`, `device.error`, `device.terminate` — обновление `lastAlert`/`lastError` и счётчиков (устройство при этом продолжает работать).
+
+Ошибки, **брошенные вызывающему** (actions, обработка портов), в статус не попадают — только то, что вылетело на каналы устройства, плюс переходы жизненного цикла. Снапшот внутри события — копия: его изменение не влияет на запись, возвращаемую `getDeviceStatus()`.
 
 | Событие | Аргумент | Когда |
 |---|---|---|
@@ -204,6 +227,7 @@ if (!(id in devices)) throw CTR_DEVICE_NF
 | `connection` | `{ outputDevice, outputPort, inputDevice, inputPort }` | При `addConnection()`. |
 | `device.remove` | `id` | При `removeDevice()`. |
 | `device.register.metric` | `{ device, data, trace }` | При `registerDevice()`. |
+| `device.status` | `{ device, data: 'status', trace: IDeviceStatus }` | Автоматический канал — при каждом изменении статуса устройства (см. «Статус устройства»). |
 | `device.render` / `device.metric` / `device.save` / `device.error` / `device.terminal` / `device.notify` / `device.event` / `device.alert` / `device.terminate` | `{ device, data, trace, ... }` | Сообщения устройств. |
 | `system.error` | `CoreError` | Boot-класс сообщил об ошибке. |
 | `serviceLoaded` | — | Финализация структуры (ServiceLoader). |
