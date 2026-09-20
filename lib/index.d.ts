@@ -31,6 +31,7 @@ export { default as BasicAction } from './actions/BasicAction';
 export { default as IMetricSettings } from './metrics/IMetricSettings';
 export { default as IPort } from './ports/IPort';
 export { default as IDeviceEvent } from './service/IDeviceEvent';
+export { default as IDeviceStatus, IDeviceStatusMessage } from './service/IDeviceStatus';
 export { default as IValidationProblem } from './validator/IValidationProblem';
 export { default as IValidationRule } from './validator/IValidationRule';
 export { default as IValidationSubrule } from './validator/IValidationSubrule';

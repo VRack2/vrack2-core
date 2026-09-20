@@ -7,6 +7,7 @@ import IAction from "./actions/IAction";
 import Bootstrap from "./Bootstrap";
 import IMetricSettings from "./metrics/IMetricSettings";
 import BasicMetric from "./metrics/BasicMetric";
+import IDeviceStatus from "./service/IDeviceStatus";
 /**
  * Contains the structure of the service
  *
@@ -125,6 +126,15 @@ export default class Container extends EventEmitter {
      * Used to make `startDevice()` idempotent.
     */
     protected started: Set<string>;
+    /**
+     * Systematized device status records: [deviceID]: IDeviceStatus.
+     * Maintained by the Container on lifecycle transitions and on channel
+     * messages (`device.alert` / `device.error` / `device.terminate`); a full
+     * snapshot is emitted on the 'device.status' channel at every change.
+     */
+    protected deviceStatus: {
+        [key: string]: IDeviceStatus;
+    };
     /**
      * Create a pure runtime container.
      *
@@ -296,6 +306,36 @@ export default class Container extends EventEmitter {
      * List ids of all registered devices.
     */
     deviceList(): string[];
+    /**
+     * Get the systematized status of a registered device.
+     *
+     * The record is maintained by the Container on lifecycle transitions
+     * (register / start / stop) and on `device.alert` / `device.error` /
+     * `device.terminate` messages — see the 'device.status' channel.
+     *
+     * @param id Device ID
+     * @returns A copy of the status record, or `undefined` if not registered
+     */
+    getDeviceStatus(id: string): IDeviceStatus | undefined;
+    /**
+     * List copies of the status records of all registered devices.
+     */
+    deviceStatusList(): Array<IDeviceStatus>;
+    /**
+     * A plain copy of a status record — safe for external mutation and for
+     * structured clone / postMessage. `undefined` when the device has no record.
+     */
+    private copyDeviceStatus;
+    /**
+     * Emit a full status snapshot on the 'device.status' channel.
+     * No-op when the device has no record (removed devices stay silent).
+     */
+    private emitDeviceStatus;
+    /**
+     * Record a channel message (`device.alert` / `device.error` /
+     * `device.terminate`) in the device status and emit an updated snapshot.
+     */
+    private noteDeviceMessage;
     /**
      * Container Helper - parse connection string to format object
      *

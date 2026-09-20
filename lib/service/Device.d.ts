@@ -24,8 +24,9 @@ interface IDeviceSettings {
      *  - alert
      *  - error
      *  - render
+     *  - status (automatic — maintained by the Container, see IDeviceStatus)
     */
-    channels: Array<'terminal' | 'notify' | 'event' | 'action' | 'alert' | 'error' | 'render'>;
+    channels: Array<'terminal' | 'notify' | 'event' | 'action' | 'alert' | 'error' | 'render' | 'status'>;
 }
 export default class Device {
     /**
