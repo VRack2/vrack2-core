@@ -85,5 +85,6 @@ describe('vrack2-core smoke', () => {
         expect(typeof core.Device.prototype.inputs).toBe('function')
         expect(typeof core.Device.prototype.outputs).toBe('function')
         expect(typeof core.Device.prototype.metrics).toBe('function')
+        expect(typeof core.Device.prototype.sharesSnapshot).toBe('function')
     })
 })

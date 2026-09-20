@@ -7,6 +7,7 @@
 - Систематизированный статус устройства: контейнер ведёт запись `IDeviceStatus` на каждое зарегистрированное устройство — состояние `state` (`registered`/`started`/`stopped`), время последнего изменения, последнее сообщение alert/error (`{ data, trace, at }`) и счётчики `alertCount`/`errorCount`.
 - Новый канал `status`: при каждом изменении статуса контейнер эмитит событие `device.status` с полным снапшотом в стандартном конверте `{ device, data: 'status', trace: IDeviceStatus }`. Триггеры: регистрация устройства, успешный старт (`runProcess()`/`startDevice()`), остановка (`stopDevice()`), события `device.alert`/`device.error`/`device.terminate`.
 - Новые методы контейнера: `getDeviceStatus(id)` (копия статуса или `undefined`) и `deviceStatusList()` (копии статусов всех устройств). Типы `IDeviceStatus` / `IDeviceStatusMessage` экспортируются из публичного API.
+- Новый метод устройства: `sharesSnapshot()` — глубокая plain-копия `shares` без реактивных прокси. `this.shares` возвращает Proxy из `ReactiveRef`, который `structuredClone` / postMessage отклоняют с `DataCloneError`; метод возвращает сериализуемую копию (plain-объекты/массивы клонируются, циклы сохраняются, `Date`/`Map`/экземпляры классов проходят как есть — семантика `ReactiveRef.snapshot()`).
 - `'status'` добавлен в каналы по умолчанию `Device.settings().channels`.
 
 ### Minor

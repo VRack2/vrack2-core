@@ -234,3 +234,65 @@ describe('legacy `shares` class field (BC)', () => {
         expect(events[0].trace).toEqual({ data: 2, extra: false })
     })
 })
+
+describe('Device.sharesSnapshot()', () => {
+    it('returns a deep plain copy: structuredClone succeeds where the proxy fails', () => {
+        const { c } = makeContainer()
+        const dev = new PreProcDevice('SNAP1', c)
+        c.registerDevice(dev)
+        dev.shares.on = true
+        dev.shares.count = 42
+
+        // the shares getter is a ReactiveRef proxy — structured clone rejects it
+        expect(() => structuredClone(dev.shares as object)).toThrow()
+
+        const snap = dev.sharesSnapshot()
+        expect(Object.getPrototypeOf(snap)).toBe(Object.prototype)
+        // structured clone (postMessage, worker replies) works
+        expect(structuredClone(snap)).toEqual(snap)
+    })
+
+    it('is decoupled from the reactive value (mutations go both ways)', () => {
+        const { c } = makeContainer()
+        const dev = new PreProcDevice('SNAP2', c)
+        c.registerDevice(dev)
+
+        const snap = dev.sharesSnapshot()
+        expect(snap).toEqual({ on: false, count: 0 })
+        // mutating the snapshot does not affect the device
+        ;(snap as any).on = true
+        expect(dev.shares.on).toBe(false)
+        // and later device mutations are not reflected in the old snapshot
+        dev.shares.count = 1
+        expect(snap.count).toBe(0)
+    })
+
+    it('unwraps nested proxies, preserves non-plain values, keeps cycles', () => {
+        const { c, events } = makeContainer()
+        const dev = new AnyDevice('SNAP3', c)
+        c.registerDevice(dev)
+        const node = { label: 'n1' }
+        dev.shares = { nested: { a: 1 }, d: new Date(0), cyc: null }
+        ;(dev.shares as any).cyc = dev.shares
+        ;(dev.shares as any).list = [node]
+
+        const snap = dev.sharesSnapshot()
+        // structured clone succeeds (the proxy itself would throw DataCloneError)
+        const cloned = structuredClone(snap)
+        expect(cloned.nested).toEqual({ a: 1 })
+        expect(cloned.d.getTime()).toBe(0)
+        expect(cloned.list[0]).toEqual({ label: 'n1' })
+        expect(cloned.cyc).toBe(cloned) // cycle preserved inside the clone
+        expect(snap.nested).toEqual({ a: 1 })
+        expect(snap.nested).not.toBe((dev.shares as any).nested) // deep copy
+        expect(snap.d).toBeInstanceOf(Date)
+        expect(snap.d.getTime()).toBe(0)
+        expect(snap.list[0]).toEqual({ label: 'n1' })
+        expect(snap.list[0]).not.toBe(node)
+        expect(snap.cyc).toBe(snap) // cycle preserved in the snapshot
+        // the snapshot is a plain object: writing into it does not re-render the device
+        const n = events.length
+        snap.nested.a = 99
+        expect(events).toHaveLength(n)
+    })
+})

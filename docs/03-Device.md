@@ -118,6 +118,7 @@ settings(): IDeviceSettings {
 | `alert(data, trace, ...args)` | `device.alert` | Предупреждение |
 | `error(data, trace, ...args)` | `device.error` | Ошибка устройства (`Error` в `trace` автоматически преобразуется в объект) |
 | `render()` | `device.render` | Ручной рендер `shares` (авто — после `attachSharesRender`) |
+| `sharesSnapshot()` | — | Глубокая plain-копия `shares` без реактивных прокси — для выхода за границу сериализации (ответы команд, postMessage, `structuredClone()`), где сам `this.shares` (Proxy) отклоняется |
 | `save()` | `device.save` | Сохранить `storage` в файл |
 | `metric(path, value, modify)` | `device.metric` | Записать метрику; `modify`: `last` (по умолчанию), `first`, `max`, `min`, `avg`, `sum` |
 | `terminate(error, action)` | `device.terminate` | Сообщить о критической ошибке: устройство не может продолжать работу |

@@ -300,6 +300,24 @@ export default class Device {
     */
     render(): boolean;
     /**
+     * A *plain* deep copy of the current `shares` data — no reactive proxies.
+     *
+     * `this.shares` returns the deep-reactive proxy, which structured clone
+     * (postMessage between workers, `structuredClone()`, ...) rejects with
+     * `DataCloneError: #<Object> could not be cloned`. When the shares value
+     * has to cross a serialization boundary — a command response, a message to
+     * another process, a JSON payload — return `sharesSnapshot()` instead of
+     * `shares`.
+     *
+     * Plain objects/arrays are cloned, cycles are preserved; instances of
+     * custom classes, `Date`, `Map`, etc. pass through as-is (see
+     * `ReactiveRef.snapshot()`).
+     *
+     * @see shares
+     * @return {Record<string, any>} A plain object copy of the current shares
+     */
+    sharesSnapshot(): Record<string, any>;
+    /**
      * Attach the auto-render watcher: from this moment on any change of `shares`
      * (property write, new property, `delete`, or a full reassignment)
      * automatically triggers `render()`.
