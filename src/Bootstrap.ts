@@ -44,6 +44,11 @@ ErrorManager.registerMany('Bootstrap', [
         description: 'The class must be inherited from BootClass',
         rules: { path: Rule.string().description('Class path') }
     },
+    {
+        short: 'BTSP_TERMINATE_FAILED',
+        description: 'Failed to stop a boot class',
+        rules: { id: Rule.string().description('Class identify'), message: Rule.string().description('Underlying error message') }
+    },
 ])
 
 /**
@@ -64,6 +69,12 @@ ErrorManager.registerMany('Bootstrap', [
  * 
 */
 export default class Bootstrap {
+
+    /**
+     * Container for which boot classes are loaded (set by `loadBootList()`).
+     * Used to report `terminateAll()` failures as `system.error` events.
+     */
+    protected Container: Container | undefined
 
     /**
      * Loaded class list
@@ -88,6 +99,13 @@ export default class Bootstrap {
      */
     protected booted = false
 
+    /**
+     * True once `terminateAll()` has been executed (idempotency guard).
+     * Re-running it would re-invoke `terminate()` on boot classes that have
+     * already released their resources.
+     */
+    protected terminated = false
+
     constructor(config: IBootListConfig){
         this.config = config
     }
@@ -106,6 +124,7 @@ export default class Bootstrap {
     async loadBootList(Container: Container) {
         if (this.booted) return
         this.booted = true
+        this.Container = Container
         for (const cn in this.config) {
             const conf = this.config[cn]
             const ExClass = await ImportManager.importClass(conf.path)
@@ -133,5 +152,35 @@ export default class Bootstrap {
         if (!this.loaded[id]) throw ErrorManager.make('BTSP_CLASS_ID_NOT_FOUND', { id })
         if (!(this.loaded[id] instanceof cs)) throw ErrorManager.make('BTSP_INSTANCE_OF_INCORRECT', { id })
         return this.loaded[id] as typeof cs
+    }
+
+    /**
+     * Gracefully stop **all** loaded boot classes, releasing their resources.
+     *
+     * Boot classes own process-level resources (database pools, file handles)
+     * that live for the whole service lifetime, so they cannot be terminated
+     * one by one — `terminateAll()` stops the entire set at once. There is
+     * deliberately no public "terminate one boot class" entry point: closing
+     * a single shared resource while the service is still running would leave
+     * the rest of the service without it.
+     *
+     * Calls `terminate()` on every loaded boot class. All calls are awaited;
+     * a single failure is reported as `system.error` and does not prevent the
+     * remaining boot classes from terminating — the process is exiting anyway.
+     *
+     * One-way: once called, the flag is latched and further calls are no-ops
+     * (mirrors the `booted` idempotency guard of `loadBootList()`).
+     */
+    async terminateAll() {
+        if (this.terminated) return
+        this.terminated = true
+        for (const bc in this.loaded) {
+            try {
+                await this.loaded[bc].terminate()
+            } catch (e: any) {
+                this.Container?.emit('system.error',
+                    ErrorManager.make('BTSP_TERMINATE_FAILED', { id: bc, message: e?.message }))
+            }
+        }
     }
 }

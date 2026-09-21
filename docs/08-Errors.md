@@ -110,6 +110,7 @@
 | `BTSP_CLASS_ID_NOT_FOUND` | Id boot-класса не найден. |
 | `BTSP_INSTANCE_OF_INCORRECT` | Boot-класс не является экземпляром `BootClass`. |
 | `BTSP_MUST_BE_BOOTCLASS` | Класс должен наследовать `BootClass`. |
+| `BTSP_TERMINATE_FAILED` | Не удалось остановить boot-класс (`Bootstrap.terminateAll()`). |
 
 ### DeviceManager (`DM_*`)
 

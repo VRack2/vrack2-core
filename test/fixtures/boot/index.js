@@ -18,6 +18,29 @@ class GoodBoot extends BootClass {
 }
 
 /**
+ * A boot class that records every `terminate()` call.
+ * Used to verify `Bootstrap.terminateAll()`.
+ */
+class TermBoot extends BootClass {
+    static terminated = []
+    async terminate() {
+        TermBoot.terminated.push(this.id)
+    }
+}
+
+/**
+ * A boot class whose `terminate()` throws.
+ * Used to verify that one failing boot class does not prevent the
+ * remaining ones from terminating and that the failure is reported
+ * as a `system.error` (BTSP_TERMINATE_FAILED).
+ */
+class FailTermBoot extends BootClass {
+    async terminate() {
+        throw new Error('cannot release db pool')
+    }
+}
+
+/**
  * A plain class that is NOT a BootClass.
  * Used to verify BTSP_INSTANCE_OF_INCORRECT.
  */
@@ -52,4 +75,4 @@ class DefaultBoot extends BootClass {
     }
 }
 
-export { GoodBoot, NotABoot, OptionsBoot, DefaultBoot }
+export { GoodBoot, NotABoot, OptionsBoot, DefaultBoot, TermBoot, FailTermBoot }

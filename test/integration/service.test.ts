@@ -27,6 +27,7 @@ let tmp = ''
 beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vrack2-int-'))
     ;(testkit.GoodBoot as any).calls = []
+    ;(testkit.TermBoot as any).terminated = []
 })
 afterEach(() => {
     if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true })
@@ -660,6 +661,53 @@ describe('MainProcess.terminate()', () => {
         expect(mp.Container.isStarted('Good')).toBe(false)
         // the failing device also stays registered (it was not removed)
         expect(mp.Container.hasDevice('Bad')).toBe(true)
+    })
+})
+
+describe('Bootstrap.terminateAll()', () => {
+
+    it('calls terminate() on every loaded boot class exactly once', async () => {
+        const mp = makeMP(EMPTY_SERVICE, {
+            TermA: { path: 'testkit.TermBoot', options: {} },
+            TermB: { path: 'testkit.TermBoot', options: {} },
+        })
+        await mp.run()
+
+        await mp.Bootstrap.terminateAll()
+
+        // every loaded boot class (standard + custom) was terminated
+        expect((testkit.TermBoot as any).terminated).toEqual(['TermA', 'TermB'])
+    })
+
+    it('is idempotent: the second call does not re-run terminate()', async () => {
+        const mp = makeMP(EMPTY_SERVICE, {
+            TermA: { path: 'testkit.TermBoot', options: {} },
+        })
+        await mp.run()
+
+        await mp.Bootstrap.terminateAll()
+        await mp.Bootstrap.terminateAll() // must be a no-op
+
+        expect((testkit.TermBoot as any).terminated).toEqual(['TermA'])
+    })
+
+    it('one failing boot class does not block the others and is reported as system.error', async () => {
+        const mp = makeMP(EMPTY_SERVICE, {
+            BadTerm: { path: 'testkit.FailTermBoot', options: {} },
+            GoodTerm: { path: 'testkit.TermBoot', options: {} },
+        })
+        await mp.run()
+
+        const errors: any[] = []
+        mp.Container.on('system.error', (e: any) => errors.push(e))
+
+        // must not throw
+        await mp.Bootstrap.terminateAll()
+
+        // the healthy boot class was terminated despite the failure
+        expect((testkit.TermBoot as any).terminated).toEqual(['GoodTerm'])
+        // the failure surfaced as a coded system.error
+        expect(errors.some((e) => ErrorManager.isCode(e, 'BTSP_TERMINATE_FAILED'))).toBe(true)
     })
 })
 

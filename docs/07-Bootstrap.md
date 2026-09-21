@@ -25,6 +25,7 @@ class MyBoot extends BootClass {
     checkOptions(): { [key: string]: BasicType } { ... }  // правила опций
     process() { }               // входная точка старта (синхронная)
     async processPromise() { }  // асинхронный старт (лоадер ждёт всех)
+    async terminate() { }       // graceful-остановка (вызывается Bootstrap.terminateAll())
     error(error: Error) { }     // Container.emit('system.error', error)
 }
 ```
@@ -41,6 +42,7 @@ interface IBootListConfig {
 new Bootstrap(config)
 await bootstrap.loadBootList(Container)
 bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+await bootstrap.terminateAll()   // graceful-остановка ВСЕХ boot-классов
 ```
 
 `loadBootList(Container)`:
@@ -55,7 +57,21 @@ bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
 для каждого загруженного: await processPromise()
 ```
 
-Ошибки: `BTSP_CLASS_ID_NOT_FOUND`, `BTSP_INSTANCE_OF_INCORRECT`, `BTSP_MUST_BE_BOOTCLASS`.
+Ошибки: `BTSP_CLASS_ID_NOT_FOUND`, `BTSP_INSTANCE_OF_INCORRECT`, `BTSP_MUST_BE_BOOTCLASS`, `BTSP_TERMINATE_FAILED`.
+
+### `terminateAll()` — остановка boot-классов
+
+Boot-классы владеют ресурсами уровня процесса (пул БД, файловые дескрипторы), которые живут всё время жизни сервиса, поэтому останавливаются **только все сразу** — нет публичного «остановить один boot-класс»: закрыть один общий ресурс, пока сервис ещё работает, оставило бы остальные без него.
+
+```
+для каждого загруженного: await terminate()   // ошибки не прерывают цикл
+```
+
+Поведение:
+
+- Вызывается один раз на процесс; повторный вызов — no-op (лatch, симметрия `booted`-флага `loadBootList()`).
+- Сбой `terminate()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
+- `terminate()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `DeviceMetrics.getDeviceMetrics()`), а `terminate()` используется только самим `Bootstrap`.
 
 ## Четыре стандартных boot-класса
 
