@@ -140,6 +140,38 @@ const bootstrapConfig = {
 }
 ```
 
+## Слоевая конфигурация
+
+Состав boot-классов можно перекрывать на четырёх слоях (приоритет снизу вверх; конструктор `MainProcess` мержит их в единый список через `mergeBootList()`):
+
+| # | Слой | Где |
+|---|---|---|
+| 1 | Ядерные дефолты | `MainProcess.DEFAULT_BOOTLIST` |
+| 2 | Файл сервиса | `bootstrap` в `service.json` (`IServiceStructure.bootstrap`) |
+| 3 | Конф-файл | секция `bootstrap` конф-файла (`confFile`) |
+| 4 | Аргумент конструктора | `MainProcess({ bootstrap })` |
+
+Семантика записи (значение по id) в каждом из слоёв 2–4:
+
+- запись **с `path`** — добавляет класс либо **полностью заменяет** запись нижнего слоя (включая `options`);
+- запись **без `path`** — **поштучно** перекрывает `options` уже объявленного id (выигрывает верхний слой, остальные опции сохраняются). Id обязан быть объявлен в нижнем слое — иначе ошибка `BS_BAD_BOOTLIST`;
+- **`null`** — удаляет id из итогового списка (даже если нижний слой его объявлял).
+
+Входные слои `mergeBootList()` не мутируются; порядок первого появления id сохраняется. Типы: `IBootListConfig` (мапа id → запись/`null`), `IBootstrapEntry` (`path?` + `options`).
+
+Пример — переопределение DeviceMetrics и отключение DeviceFileStorage из файла сервиса:
+
+```json
+{
+  "devices": [],
+  "connections": [],
+  "bootstrap": {
+    "DeviceMetrics": { "options": { "flushInterval": 30000 } },
+    "DeviceFileStorage": null
+  }
+}
+```
+
 ## Связанные документы
 
 - Контейнер — [06-Container](06-Container.md)

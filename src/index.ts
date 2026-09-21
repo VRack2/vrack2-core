@@ -24,6 +24,7 @@ export {default as ReactiveRef } from './ReactiveRef'
 /* ---------------- BOOTSTRAP ------------------- */
 
 export { default as Bootstrap } from './Bootstrap'
+export { IBootstrapEntry, IBootListConfig, mergeBootList } from './Bootstrap'
 export { default as BootClass } from './boot/BootClass'
 export { default as DeviceFileStorage } from './boot/DeviceFileStorage'
 export { default as DeviceManager } from './boot/DeviceManager';
@@ -59,6 +60,7 @@ export type { SubruleName } from './validator/IValidationSubrule'
 export { default as IServiceStructure} from './IServiceStructure'
 export { default as IStructureDevice} from './IStructureDevice'
 export { default as ICheckResult} from './ICheckResult'
+export { IMainProcessOptions } from './MainProcess'
 
 export { StorageTypes } from 'vrack-db';
 

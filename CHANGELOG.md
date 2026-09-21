@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026.09.21
+
+### Minor
+
+- Слоевая конфигурация boot-классов: `service.json` (поле `bootstrap`) и конф-файл (секция `bootstrap`) могут объявлять/перекрывать boot-классы поверх ядерных дефолтов. Приоритет снизу вверх: `MainProcess.DEFAULT_BOOTLIST` → `service.bootstrap` → `bootstrap` конф-файла → аргумент конструктора. Семантика записи на id: запись с `path` — добавляет/полностью заменяет; запись без `path` — поштучно перекрывает `options` уже объявленного id (иначе `BS_BAD_BOOTLIST`); `null` — удаляет id.
+- Новый публичный API: `mergeBootList(layers)` (чистая функция слоёвого merge; nullish-слои пропускаются, входы не мутируются), типы `IBootListConfig` / `IBootstrapEntry`, `IMainProcessOptions` — экспортированы из `vrack2-core`.
+- Новый код ошибки `BS_BAD_BOOTLIST` (модуль Bootstrap): некорректная запись boot-листа (нет `options`) или запись без `path`, не совпадающая ни с одним id нижних слоёв.
+- `IServiceStructure` получил опциональное поле `bootstrap?: IBootListConfig`; конструктор `MainProcess` мержит четыре слоя при создании, секция конф-файла читается на конструировании (до создания boot-инстансов).
+
+### Tests
+
+- `test/unit/mergeBootList.test.ts` — 12 юнит-тестов merge-семантики (replace, options-only, null, порядок, приоритет слоёв, отсутствие мутаций, ошибки).
+- `test/integration/service.test.ts` — новый describe «Layered boot-list config» (7 тестов: кастомный path в service-файле, options-only перекрывание, null-удаление, orphan-ошибка, приоритет конструктора, конф-файл поверх service-файла).
+
 ## 2026.09.19
 
 ### Major

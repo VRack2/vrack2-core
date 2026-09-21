@@ -1,4 +1,5 @@
-import Bootstrap, { IBootListConfig } from "./Bootstrap";
+import Bootstrap from "./Bootstrap";
+import type { IBootListConfig } from "./Bootstrap";
 import Container from "./Container";
 import ServiceLoader from "./ServiceLoader";
 import IServiceStructure from "./IServiceStructure";
@@ -27,11 +28,25 @@ export interface IMainProcessOptions {
     bootstrap?: IBootListConfig;
 }
 export default class MainProcess {
+    /**
+     * Core default boot class set (lowest priority layer in the merge).
+     */
+    static readonly DEFAULT_BOOTLIST: IBootListConfig;
     Container: Container;
     Loader: ServiceLoader;
     options: IMainProcessInternalOptions;
     Bootstrap: Bootstrap;
     constructor(config: IMainProcessOptions);
+    /**
+     * Read the `bootstrap` section of the conf file (if any).
+     *
+     * Returns `null` when there is no conf file or the `bootstrap` key is
+     * absent — `mergeBootList` skips nullish layers.
+     *
+     * This section is the **3rd layer** in the merge:
+     * `core defaults → service file → conf file → constructor argument`.
+     */
+    private readConfBootstrap;
     run(): Promise<void>;
     /**
      * Graceful service termination: stops all running devices

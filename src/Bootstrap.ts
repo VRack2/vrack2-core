@@ -3,11 +3,27 @@
  * Licensed under the Apache License, Version 2.0
 */
 
-import { ErrorManager, Rule } from '.';
+import { Rule } from '.';
 import BootClass from './boot/BootClass';
 import Container from './Container';
 import ImportManager from './ImportManager';
+import ErrorManager from './errors/ErrorManager';
 
+
+/**
+ * One boot-class entry in a boot list config.
+ *
+ * `path` may be omitted: in layered merge (see `mergeBootList`) an entry
+ * without `path` is an **options override** — the id must already be present
+ * in a lower layer, whose `path` is kept. An entry without `path` that does
+ * not match any lower-layer id is a configuration error.
+ */
+export interface IBootstrapEntry {
+    /** VRack-style bootclass path. Optional — options-only override */
+    path?: string,
+    /** Options for this bootclass */
+    options: { [key: string]: any },
+}
 
 /**
  * Defines a list of bootstrap classes to load
@@ -18,14 +34,68 @@ import ImportManager from './ImportManager';
  *      options: {} 
  *    }
  * }
-*/
+ *
+ * In layered merge a value of `null` removes the id from the merged list.
+ */
 export interface IBootListConfig {
-    [key: string]: {
-        /** VRack-style bootclass path */
-        path: string,
-        /** Options for this bootclass */
-        options: { [key: string]: any },
+    [key: string]: IBootstrapEntry | null
+}
+
+/**
+ * Merge boot list config layers, low priority → high priority.
+ *
+ * Per id the higher layer wins:
+ * - entry with `path` — adds or fully replaces the entry;
+ * - entry without `path` — shallow-merges `options` over the lower-layer entry
+ *   (higher-layer option values win); the id must exist in a lower layer,
+ *   otherwise a `BS_BAD_BOOTLIST` error is thrown;
+ * - `null` — removes the id from the result (even if a lower layer had it);
+ * - first insertion order of the id is preserved.
+ *
+ * The returned object is a fresh deep-ish copy; input layers are not mutated.
+ * Nullish (`null`/`undefined`) layers are skipped.
+ * Used by `MainProcess` to combine core defaults, service file, conf file and
+ * constructor bootstrap into one list.
+ */
+ErrorManager.registerMany('Bootstrap', [
+    {
+        short: 'BS_BAD_BOOTLIST',
+        description: 'Bad bootstrap list configuration (malformed entry, or an entry without path does not match any lower layer)',
+        rules: {
+            id: Rule.string().description('Class identify'),
+            entry: Rule.object().description('The bad entry'),
+        }
     }
+])
+
+export function mergeBootList(layers: Array<IBootListConfig | null | undefined>): IBootListConfig {
+    const result: IBootListConfig = {}
+    for (const layer of layers) {
+        if (layer == null) continue
+        for (const [id, entry] of Object.entries(layer)) {
+            if (entry === null) {
+                delete result[id]
+                continue
+            }
+            if (typeof entry !== 'object') {
+                throw ErrorManager.make('BS_BAD_BOOTLIST', { id, entry })
+            }
+            if (entry.options == null || typeof entry.options !== 'object') {
+                throw ErrorManager.make('BS_BAD_BOOTLIST', { id, entry })
+            }
+            const existing = result[id]
+            if (entry.path != null) {
+                // Full add or replace
+                result[id] = { path: entry.path, options: { ...entry.options } }
+            } else if (existing != null) {
+                // Options-only override over a lower-layer entry
+                result[id] = { ...existing, options: { ...existing.options, ...entry.options } }
+            } else {
+                throw ErrorManager.make('BS_BAD_BOOTLIST', { id, entry: { options: entry.options, reason: 'entry without path does not match any lower layer' } })
+            }
+        }
+    }
+    return result
 }
 
 ErrorManager.registerMany('Bootstrap', [
@@ -127,6 +197,9 @@ export default class Bootstrap {
         this.Container = Container
         for (const cn in this.config) {
             const conf = this.config[cn]
+            if (conf == null || typeof conf.path !== 'string') {
+                throw ErrorManager.make('BS_BAD_BOOTLIST', { id: cn, entry: conf })
+            }
             const ExClass = await ImportManager.importClass(conf.path)
             this.loaded[cn] = new ExClass(cn, ImportManager.importClassName(conf.path), Container, conf.options) 
             if (!(this.loaded[cn] instanceof  BootClass)) {

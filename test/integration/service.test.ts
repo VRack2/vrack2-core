@@ -36,10 +36,11 @@ afterEach(() => {
 const EMPTY_SERVICE: IServiceStructure = { devices: [], connections: [] }
 
 /** Build a MainProcess with the standard boot class set */
-function makeMP(service: IServiceStructure, extraBoot: IMainProcessOptions['bootstrap'] = {}): MainProcess {
+function makeMP(service: IServiceStructure, extraBoot: IMainProcessOptions['bootstrap'] = {}, confFile?: string): MainProcess {
     return new MainProcess({
         id: 'itest',
         service,
+        confFile,
         bootstrap: {
             DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: FIXTURES, dir: 'devices' } },
             DeviceStorage: { path: 'vrack2-core.DeviceFileStorage', options: { storageDir: path.join(tmp, 'storage') } },
@@ -169,6 +170,132 @@ describe('Bootstrap & boot classes', () => {
 
         expect(mp.Container.listenerCount('device.metric')).toBe(metricListeners)
         expect(mp.Container.listenerCount('device.register.metric')).toBe(registerListeners)
+    })
+})
+
+/* ================================================================== */
+/*  LAYERED BOOT-LIST CONFIG (service file → conf file → constructor) */
+/* ================================================================== */
+
+describe('Layered boot-list config', () => {
+
+    /**
+     * Build a MainProcess whose **constructor** bootstrap layer contains only
+     * DeviceManager (so the remaining core defaults — DeviceStorage /
+     * StructureStorage / DeviceMetrics — are visible to the service-file and
+     * conf-file layers under test).
+     */
+    function makeMPBare(
+        service: IServiceStructure,
+        constructorBoot: IMainProcessOptions['bootstrap'] = {
+            DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: FIXTURES, dir: 'devices' } },
+        },
+        confFile?: string,
+    ): MainProcess {
+        return new MainProcess({ id: 'itest', service, confFile, bootstrap: constructorBoot })
+    }
+
+    it('service file bootstrap: custom path replaces a core default', async () => {
+        const service: IServiceStructure = {
+            devices: [], connections: [],
+            bootstrap: {
+                DeviceStorage: { path: 'testkit.GoodBoot', options: {} },
+            },
+        }
+        const mp = makeMPBare(service)
+        await mp.run()
+        expect(mp.Bootstrap.getBootClass('DeviceStorage', (testkit as any).GoodBoot)).toBeDefined()
+    })
+
+    it('service file bootstrap: options-only override (no path) shallow-merges over the core default', async () => {
+        const service: IServiceStructure = {
+            devices: [], connections: [],
+            bootstrap: {
+                DeviceMetrics: { options: { marker: 'svc' } },
+            },
+        }
+        const mp = makeMPBare(service)
+        await mp.run()
+        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+        expect(bc.options.marker).toBe('svc')
+        // path stays the core default
+        expect(mp.options.bootstrap.DeviceMetrics!.path).toBe('vrack2-core.DeviceMetrics')
+    })
+
+    it('service file bootstrap: null removes a core default', async () => {
+        const service: IServiceStructure = {
+            devices: [], connections: [],
+            bootstrap: {
+                DeviceMetrics: null,
+            },
+        }
+        const mp = makeMPBare(service)
+        await mp.run()
+        expect(mp.options.bootstrap.DeviceMetrics).toBeUndefined()
+        expect(() => mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)).toThrow()
+    })
+
+    it('service file bootstrap: options-only override for an unknown id throws BS_BAD_BOOTLIST', () => {
+        const service: IServiceStructure = {
+            devices: [], connections: [],
+            bootstrap: {
+                Orphan: { options: { x: 1 } },
+            },
+        }
+        expect(() => makeMPBare(service)).toThrow()
+    })
+
+    it('constructor argument wins over the service file', async () => {
+        const service: IServiceStructure = {
+            devices: [], connections: [],
+            bootstrap: {
+                DeviceStorage: { path: 'testkit.GoodBoot', options: {} },
+            },
+        }
+        const mp = makeMPBare(service, {
+            DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: FIXTURES, dir: 'devices' } },
+            DeviceStorage: { path: 'testkit.DefaultBoot', options: { port: 9999 } },
+        })
+        await mp.run()
+        expect(mp.options.bootstrap.DeviceStorage!.path).toBe('testkit.DefaultBoot')
+        expect(mp.Bootstrap.getBootClass('DeviceStorage', (testkit as any).DefaultBoot).options.port).toBe(9999)
+    })
+
+    it('conf file bootstrap overrides the service file', async () => {
+        const confPath = path.join(tmp, 'conf.json')
+        fs.writeFileSync(confPath, JSON.stringify({
+            bootstrap: {
+                DeviceMetrics: { options: { marker: 'conf' } },
+            },
+        }))
+        const service: IServiceStructure = {
+            devices: [], connections: [],
+            bootstrap: {
+                DeviceMetrics: { options: { marker: 'svc' } },
+            },
+        }
+        const mp = makeMPBare(service, undefined, confPath)
+        await mp.run()
+        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+        expect(bc.options.marker).toBe('conf')
+    })
+
+    it('conf file bootstrap with a custom path overrides the service file path', async () => {
+        const confPath = path.join(tmp, 'conf.json')
+        fs.writeFileSync(confPath, JSON.stringify({
+            bootstrap: {
+                DeviceStorage: { path: 'testkit.GoodBoot', options: { hello: 'conf' } },
+            },
+        }))
+        const service: IServiceStructure = {
+            devices: [], connections: [],
+            bootstrap: {
+                DeviceStorage: { path: 'testkit.DefaultBoot', options: {} },
+            },
+        }
+        const mp = makeMPBare(service, undefined, confPath)
+        await mp.run()
+        expect(mp.Bootstrap.getBootClass('DeviceStorage', (testkit as any).GoodBoot).options.hello).toBe('conf')
     })
 })
 /* ================================================================== */

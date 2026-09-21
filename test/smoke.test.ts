@@ -29,6 +29,7 @@ describe('vrack2-core smoke', () => {
         expect(core.BootClass).toBeTypeOf('function')
         expect(core.DeviceManager).toBeTypeOf('function')
         expect(core.StorageTypes).toBeDefined()
+        expect(core.mergeBootList).toBeTypeOf('function')
     })
 
     it('ErrorManager registers and makes errors with codes', () => {

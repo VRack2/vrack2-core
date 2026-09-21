@@ -73,8 +73,9 @@ my-service/
 | `devices[].options` | object | Опции устройства; проверяются его `checkOptions()`. |
 | `devices[].connections` | string[] | Соединения, относящиеся только к этому устройству (необязательно). |
 | `connections` | string[] | Соединения уровня сервиса: `"устройство.выход -> устройство.вход"`. |
+| `bootstrap` | object (необязательно) | Перекрывание списка boot-классов: мапа `id` → запись (`path` + `options`), запись без `path` или `null`. Семантика слоёв — [07-Bootstrap](07-Bootstrap.md), «Слоевая конфигурация». |
 
-Опции можно переопределить **conf-файлом** (`confFile` в `MainProcess`): JSON той же формы, где по `id` переопределяются `options` (и `connections`). Не удалось прочитать файл — ошибка `CTR_CONF_EXTENDS_PROBLEM`.
+Опции можно переопределить **conf-файлом** (`confFile` в `MainProcess`): JSON той же формы, где по `id` переопределяются `options` (и `connections`). Не удалось прочитать файл — ошибка `CTR_CONF_EXTENDS_PROBLEM`. В том же файле секция `bootstrap` перекрывает состав boot-классов (слои — [07-Bootstrap](07-Bootstrap.md)).
 
 ## `storage/` — сохранённые состояния устройств
 

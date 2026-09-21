@@ -103,10 +103,11 @@
 | `CTR_ERROR_PREPARE_OPTIONS` | Ошибка подготовки опций устройства. |
 | `CTR_INCORRECT_DEVICE_ID` | Неверный id устройства. |
 
-### Bootstrap (`BTSP_*`)
+### Bootstrap (`BTSP_*`, `BS_*`)
 
 | Код | Описание |
 |---|---|
+| `BS_BAD_BOOTLIST` | Неверный состав списка boot-классов: некорректная запись (нет `options`) или запись без `path`, которая не совпадает ни с одним id нижних слоёв при слоевом merge (`mergeBootList`). |
 | `BTSP_CLASS_ID_NOT_FOUND` | Id boot-класса не найден. |
 | `BTSP_INSTANCE_OF_INCORRECT` | Boot-класс не является экземпляром `BootClass`. |
 | `BTSP_MUST_BE_BOOTCLASS` | Класс должен наследовать `BootClass`. |

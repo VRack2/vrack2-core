@@ -1,6 +1,22 @@
 import BootClass from './boot/BootClass';
 import Container from './Container';
 /**
+ * One boot-class entry in a boot list config.
+ *
+ * `path` may be omitted: in layered merge (see `mergeBootList`) an entry
+ * without `path` is an **options override** — the id must already be present
+ * in a lower layer, whose `path` is kept. An entry without `path` that does
+ * not match any lower-layer id is a configuration error.
+ */
+export interface IBootstrapEntry {
+    /** VRack-style bootclass path. Optional — options-only override */
+    path?: string;
+    /** Options for this bootclass */
+    options: {
+        [key: string]: any;
+    };
+}
+/**
  * Defines a list of bootstrap classes to load
  *
  * {
@@ -9,17 +25,13 @@ import Container from './Container';
  *      options: {}
  *    }
  * }
-*/
+ *
+ * In layered merge a value of `null` removes the id from the merged list.
+ */
 export interface IBootListConfig {
-    [key: string]: {
-        /** VRack-style bootclass path */
-        path: string;
-        /** Options for this bootclass */
-        options: {
-            [key: string]: any;
-        };
-    };
+    [key: string]: IBootstrapEntry | null;
 }
+export declare function mergeBootList(layers: Array<IBootListConfig | null | undefined>): IBootListConfig;
 /**
  * Bootstrap is a class for running bootclasses,
  * which should work above Container and is required
@@ -38,6 +50,11 @@ export interface IBootListConfig {
  *
 */
 export default class Bootstrap {
+    /**
+     * Container for which boot classes are loaded (set by `loadBootList()`).
+     * Used to report `terminateAll()` failures as `system.error` events.
+     */
+    protected Container: Container | undefined;
     /**
      * Loaded class list
      *
@@ -60,6 +77,12 @@ export default class Bootstrap {
      * their container event handlers (duplicate listeners).
      */
     protected booted: boolean;
+    /**
+     * True once `terminateAll()` has been executed (idempotency guard).
+     * Re-running it would re-invoke `terminate()` on boot classes that have
+     * already released their resources.
+     */
+    protected terminated: boolean;
     constructor(config: IBootListConfig);
     /**
      * Load bootclasses
@@ -85,4 +108,22 @@ export default class Bootstrap {
      * @param cs Class to be compared with when receiving
     */
     getBootClass(id: string, cs: any): typeof cs;
+    /**
+     * Gracefully stop **all** loaded boot classes, releasing their resources.
+     *
+     * Boot classes own process-level resources (database pools, file handles)
+     * that live for the whole service lifetime, so they cannot be terminated
+     * one by one — `terminateAll()` stops the entire set at once. There is
+     * deliberately no public "terminate one boot class" entry point: closing
+     * a single shared resource while the service is still running would leave
+     * the rest of the service without it.
+     *
+     * Calls `terminate()` on every loaded boot class. All calls are awaited;
+     * a single failure is reported as `system.error` and does not prevent the
+     * remaining boot classes from terminating — the process is exiting anyway.
+     *
+     * One-way: once called, the flag is latched and further calls are no-ops
+     * (mirrors the `booted` idempotency guard of `loadBootList()`).
+     */
+    terminateAll(): Promise<void>;
 }

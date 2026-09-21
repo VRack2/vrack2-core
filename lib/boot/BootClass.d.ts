@@ -86,6 +86,17 @@ export default class BootClass {
     */
     processPromise(): Promise<void>;
     /**
+     * Gracefully stop the boot class and release its resources.
+     *
+     * Called from `Bootstrap.terminateAll()` when the service is being stopped.
+     * Boot classes own process-level resources (database pools, file handles)
+     * that are acquired in `processPromise()` — `terminate()` closes them.
+     *
+     * The base implementation does nothing. Implementations must be idempotent:
+     * `Bootstrap.terminateAll()` may be called multiple times.
+     */
+    terminate(): Promise<void>;
+    /**
      * Method for calling container system errors
      */
     error(error: Error): void;
