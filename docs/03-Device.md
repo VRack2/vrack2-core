@@ -129,6 +129,38 @@ settings(): IDeviceSettings {
 
 Канал **`status`** — автоматический: устройство его не вызывает и в коде не обрабатывает. Контейнер сам ведёт систематизированный статус каждого устройства (состояние жизненного цикла, время последнего изменения, последний alert/error) и эмитит полный снапшот на событие `device.status` при каждом изменении — поля и триггеры описаны в [06-Container](06-Container.md), раздел «Статус устройства».
 
+## База данных (`getDB()`)
+
+Общая база данных сервиса — boot-класс, объявленный в секции `bootstrap` (см. [07-Bootstrap](07-Bootstrap.md)). Устройство обращается к ней через:
+
+```ts
+getDB(id = 'DB'): BootDatabase
+```
+
+- `id` — id boot-класса из bootstrap-списка; по умолчанию `'DB'`. Не объявлен → `BTSP_CLASS_ID_NOT_FOUND`.
+- Возвращает **интерфейс** `BootDatabase`, а не конкретный адаптер: если нужны методы адаптера, возьмите его класс через `Container.Bootstrap.getBootClass()`.
+- БД гарантированно запущена **до** `processPromise()` устройства (boot-классы завершают старт раньше устройств — [01-Architecture](01-Architecture.md)).
+- Закрыть/остановить БД из устройства нельзя: это ресурс уровня процесса, останавливается только `Bootstrap.terminateAll()`. Проверка живости — `ping()` (бросает = нежива).
+
+Публичный API: `query(sql, params?)` → строки · `get(sql, params?)` → первая строка или `undefined` · `execute(sql, params?)` → `{ affectedRows, insertId? }` · `transaction(fn)` — авто `COMMIT`, при ошибке в `fn` — `ROLLBACK` и `DB_TRANSACTION_FAILED` · `ping()`. Параметры только позиционные (`?`). Ошибки кодовые: [08-Errors](08-Errors.md).
+
+```js
+class Track extends Device {
+    async processPromise() {
+        const db = this.getDB()
+        const row = await db.get('SELECT * FROM tracks WHERE id = ?', [this.options.id])
+        this.shares.title = row && row.title
+    }
+
+    actionPlay() {
+        return this.getDB().transaction(async (tx) => {
+            await tx.execute('INSERT INTO listens (track_id, ts) VALUES (?, ?)', [this.id, Date.now()])
+            await tx.execute('UPDATE tracks SET plays = plays + 1 WHERE id = ?', [this.id])
+        })   // атомарно: либо обе записи, либо ни одной
+    }
+}
+```
+
 ## Полный пример
 
 Устройство `Counter` — реальный фикстур из тестов (`test/fixtures/devices/testkit/Counter.js`):
@@ -252,4 +284,5 @@ class Counter extends Device {
 
 - Порты, соединения, actions, метрики — [04-Ports-Actions-Metrics](04-Ports-Actions-Metrics.md)
 - Валидация опций — [05-Validator](05-Validator.md)
+- База данных (`getDB()`) и boot-классы — [07-Bootstrap](07-Bootstrap.md)
 - Ошибки устройств — [08-Errors](08-Errors.md)

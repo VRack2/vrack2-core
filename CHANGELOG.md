@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026.09.22
+
+### Minor
+
+- База данных для сервиса: новый boot-класс `BootDatabase` (машина состояний `pending → ready → closed`, гварды публичных методов, переупаковка ошибок драйвера в кодовые `DB_*`, вся логика транзакций `acquire()` → `BEGIN` → `fn(tx)` → `COMMIT`/`ROLLBACK` → `release()`) и два адаптера из коробки: `BootDatabaseSqlite` (SQLite на встроенном модуле `node:sqlite` — ноль внешних зависимостей; требует Node ≥ 22.5 в момент подключения, на старых рантаймах fail-fast `DB_CONNECT_FAILED`) и `BootDatabaseMemory` (`file = ':memory:'`, данные живут до конца процесса). БД объявляется в секции `bootstrap` сервиса — общий ресурс всех устройств, один экземпляр на id; адаптер реализует только контрактные методы `connect/disconnect/_query/_execute/acquire/release`.
+- Новый публичный API: `Device.getDB(id = 'DB')` — доступ к базе из device-кода (типируется по интерфейсу `BootDatabase`; не объявлена в bootstrap → `BTSP_CLASS_ID_NOT_FOUND`). Экспортируются из `vrack2-core`: `BootDatabase`, `IExecResult`, `BootDatabaseSqlite`, `BootDatabaseMemory`.
+- Опции `BootDatabaseSqlite`: `file` (обязательная), `wal` (по умолчанию `true`; не действует на in-memory и read-only), `readOnly` (по умолчанию `false`).
+- Новые коды ошибок (модуль `BootDatabase`): `DB_NOT_READY`, `DB_CLOSED`, `DB_CONNECT_FAILED`, `DB_QUERY_FAILED` (несёт `message`/`driverCode`, но не SQL и не параметры), `DBS_BUSY`, `DB_TX_LOCKED`, `DB_TRANSACTION_FAILED` — таблица в [08-Errors](docs/08-Errors.md).
+- Документация: 07-Bootstrap — раздел «BootDatabase / BootDatabaseSqlite / BootDatabaseMemory» (опции, публичный API, поведение); 03-Device — раздел «База данных (`getDB()`)» с примером; 08-Errors — коды `DB*`.
+
+### Tests
+
+- `test/unit/boot-database.test.ts` — контракт адаптеров: машина состояний, гварды, транзакции (COMMIT/ROLLBACK, вложенность), переупаковка ошибок (скелет драйвера).
+- `test/unit/boot-database-sqlite.test.ts` — `BootDatabaseSqlite` / `BootDatabaseMemory`: подключение и fail-fast (`DB_CONNECT_FAILED`), живучесть данных после `terminate()`, WAL (вкл/выкл), read-only, обёртка ошибок драйвера без утечки SQL, транзакции (commit / атомарный rollback / `DBS_BUSY`), изоляция in-memory инстансов.
+- `test/integration/boot-database.test.ts` — реальный `MainProcess` с БД в bootstrap: старт/остановка (после — `DB_CLOSED`), живучесть данных между двумя запусками процесса, fail-fast при невалидных опциях (`VR_NOT_PASS`) и неудачном подключении (`DB_CONNECT_FAILED`, `driverCode = ERR_SQLITE_ERROR`), доступ устройства через `getDB()` (запрос в `processPromise()`, транзакция в action).
+- Фикстура: `test/fixtures/devices/testkit/DbReader.js` (+ запись в `list.json`).
+
 ## 2026.09.21
 
 ### Minor

@@ -1,6 +1,6 @@
 # 07 — Bootstrap и boot-классы
 
-> **Зачем читать:** понимать, как расширяется контейнер «сверху»: что такое boot-класс, как он загружается, и что делают четыре стандартных boot-класса (устройства, хранилище, метрики, структура).
+> **Зачем читать:** понимать, как расширяется контейнер «сверху»: что такое boot-класс, как он загружается, и что делают пять стандартных boot-классов (устройства, хранилище, метрики, структура, база данных).
 > **Кому:** интеграторам и авторам boot-классов.
 >
 > ← [06-Container](06-Container.md) · [Далее: 08-Errors](08-Errors.md) →
@@ -73,9 +73,9 @@ Boot-классы владеют ресурсами уровня процесс�
 - Сбой `terminate()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
 - `terminate()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `DeviceMetrics.getDeviceMetrics()`), а `terminate()` используется только самим `Bootstrap`.
 
-## Четыре стандартных boot-класса
+## Пять стандартных boot-классов
 
-> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Три остальных — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик в `vrack-db`, без `StructureStorage` — структуры на диске. Каждый можно заменить своей реализацией.
+> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные четыре — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик в `vrack-db`, без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`). Каждый можно заменить своей реализацией.
 
 ### `DeviceManager`
 
@@ -128,6 +128,45 @@ Boot-классы владеют ресурсами уровня процесс�
 События: `serviceLoaded` → `structureStorage()`.
 
 Файл: `structure/{containerId}.json`. При записи сохраняется поле `display` из файла (если оно есть в файле). Методы: `getById(id)`, `updateById(id, structure)`.
+
+### `BootDatabase` / `BootDatabaseSqlite` / `BootDatabaseMemory`
+
+Общая база данных сервиса: один экземпляр на id, доступен всем устройствам через `Device.getDB()` (см. [03-Device](03-Device.md)). Это **единый** ресурс уровня процесса — не «база на устройство», а общая для всего контейнера.
+
+Три класса из коробки:
+
+| Класс | Бэкенд | Когда использовать |
+|---|---|---|
+| `BootDatabase` | Абстрактная база (машина состояний + транзакции) | Наследовать под свой драйвер/БД |
+| `BootDatabaseSqlite` | SQLite (`node:sqlite`, встроено в Node ≥ 22.5) | Файловая БД без внешних зависимостей — основной вариант |
+| `BootDatabaseMemory` | In-memory SQLite (наследуется от Sqlite, `file = ':memory:'`) | Тесты и throwaway-данные, не переживающие процесс |
+
+Базовый класс владеет: машиной состояний (`pending → ready → closed`), гвардами публичных методов, переупаковкой ошибок драйвера в кодовые `DB_*`, и **всей** логикой транзакций (`acquire()` → `BEGIN` → `fn(tx)` → `COMMIT`/`ROLLBACK` → `release()`). Адаптер реализует только контрактные методы `connect/disconnect/_query/_execute/acquire/release` (+ опционально `checkOptions`).
+
+Опции `BootDatabaseSqlite`:
+
+| Опция | По умолчанию |
+|---|---|
+| `file` | **обязательна** — путь к файлу БД (`':memory:'` допустим) |
+| `wal` | `true` (WAL-режим журнала; не действует на in-memory и read-only) |
+| `readOnly` | `false` |
+
+Публичный API:
+
+```ts
+db.query(sql, params?)      // все строки
+db.get(sql, params?)        // первая строка или undefined
+db.execute(sql, params?)    // { affectedRows, insertId? }
+await db.transaction(fn)     // fn получает tx-контекст; авто COMMIT/ROLLBACK
+await db.ping()             // SELECT 1; бросает, если БД недоступна
+```
+
+Параметры — только позиционные (`?`). Ошибки: `DB_NOT_READY` / `DB_CLOSED` (жизненный цикл), `DB_QUERY_FAILED` (ошибка драйвера), `DBS_BUSY` (одновременная транзакция на одном соединении), `DB_TX_LOCKED` (вложенный `transaction()`), `DB_TRANSACTION_FAILED` — полный список в [08-Errors](08-Errors.md).
+
+Поведение:
+
+- Старт — fail-fast: сбой `connect()` → сервис **не стартует** (`DB_CONNECT_FAILED`); повторные попытки — за супервайзером.
+- Остановка только через `Bootstrap.terminateAll()`: «закрыть одну БД» из device-кода нельзя (это общий ресурс).
 
 ## Стандартный список boot-классов
 
