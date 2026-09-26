@@ -1,4 +1,5 @@
 import BasicType from "../validator/types/BasicType";
+import BootDatabase from "../boot/BootDatabase";
 import Container from '../Container';
 import BasicAction from "../actions/BasicAction";
 import BasicPort from "../ports/BasicPort";
@@ -415,5 +416,18 @@ export default class Device {
      * Requires DeviceError to be created
     */
     terminate(error: Error, action: string): boolean;
+    /**
+     * Get the database boot class (default id — 'DB').
+     *
+     * The device is typed against the `BootDatabase` interface, not a concrete
+     * adapter: for adapter-specific methods pull the concrete class instead
+     * (`this.Container.Bootstrap.getBootClass('DB', BootDatabaseSqlite)`).
+     *
+     * The database must be declared in the service's `bootstrap` section —
+     * otherwise this throws `BTSP_CLASS_ID_NOT_FOUND`.
+     *
+     * @param id boot class identifier from the bootstrap list (default 'DB')
+     */
+    getDB(id?: string): BootDatabase;
 }
 export {};
