@@ -110,11 +110,6 @@ ErrorManager.registerMany('Bootstrap', [
         rules: { id: Rule.string().description('Class identify') }
     },
     {
-        short: 'BTSP_MUST_BE_BOOTCLASS',
-        description: 'The class must be inherited from BootClass',
-        rules: { path: Rule.string().description('Class path') }
-    },
-    {
         short: 'BTSP_TERMINATE_FAILED',
         description: 'Failed to stop a boot class',
         rules: { id: Rule.string().description('Class identify'), message: Rule.string().description('Underlying error message') }
@@ -163,11 +158,14 @@ export default class Bootstrap {
     protected config: IBootListConfig
 
     /**
-     * True once `loadBootList()` has been executed (idempotency guard).
-     * Re-running it would re-instantiate the boot classes and re-subscribe
-     * their container event handlers (duplicate listeners).
+     * True once `loadBootList()` has been **called** — even if the attempt
+     * failed. It is an idempotency guard against re-calls, not a "load
+     * succeeded" indicator: a re-call would re-instantiate the boot classes
+     * and re-subscribe their container event handlers (duplicate listeners).
+     * A failed attempt does not reset the guard — the error propagates to
+     * the host and the process/worker is being killed anyway.
      */
-    protected booted = false
+    protected loadAttempted = false
 
     /**
      * True once `terminateAll()` has been executed (idempotency guard).
@@ -192,8 +190,8 @@ export default class Bootstrap {
      * @param Container Container for which loading is performed 
     */
     async loadBootList(Container: Container) {
-        if (this.booted) return
-        this.booted = true
+        if (this.loadAttempted) return
+        this.loadAttempted = true
         this.Container = Container
         for (const cn in this.config) {
             const conf = this.config[cn]
@@ -202,9 +200,9 @@ export default class Bootstrap {
             }
             const ExClass = await ImportManager.importClass(conf.path)
             this.loaded[cn] = new ExClass(cn, ImportManager.importClassName(conf.path), Container, conf.options) 
-            if (!(this.loaded[cn] instanceof  BootClass)) {
-                throw ErrorManager.make('BTSP_INSTANCE_OF_INCORRECT', { path: conf.path }) 
-            }
+        if (!(this.loaded[cn] instanceof BootClass)) {
+            throw ErrorManager.make('BTSP_INSTANCE_OF_INCORRECT', { id: cn })
+        }
         }
         for (const bc in this.loaded) this.loaded[bc].process()
         for (const bc in this.loaded) await this.loaded[bc].processPromise()
@@ -242,12 +240,17 @@ export default class Bootstrap {
      * remaining boot classes from terminating — the process is exiting anyway.
      *
      * One-way: once called, the flag is latched and further calls are no-ops
-     * (mirrors the `booted` idempotency guard of `loadBootList()`).
+     * (mirrors the `loadAttempted` idempotency guard of `loadBootList()`).
+     *
+     * The termination order is the **reverse** of the load order (mirrors
+     * `Container.stopAll()`): later-loaded (upper) classes are released
+     * first, so shared resources owned by earlier classes (for example a
+     * database) stay alive while the classes that depend on them finish.
      */
     async terminateAll() {
         if (this.terminated) return
         this.terminated = true
-        for (const bc in this.loaded) {
+        for (const bc of Object.keys(this.loaded).reverse()) {
             try {
                 await this.loaded[bc].terminate()
             } catch (e: any) {

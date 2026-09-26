@@ -72,11 +72,14 @@ export default class Bootstrap {
     */
     protected config: IBootListConfig;
     /**
-     * True once `loadBootList()` has been executed (idempotency guard).
-     * Re-running it would re-instantiate the boot classes and re-subscribe
-     * their container event handlers (duplicate listeners).
+     * True once `loadBootList()` has been **called** — even if the attempt
+     * failed. It is an idempotency guard against re-calls, not a "load
+     * succeeded" indicator: a re-call would re-instantiate the boot classes
+     * and re-subscribe their container event handlers (duplicate listeners).
+     * A failed attempt does not reset the guard — the error propagates to
+     * the host and the process/worker is being killed anyway.
      */
-    protected booted: boolean;
+    protected loadAttempted: boolean;
     /**
      * True once `terminateAll()` has been executed (idempotency guard).
      * Re-running it would re-invoke `terminate()` on boot classes that have
@@ -123,7 +126,12 @@ export default class Bootstrap {
      * remaining boot classes from terminating — the process is exiting anyway.
      *
      * One-way: once called, the flag is latched and further calls are no-ops
-     * (mirrors the `booted` idempotency guard of `loadBootList()`).
+     * (mirrors the `loadAttempted` idempotency guard of `loadBootList()`).
+     *
+     * The termination order is the **reverse** of the load order (mirrors
+     * `Container.stopAll()`): later-loaded (upper) classes are released
+     * first, so shared resources owned by earlier classes (for example a
+     * database) stay alive while the classes that depend on them finish.
      */
     terminateAll(): Promise<void>;
 }

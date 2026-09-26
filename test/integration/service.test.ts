@@ -802,8 +802,9 @@ describe('Bootstrap.terminateAll()', () => {
 
         await mp.Bootstrap.terminateAll()
 
-        // every loaded boot class (standard + custom) was terminated
-        expect((testkit.TermBoot as any).terminated).toEqual(['TermA', 'TermB'])
+        // every loaded boot class (standard + custom) was terminated,
+        // in the REVERSE order of their load (TermB loaded last -> terminated first)
+        expect((testkit.TermBoot as any).terminated).toEqual(['TermB', 'TermA'])
     })
 
     it('is idempotent: the second call does not re-run terminate()', async () => {
