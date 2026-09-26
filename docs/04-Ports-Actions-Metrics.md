@@ -46,7 +46,7 @@ inputs() {
 
 ### Рантайм
 
-Каждый порт — объект `DevicePort`: `id`, `type`, `required`, `connected`, `connections[]`, `bind`, `listens`.
+Каждый порт — объект `DevicePort`: `id`, `type`, `required`, `connected` (только чтение, выводится из `connections[]`), `connections[]`, `bind`, `listens`.
 
 `push(data)` на **выходном** порту: данные уходят через соединение во входной порт.
 

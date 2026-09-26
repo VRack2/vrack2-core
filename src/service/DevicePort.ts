@@ -13,8 +13,13 @@ import Device from "./Device"
  * The port can be either incoming or outgoing
 */
 export default class DevicePort {
-    /** Flag to determine if the port is connected */
-    connected = false
+    /**
+     * Whether the port has at least one connection — read-only,
+     * derived from `connections` (the single source of truth).
+     */
+    get connected(): boolean {
+        return this.connections.length > 0
+    }
 
     /** Port connection list. One port can have multiple connections */
     connections: Array<DeviceConnect> = []
@@ -50,7 +55,6 @@ export default class DevicePort {
      * Adding communication to a port
     */
     addConnection(connection: DeviceConnect) {
-        this.connected = true
         this.connections.push(connection)
     }
 
@@ -64,7 +68,6 @@ export default class DevicePort {
     removeConnection(connection: DeviceConnect) {
         const idx = this.connections.indexOf(connection)
         if (idx !== -1) this.connections.splice(idx, 1)
-        if (this.connections.length === 0) this.connected = false
     }
 
     /**
@@ -82,11 +85,11 @@ export default class DevicePort {
         if (this.bind !== null) return this.bind(data)
 
         // Если у нас есть слушатели порта
-        // Передаем им данные и пересоздаем Map
+        // Передаем им данные и очищаем список (одноразовый захват)
         if (this.listens.size) {
             const res = Utility.prettyFormat(data)
             for (const ls of this.listens.values()) ls(res)
-            this.listens = new Map()
+            this.listens.clear()
         }
         if (!this.connected) return
         if (this.connections.length === 1) return this.connections[0].push(data)

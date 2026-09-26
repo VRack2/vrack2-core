@@ -6,8 +6,11 @@ import Device from "./Device";
  * The port can be either incoming or outgoing
 */
 export default class DevicePort {
-    /** Flag to determine if the port is connected */
-    connected: boolean;
+    /**
+     * Whether the port has at least one connection — read-only,
+     * derived from `connections` (the single source of truth).
+     */
+    get connected(): boolean;
     /** Port connection list. One port can have multiple connections */
     connections: Array<DeviceConnect>;
     /** Port ID */
