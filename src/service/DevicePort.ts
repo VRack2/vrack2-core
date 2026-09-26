@@ -69,7 +69,8 @@ export default class DevicePort {
 
     /**
      * Calling the incoming port when calling a connection.
-     * A stopped device (running = false, set by Container.stopDevice() /
+     * A stopped device (running = false — derived from the Container's
+     * status state 'stopped', or from the missing status record after
      * removeDevice()) does not accept data —
      * the push is dropped silently.
      * A device that is not yet started (or is still starting up inside

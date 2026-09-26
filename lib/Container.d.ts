@@ -167,7 +167,7 @@ export default class Container extends EventEmitter {
     startDevice(id: string): Promise<void>;
     /**
      * Stop a single running device: call `stop()`, then `await stopPromise()`,
-     * then mark it stopped (`running = false`, removed from `started`).
+     * then mark it stopped (status state → `stopped`, removed from `started`).
      *
      * Reversible — the device can be started again with `startDevice()`.
      * Idempotent — a device that is not running is a no-op.
@@ -192,6 +192,17 @@ export default class Container extends EventEmitter {
      * @param id Device ID
     */
     isStarted(id: string): boolean;
+    /**
+     * Whether a device with the given id accepts port data right now
+     * (is not stopped) — the source of the `Device.running` getter.
+     *
+     * `true` for `registered` (not started yet) and `started` devices;
+     * `false` for `stopped` ones and for ids without a status record
+     * (removed or never registered) — fail-closed.
+     *
+     * @param id Device ID
+     */
+    isRunning(id: string): boolean;
     /**
      * Check device action and run him
      *

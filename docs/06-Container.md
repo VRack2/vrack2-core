@@ -76,6 +76,10 @@ emit 'loaded'
 
 `true`, если устройство прошло `process()` + `processPromise()`. После `stopDevice()` / `stopAll()` — `false` (устройство можно запустить снова через `startDevice()`).
 
+### `isRunning(id)`
+
+`true`, если устройство **не остановлено**: `state = 'registered'` (ещё не запускалось) или `started`. `false` для `stopped` и для id без записи статуса (удалённое или не зарегистрированное) — fail-closed. Источник геттера `Device.running`.
+
 ### Остановка: `stopDevice(id)` / `stopAll()`
 
 Остановка **обратима**: устройство не разрушается и запускается снова через `startDevice()` (повтор `process()` + `processPromise()`, снова включаются порты и actions).
@@ -88,7 +92,7 @@ if (!started.has(id)) return                      // уже остановлен
   → emit('stop', id)
   → dev.stop()                                    // падение → CTR_DEVICE_STOP_EXCEPTION (исходная ошибка в vAddErrors)
   → await dev.stopPromise()                       // падение → CTR_DEVICE_STOP_PROMISE_EXCEPTION
-  → started.delete(id); dev.running = false
+  → started.delete(id); state = 'stopped'          // отсюда running = false
 ```
 
 `stopAll()`:
@@ -108,7 +112,7 @@ emit('afterStop')
 ```
 deviceAction('Counter1', 'set.value', { value: 42 })
   → проверка устройства (CTR_DEVICE_NF)
-  → проверка running (CTR_DEVICE_STOPPED)         // остановленное устройство не выполняет actions
+  → проверка started (CTR_DEVICE_STOPPED)         // остановленное устройство не выполняет actions
   → проверка action (CTR_DEVICE_ACTION_NF)
   → проверка хендлера (CTR_DEVICE_ACTION_HANDLER_NF)
   → Validator.validate(action.requirements, data)   // fail-closed
@@ -202,7 +206,7 @@ if (!(id in devices)) throw CTR_DEVICE_NF
 | Поле | Значение |
 |---|---|
 | `id`, `type` | Id и тип устройства (`vendor.Class`). |
-| `state` | `'registered'` / `'started'` / `'stopped'` — единственное поле жизненного цикла; сырые флаги (`Device.running`, started-множество) от него выводятся без потерь и в статус не дублируются. |
+| `state` | `'registered'` / `'started'` / `'stopped'` — единственное поле жизненного цикла; `Device.running` (геттер → `Container.isRunning(id)`) и started-множество от него выводятся и в статус не дублируются. |
 | `since` | `Date.now()` последнего изменения статуса (мс). |
 | `lastAlert`, `lastError` | Последнее сообщение alert/error — `{ data, trace, at }`; `null`, если не было. Для `device.terminate` попадает в `lastError` (`data` — имя action); `trace` всегда обычный объект. |
 | `alertCount`, `errorCount` | Количество сообщений с момента регистрации (terminate считается ошибкой). |

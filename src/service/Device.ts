@@ -58,23 +58,20 @@ export default class Device {
     type: string;
 
     /**
-     * Device running state (managed by the Container — do not set it directly).
+     * Device running state — read-only, derived from the Container's
+     * device status record (single source of truth: `deviceStatus[id].state`).
      *
-     * `true` from construction (as the old `works` was) — so a not-started
-     * device and a device that is starting up (inside `process()` /
-     * `processPromise()`) accept port data: startup traffic (for example
-     * command registration) flows. `Container.startDevice()` / `runProcess()`
-     * restore it before `process()` runs (restart after a stop).
+     * `true` for `registered` (not started yet, so startup traffic such as
+     * command registration flows) and `started` devices;
+     * `false` for `stopped` devices and for ids without a status record
+     * (removed devices — fail-closed, they accept no port data).
      *
-     * `false` after `Container.stopDevice()` / `stopAll()` (`stop()` +
-     * `stopPromise()`) and after `removeDevice()` — a stopped device
-     * accepts no port data (pushes are dropped silently) and its actions
-     * are rejected with the CTR_DEVICE_STOPPED error.
-     *
-     * Actions on a device that is not started are rejected with the
+     * A stopped device also gets its actions rejected with the
      * CTR_DEVICE_STOPPED error (the Container checks its `started` set).
      */
-    running: boolean
+    get running(): boolean {
+        return this.Container.isRunning(this.id)
+    }
 
     /**
      * Allows access to port management. 
@@ -105,7 +102,6 @@ export default class Device {
         this.id = id
         this.type = type
         this.Container = Container
-        this.running = true
         this.ports = {
             input: {},
             output: {}
@@ -210,7 +206,6 @@ export default class Device {
      * @see BasicMetric
     */
     metrics(): { [key: string]: BasicMetric } { return {} }
-
 
     /**
      * Run before each device action

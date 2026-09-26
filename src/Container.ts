@@ -303,7 +303,6 @@ export default class Container extends EventEmitter {
         this.emit('beforeProcess')
         for (const key in this.devices) {
             if (this.started.has(key)) continue
-            this.devices[key].running = true
             try {
                 this.emit('process',key)
                 this.devices[key].process()
@@ -343,7 +342,6 @@ export default class Container extends EventEmitter {
     async startDevice(id: string): Promise<void> {
         if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
         if (this.started.has(id)) return
-        this.devices[id].running = true
         try {
             this.emit('process', id)
             this.devices[id].process()
@@ -364,7 +362,7 @@ export default class Container extends EventEmitter {
 
     /**
      * Stop a single running device: call `stop()`, then `await stopPromise()`,
-     * then mark it stopped (`running = false`, removed from `started`).
+     * then mark it stopped (status state → `stopped`, removed from `started`).
      *
      * Reversible — the device can be started again with `startDevice()`.
      * Idempotent — a device that is not running is a no-op.
@@ -387,7 +385,6 @@ export default class Container extends EventEmitter {
             throw ErrorManager.make('CTR_DEVICE_STOP_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
         this.started.delete(id)
-        dev.running = false
         const st = this.deviceStatus[id]
         if (st) st.state = 'stopped'
         this.emitDeviceStatus(id)
@@ -429,6 +426,21 @@ export default class Container extends EventEmitter {
     */
     isStarted(id: string): boolean {
         return this.started.has(id)
+    }
+
+    /**
+     * Whether a device with the given id accepts port data right now
+     * (is not stopped) — the source of the `Device.running` getter.
+     *
+     * `true` for `registered` (not started yet) and `started` devices;
+     * `false` for `stopped` ones and for ids without a status record
+     * (removed or never registered) — fail-closed.
+     *
+     * @param id Device ID
+     */
+    isRunning(id: string): boolean {
+        const st = this.deviceStatus[id]
+        return st !== undefined && st.state !== 'stopped'
     }
 
     /**
@@ -687,8 +699,8 @@ export default class Container extends EventEmitter {
         // 1. Stop the device first, if it is running
         // (no await at all for a not started device — the body stays synchronous)
         if (this.started.has(id)) await this.stopDevice(id)
-        // a removed device never accepts port data again
-        dev.running = false
+        // a removed device has no status record anymore, so `isRunning(id)`
+        // is false for it and it never accepts port data again
 
         // 2. Termination hook
         dev.beforeTerminate()
