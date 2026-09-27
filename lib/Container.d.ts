@@ -81,11 +81,17 @@ export default class Container extends EventEmitter {
     devices: {
         [key: string]: Device;
     };
-    /** Parent container if it exists */
+    /**
+     * Parent container — set when this container is launched by another
+     * container: the upper (parent) container passes itself here, so the
+     * launched container can reach its parent.
+     */
     parent?: Container;
     /**
-     * Дополнительные метаданные
-    */
+     * Container metadata supplied from outside (by the host that launches
+     * the service). Deliberately an open bag: the contract is not fixed
+     * yet — treat the contents as opaque.
+     */
     meta?: {
         [key: string]: any;
     };
@@ -95,8 +101,15 @@ export default class Container extends EventEmitter {
      * A different bootstrap class must be created for each container
     */
     Bootstrap: Bootstrap;
-    /** run flag */
-    protected runned: boolean;
+    /**
+     * True once `runProcess()` has been **called** — even if the attempt
+     * failed. It is an idempotency guard against re-calls, not a
+     * "start succeeded" indicator: a re-call would re-run `process()` /
+     * `processPromise()` of the devices that are not in `started` yet.
+     * A failed attempt does not reset the guard — the error propagates to
+     * the host and the process/worker is being killed anyway.
+     */
+    protected runProcessAttempted: boolean;
     /**
      * List of all device actions
      *

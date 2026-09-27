@@ -214,12 +214,18 @@ export default class Container extends EventEmitter {
     /** List of devices in container */
     devices: { [key: string]: Device } = {}
 
-    /** Parent container if it exists */
+    /**
+     * Parent container — set when this container is launched by another
+     * container: the upper (parent) container passes itself here, so the
+     * launched container can reach its parent.
+     */
     parent?: Container
 
     /**
-     * Дополнительные метаданные
-    */
+     * Container metadata supplied from outside (by the host that launches
+     * the service). Deliberately an open bag: the contract is not fixed
+     * yet — treat the contents as opaque.
+     */
     meta?: {[key: string]: any}
 
     /**
@@ -229,8 +235,15 @@ export default class Container extends EventEmitter {
     */
     Bootstrap: Bootstrap
 
-    /** run flag */
-    protected runned = false
+    /**
+     * True once `runProcess()` has been **called** — even if the attempt
+     * failed. It is an idempotency guard against re-calls, not a
+     * "start succeeded" indicator: a re-call would re-run `process()` /
+     * `processPromise()` of the devices that are not in `started` yet.
+     * A failed attempt does not reset the guard — the error propagates to
+     * the host and the process/worker is being killed anyway.
+     */
+    protected runProcessAttempted = false
 
     /**
      * List of all device actions
@@ -298,8 +311,8 @@ export default class Container extends EventEmitter {
      * which makes this method safe to call after hot adds.
     */
     async runProcess() {
-        if (this.runned) return
-        this.runned = true
+        if (this.runProcessAttempted) return
+        this.runProcessAttempted = true
         this.emit('beforeProcess')
         for (const key in this.devices) {
             if (this.started.has(key)) continue
@@ -720,7 +733,6 @@ export default class Container extends EventEmitter {
         // 3. Structure: drop the device and every reference to it
         delete this.structure[id]
         for (const oid in this.structure) {
-            if (oid === id) continue
             for (const pname in this.structure[oid].outputs) {
                 this.structure[oid].outputs[pname] = this.structure[oid].outputs[pname]
                     .filter((t) => t.device !== id)
