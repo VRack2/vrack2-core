@@ -13,7 +13,6 @@ import IDeviceEvent from "./IDeviceEvent";
 import CoreError from "../errors/CoreError";
 import BasicMetric from "../metrics/BasicMetric";
 import ImportManager from "../ImportManager";
-import ReactiveRef from "../ReactiveRef";
 
 export enum EDeviceMessageTypes {
     terminal = "terminal",
@@ -129,16 +128,10 @@ export default class Device {
     }
 
     /**
-     * Reactive storage backing `shares` (a deep-reactive plain object).
-     * Internal: the reactive accessors installed on Device.prototype read/write it.
-     */
-    _sharesRef = new ReactiveRef<Record<string, any>>({})
-
-    /**
-     * This is a fast updating data object - it will be sent
-     * to subscribers after the render() call.
-     * After preProcess() the Container attaches auto-render: any change of shares
-     * (a property write, a new property, delete, or a full reassignment) triggers render().
+     * This is a fast updating data object — the device's fast-changing state
+     * for the outside world. Mutating it emits nothing: the device calls
+     * `render()` itself after the change and the emitted `device.render`
+     * event carries the *live* reference to this object.
      *
      * A subclass declares its shape as a plain class field - inside the class
      * `this.shares` keeps the declared typing (not Record<string, any>):
@@ -148,24 +141,12 @@ export default class Device {
      *     work() { const n: number = this.shares.data }   // fully typed in the IDE
      * }
      * ```
-     * The field's value becomes the default shares: right after preProcess() the
-     * Container imports it into the reactive ref (refinements made in preProcess() are
-     * preserved) and drops the shadow, so reactivity takes over. Without a field the
-     * default is an empty `{}`; writes in constructor/preProcess() work as well.
+     * Without a field the default is an empty `{}`; writes in
+     * constructor/preProcess() work as well.
      *
      * @see render()
      */
-    declare shares: Record<string, any>
-
-    /**
-     * True while the Container-attached auto-render watcher is active
-     */
-    private _sharesRenderAttached = false
-
-    /**
-     * True while `render()` is emitting (re-entrancy guard)
-     */
-    private _rendering = false
+    shares: Record<string, any> = {}
 
     /**
      * This data will be loaded for the specific instance of the device. 
@@ -278,7 +259,6 @@ export default class Device {
      * - Creating ports 
      * - Assigning call functions
      * - Creating connections between devices
-     * - Linking device Shares
      * 
      * Must be used to start basic operation of the device
      * e.g. initialization of connections, creation of timers, etc.
@@ -325,86 +305,18 @@ export default class Device {
     beforeTerminate(){ return }
 
     /**
-     * Queues device shares data updates for external consumers
-     * The `trace` of the emitted `device.render` event is a deep plain snapshot
-     * of `shares` (no reactive proxies), so it stays read-only for subscribers
-     * and can safely cross a worker boundary (structured clone / postMessage).
-
-     * 
-     * @see shares
-    */
-    render(): boolean {
-        if (this._rendering) return false
-        this._rendering = true
-        try {
-            return this.makeEvent('device.render', 'shares', this._sharesRef.snapshot(), [])
-        } finally {
-            this._rendering = false
-        }
-    }
-
-    /**
-     * A *plain* deep copy of the current `shares` data — no reactive proxies.
+     * Sends the current `shares` to external consumers.
      *
-     * `this.shares` returns the deep-reactive proxy, which structured clone
-     * (postMessage between workers, `structuredClone()`, ...) rejects with
-     * `DataCloneError: #<Object> could not be cloned`. When the shares value
-     * has to cross a serialization boundary — a command response, a message to
-     * another process, a JSON payload — return `sharesSnapshot()` instead of
-     * `shares`.
-     *
-     * Plain objects/arrays are cloned, cycles are preserved; instances of
-     * custom classes, `Date`, `Map`, etc. pass through as-is (see
-     * `ReactiveRef.snapshot()`).
+     * Explicit only: mutating `shares` emits nothing — call `render()` after
+     * the change. The `trace` of the emitted `device.render` event is the
+     * *live* reference to `shares`: subscribers must treat it as read-only
+     * (mutating it mutates the device state) and clone it themselves before
+     * crossing a serialization boundary (postMessage / worker reply).
      *
      * @see shares
-     * @return {Record<string, any>} A plain object copy of the current shares
      */
-    sharesSnapshot(): Record<string, any> {
-        return this._sharesRef.snapshot()
-    }
-
-    /**
-     * Attach the auto-render watcher: from this moment on any change of `shares`
-     * (property write, new property, `delete`, or a full reassignment)
-     * automatically triggers `render()`.
-     *
-     * Called by the Container right after `preProcess()`, so the initialization
-     * writes inside `preProcess()` do not render.
-     *
-     * @see shares
-    */
-    attachSharesRender() {
-        if (this._sharesRenderAttached) return
-        this._sharesRenderAttached = true
-
-        // A subclass may declare `shares = {...}` as a class field. Under ES2022
-        // class-field semantics (native Node, esbuild target es2022+, tsc
-        // useDefineForClassFields) that creates an own data property which SHADOWS
-        // the `shares` accessor, so the declared value would stay inert. Import the
-        // field's current value (including any refinement done in preProcess())
-        // into the reactive ref and drop the shadow; on legacy transpilers the
-        // field was already routed through the setter, so this is a no-op.
-        const fieldDesc = Object.getOwnPropertyDescriptor(this, 'shares')
-        if (fieldDesc && 'value' in fieldDesc) {
-            const fieldValue = fieldDesc.value as Record<string, any>
-            Reflect.deleteProperty(this, 'shares')
-            if (fieldValue != null) this._sharesRef.set(fieldValue)
-        }
-
-        this._sharesRef.watch(() => this.render())
-    }
-
-    /**
-     * Detach the auto-render watcher (called by the Container in `removeDevice()`).
-     * Explicit `render()` calls keep working after detaching.
-     *
-     * @see shares
-    */
-    detachSharesRender() {
-        if (!this._sharesRenderAttached) return
-        this._sharesRenderAttached = false
-        this._sharesRef.unwatch()
+    render(): boolean {
+        return this.makeEvent('device.render', 'shares', this.shares, [])
     }
 
     /**
@@ -521,16 +433,3 @@ export default class Device {
     }
 
 }
-
-
-
-// Reactive accessors live on the prototype (not in the class body) so that a subclass
-// may shadow `shares` with its own typed class field without TS2610 — for the type model
-// it is a plain property, exactly like such a field. The Container normalizes a subclass
-// field at attachSharesRender() time: imports its value into _sharesRef and drops the shadow.
-Object.defineProperty(Device.prototype, 'shares', {
-    enumerable: false,
-    configurable: true,
-    get(this: Device) { return this._sharesRef.value },
-    set(this: Device, value: Record<string, any>) { this._sharesRef.set(value) }
-})

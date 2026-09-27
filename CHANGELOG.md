@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026.09.27
+
+### Major
+
+- **Breaking**: убрана реактивность `Device.shares`. `shares` — теперь обычный объект (обычное поле базового класса, дефолт `{}`; подкласс задаёт его обычным типизированным полем). Изменение `shares` (запись, новое свойство, `delete`, полная замена) **больше ничего не эмитит** — устройство явно вызывает `render()` после изменений.
+- **Breaking**: удалены `Device.attachSharesRender()` / `Device.detachSharesRender()` (Container их больше не вызывает) и `Device.sharesSnapshot()`. `ReactiveRef` остаётся в публичном API как самостоятельная утилита (см. [09-Utils](docs/09-Utils.md)), но `Device` его больше не использует.
+- `Device.render()` шлёт `device.render` со **живой ссылкой** на `shares` (была глубокая plain-копия). Подписчик обязан считать `trace` read-only (мутация меняет состояние устройства) и клонировать сам (`structuredClone`) перед пересылкой за границу сериализации (postMessage, ответ воркера). Убран re-entrancy guard — без авто-рендера вложенный render невозможен.
+- Документация: 00-Overview (строка «Shares»), 01-Architecture (раздел «shares / render»), 03-Device (свойства, регистрация, методы, раздел «Как работают `shares` и `render()`»), 06-Container (регистрация, `removeDevice()`).
+
+### Tests
+
+- `test/unit/device-shares.test.ts` переписан под явную семантику: мутации не шлют событий; `render()` шлёт живую ссылку (`trace === shares`); `render()` работает без изменений и после `removeDevice()`; `shares` — plain-объект (`structuredClone` напрямую); поля-дефолты подкласса и legacy-фикстуры (`SharesField.js`) остаются начальным состоянием.
+- `test/smoke.test.ts`: вместо `sharesSnapshot` — проверка `Device.prototype.render`.
+
 ## 2026.09.22
 
 ### Minor

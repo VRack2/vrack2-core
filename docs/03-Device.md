@@ -27,7 +27,7 @@ export default class MyDevice extends Device {
 | `options` | конструктор + `createDevice()` | Опции, проверенные `checkOptions()`. |
 | `ports.input` / `ports.output` | `registerDevice()` | Объекты портов; `push(data)` — на выходных. |
 | `storage` | `beforeProcess` / `device.add` | Персистентное состояние; сохраняется `save()`. |
-| `shares` | `attachSharesRender()` (после `preProcess()`) | Реактивный объект быстро-меняющихся данных; подкласс может задать его обычным типизированным полем, любое изменение вызывает событие `device.render`. |
+| `shares` | конструктор / `preProcess()` | Объект быстро-меняющихся данных (обычный объект); подкласс задаёт его обычным типизированным полем; устройство вызывает `render()` после изменения — событие `device.render`. |
 | `running` | только чтение (геттер) | Состояние работы устройства — выводится из статуса контейнера (`deviceStatus[id].state` через `Container.isRunning(id)`), самим устройством **не управляется**. `false` только у остановленного (`stopped`) или удалённого устройства: его порты отбрасывают `push`, а actions отклоняются ошибкой `CTR_DEVICE_STOPPED`. Не-запущенное (`registered`) устройство остановленным **не считается** — `running = true`, его порты активны, и старт-трафик (например, регистрация команд) проходит. |
 
 ## Жизненный цикл
@@ -39,7 +39,6 @@ export default class MyDevice extends Device {
 3. `Validator.validate(this.checkOptions(), this.options)` — валидация опций; при неудаче — `VR_NOT_PASS` (обёрнут в `CTR_ERROR_PREPARE_OPTIONS` → `CTR_ERROR_INIT_DEVICE`).
 4. `Container.registerDevice()`:
    - `preProcess()` — **входная точка инициализации**: порты ещё не созданы, shares доступны; здесь назначаются функции для динамических портов;
-   - `attachSharesRender()` — дальше любое изменение `shares` автоматически шлёт `device.render`;
    - проверка actions: для каждой action должен существовать хендлер;
    - регистрация метрик (событие `device.register.metric` на каждую);
    - создание входных/выходных портов; проверка и bind входных хендлеров.
@@ -55,7 +54,7 @@ export default class MyDevice extends Device {
 |---|---|---|
 | `prepareOptions()` | нет | до проверки опций |
 | `checkOptions()` | нет | возвращает правила опций |
-| `preProcess()` | нет | в `registerDevice()`, до auto-render |
+| `preProcess()` | нет | в `registerDevice()`, до `process()` |
 | `process()` | нет | в `runProcess()` / `startDevice()`, ступень 1 |
 | `processPromise()` | да | в `runProcess()` / `startDevice()`, ступень 2, awaited |
 | `stop()` | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
@@ -117,8 +116,7 @@ settings(): IDeviceSettings {
 | `event(data, trace, ...args)` | `device.event` | Произвольное событие |
 | `alert(data, trace, ...args)` | `device.alert` | Предупреждение |
 | `error(data, trace, ...args)` | `device.error` | Ошибка устройства (`Error` в `trace` автоматически преобразуется в объект) |
-| `render()` | `device.render` | Ручной рендер `shares` (авто — после `attachSharesRender`) |
-| `sharesSnapshot()` | — | Глубокая plain-копия `shares` без реактивных прокси — для выхода за границу сериализации (ответы команд, postMessage, `structuredClone()`), где сам `this.shares` (Proxy) отклоняется |
+| `render()` | `device.render` | Явный рендер: шлёт текущий `shares` (**живую ссылку** — подписчики считают read-only) |
 | `save()` | `device.save` | Сохранить `storage` в файл |
 | `metric(path, value, modify)` | `device.metric` | Записать метрику; `modify`: `last` (по умолчанию), `first`, `max`, `min`, `avg`, `sum` |
 | `terminate(error, action)` | `device.terminate` | Сообщить о критической ошибке: устройство не может продолжать работу |
@@ -245,25 +243,31 @@ addInputHandler('data', (data) => { /* ... */ })        // → inputData
 addActionHandler('set.value', (data) => { /* ... */ })  // → actionSetValue
 ```
 
-## Как работает `shares` (auto-render)
+## Как работают `shares` и `render()`
 
-`shares` опирается на `ReactiveRef` (см. [09-Utils](09-Utils.md)). Реактивные accessors установлены на prototype базового класса, а в модели типов `shares` — обычное свойство; поэтому подкласс может объявить его своим типизированным полем — это легально и в TS:
+`shares` — обычный объект. Подкласс объявляет его своим типизированным полем — начальное состояние + форма:
 
 ```ts
 class MyDevice extends Device {
     shares = { data: 1, name: 'x' }          // начальное состояние + его форма
 
-    work() { const n: number = this.shares.data }   // типизировано в IDE
+    work() {
+        this.shares.data = 42
+        this.render() // явный вызов — иначе событие не уйдёт
+        // типизировано в IDE:
+        const n: number = this.shares.data
+    }
 }
 ```
 
-Механика: до `attachSharesRender()` (после `preProcess()`) поле-тень живёт как обычный объект — там можно уточнять состояние (`this.options` к этому моменту уже установлены). Затем Container импортирует его значение в реактивный ref и снимает тень. Без поля дефолт — пустой `{}` (записи в конструкторе/`preProcess()` тоже работают).
+Без поля дефолт — пустой `{}`; записи в конструкторе/`preProcess()` тоже работают.
 
 Поведение:
 
-- Уведомление вызывают: запись в существующее свойство, добавление нового, `delete` свойства, полная замена `this.shares = {...}`, изменение вложенных plain-объектов (рекурсивно).
-- **Массивы внутри `shares` НЕ отслеживаются**: `this.shares.list.push(x)` рендер не вызывает — переприсвойте массив целиком.
-- Записи в `shares` внутри `preProcess()` рендер НЕ вызывают (watcher подключается позже).
+- Изменение `shares` (запись, новое свойство, `delete`, полная замена `this.shares = {...}`) **ничего не шлёт** — устройство вызывает `render()` после изменений.
+- В событии `device.render` поле `trace` — **живая ссылка** на `shares`: подписчик обязан считать её read-only (мутация меняет состояние устройства) и клонировать сам (`structuredClone`) перед пересылкой за границу сериализации (postMessage, ответ воркера).
+- В `shares` держите plain-данные: `Date`, `Map`, экземпляры классов — как есть, никакой обёртки нет.
+- `render()` работает в любой момент жизненного цикла, в том числе после `removeDevice()`.
 
 **Типизация `options` (TS).** Базовые `options` — `Record<string, any>`. Чтобы получить подсказки внутри класса, сузьте тип только декларацией — на рантайм это не влияет (`declare` не эмитит код):
 
@@ -276,9 +280,6 @@ class Counter extends Device {
     work() { const s: number = this.options.scale }   // IDE подсказывает
 }
 ```
-- В событии `device.render` поле `trace` — **снимок** `shares` на момент рендера: глубокая обычная копия без прокси (безопасно для `postMessage` / structured clone). Считать read-only.
-- В `shares` держите plain-данные: `Date`, `Map`, экземпляры классов реактивностью не оборачиваются и передаются как есть.
-- После `removeDevice()` авто-рендер отключается; явный `render()` продолжает работать.
 
 ## Связанные документы
 

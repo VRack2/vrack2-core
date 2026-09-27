@@ -489,7 +489,6 @@ export default class Container extends EventEmitter {
      *  - add to the devices map
      *  - create the structure entry
      *  - run `preProcess()`
-     *  - attach auto-render of `shares` (`attachSharesRender()`)
      *  - register actions
      *  - register metrics (emit `device.register.metric`)
      *  - create input & output ports
@@ -513,9 +512,6 @@ export default class Container extends EventEmitter {
         }
 
         dev.preProcess()
-
-        // Auto-render: from this point on any `shares` change emits `device.render`
-        dev.attachSharesRender()
 
         // Check actions 
         this.deviceActions[dev.id] = dev.actions()
@@ -706,9 +702,6 @@ export default class Container extends EventEmitter {
         if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
         const dev = this.devices[id]
 
-        // 0. Detach auto-render: stop/termination mutations must not render
-        dev.detachSharesRender()
-
         // 1. Stop the device first, if it is running
         // (no await at all for a not started device — the body stays synchronous)
         if (this.started.has(id)) await this.stopDevice(id)
@@ -718,7 +711,7 @@ export default class Container extends EventEmitter {
         // 2. Termination hook
         dev.beforeTerminate()
 
-        // 2. Disconnect all connections touching this device (both sides)
+        // 3. Disconnect all connections touching this device (both sides)
         const ports = [...Object.values(dev.ports.input), ...Object.values(dev.ports.output)]
         const seen = new Set<DeviceConnect>()
         for (const port of ports) {
@@ -730,7 +723,7 @@ export default class Container extends EventEmitter {
             }
         }
 
-        // 3. Structure: drop the device and every reference to it
+        // 4. Structure: drop the device and every reference to it
         delete this.structure[id]
         for (const oid in this.structure) {
             for (const pname in this.structure[oid].outputs) {
@@ -745,14 +738,14 @@ export default class Container extends EventEmitter {
             }
         }
 
-        // 4. Remove from internal registries
+        // 5. Remove from internal registries
         delete this.devices[id]
         delete this.deviceActions[id]
         delete this.deviceMetrics[id]
         this.started.delete(id)
         delete this.deviceStatus[id]
 
-        // 5. Notify
+        // 6. Notify
         this.emit('device.remove', id)
     }
 

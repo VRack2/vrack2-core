@@ -42,12 +42,11 @@ constructor(id: string, bootstrap: Bootstrap)
 
 1. кладёт в `devices` и создаёт запись структуры;
 2. вызывает `dev.preProcess()` (порты ещё не созданы — здесь назначаются динамические хендлеры);
-3. `dev.attachSharesRender()` — дальше любое изменение `shares` эмитит `device.render`;
-4. регистрирует actions: для каждой action обязан существовать метод `actionXxx` (`CTR_DEVICE_ACTION_NF`), снимок правила попадает в структуру;
-5. `settings()` устройства → структура;
-6. регистрирует метрики: для каждой — `emit('device.register.metric', { device, data, trace })` (boot-класс `DeviceMetrics` создаёт метрику в `vrack-db`);
-7. создаёт входные порты: динамические раскрываются (`%d` → `1..count`, `CTR_INCORRECT_DYNAMIC_PN`), имя проверяется (`CTR_INCORRECT_PN`), **обязателен** хендлер `inputXxx` (`CTR_INPUT_HANDLER_NF`), хендлер биндится в `port.bind`;
-8. создаёт выходные порты.
+3. регистрирует actions: для каждой action обязан существовать метод `actionXxx` (`CTR_DEVICE_ACTION_NF`), снимок правила попадает в структуру;
+4. `settings()` устройства → структура;
+5. регистрирует метрики: для каждой — `emit('device.register.metric', { device, data, trace })` (boot-класс `DeviceMetrics` создаёт метрику в `vrack-db`);
+6. создаёт входные порты: динамические раскрываются (`%d` → `1..count`, `CTR_INCORRECT_DYNAMIC_PN`), имя проверяется (`CTR_INCORRECT_PN`), **обязателен** хендлер `inputXxx` (`CTR_INPUT_HANDLER_NF`), хендлер биндится в `port.bind`;
+7. создаёт выходные порты.
 
 ## Ступенчатый старт
 
@@ -176,7 +175,6 @@ Hot-соединение двух уже зарегистрированных п
 
 ```
 if (!(id in devices)) throw CTR_DEVICE_NF
-  → dev.detachSharesRender()                    // render при остановке/завершении запрещён
   → если started.has(id): await stopDevice(id)  // stop() + await stopPromise();
                                                 // падение хуков остановки → удаление прерывается (fail-closed),
                                                 // устройство остаётся в контейнере

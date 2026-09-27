@@ -234,7 +234,6 @@ export default class Container extends EventEmitter {
      *  - add to the devices map
      *  - create the structure entry
      *  - run `preProcess()`
-     *  - attach auto-render of `shares` (`attachSharesRender()`)
      *  - register actions
      *  - register metrics (emit `device.register.metric`)
      *  - create input & output ports

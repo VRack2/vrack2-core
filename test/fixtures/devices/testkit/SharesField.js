@@ -1,9 +1,9 @@
 /*
  * Test fixture devices: `shares` class field declaration (plain JS devices).
  *
- * Plain JS on purpose: these exercise ES2022 class-field shadowing of the base-class
- * `shares` accessor at runtime — exactly what real-world JS devices do. The Container
- * must import such field values into the reactive ref on attach (attachSharesRender()).
+ * Plain JS on purpose — exactly what real-world JS devices do: a subclass field
+ * `shares = {...}` is the initial state (the base-class field is a plain object,
+ * the subclass field simply overrides it).
  */
 import { Device } from 'vrack2-core'
 
