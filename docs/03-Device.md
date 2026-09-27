@@ -60,7 +60,7 @@ export default class MyDevice extends Device {
 | `processPromise()` | да | в `runProcess()` / `startDevice()`, ступень 2, awaited |
 | `stop()` | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
 | `stopPromise()` | да | при остановке, awaited, после `stop()` |
-| `beforeAction(action, data)` | нет | перед каждой action |
+| `beforeAction(action, data)` | нет | хук, объявленный в `Device`; текущее ядро его **не вызывает** (резерв) |
 | `beforeTerminate()` | нет | при удалении устройства (после остановки, если оно работало) |
 
 Состояния: `CREATED → RUNNING → STOPPED → RUNNING …` (остановка обратима), а из `RUNNING` / `STOPPED` / `CREATED` — `DESTROYED` (удаление необратимо). Управление состоянием — только за контейнером.

@@ -23,7 +23,7 @@ MainProcess → Bootstrap (boot classes) → ServiceLoader (builds the service f
 ```
 
 - `MainProcess` — entry point; orchestrates the startup order.
-- `Bootstrap` — loads boot classes (service modules): `DeviceManager` (device registry, **required**), plus optional `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`.
+- `Bootstrap` — loads boot classes (service modules): `DeviceManager` (device registry, **required**), plus optional `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`, and the `BootDatabase` family (`BootDatabaseSqlite` / `BootDatabaseMemory` adapters).
 - `ServiceLoader` — builds the service: resolves device classes (`vendor.Class`), validates options, creates devices in the Container, wires connections; also adds/removes devices in a running service.
 - `Container` — runs devices, moves data through ports, executes actions, stores state, emits all events.
 
@@ -44,8 +44,8 @@ Full architecture, canonical startup sequence, and data flows: `docs/01-Architec
 | `src/ports/`, `src/actions/`, `src/metrics/` | Ports, actions, metrics. |
 | `src/validator/` | `Rule` / `Validator` — option & action-argument validation. |
 | `src/errors/` | `ErrorManager` / `CoreError` — coded errors. |
-| `src/boot/` | Standard boot classes (`DeviceManager`, `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`). |
-| `test/` | Vitest tests: `smoke.test.ts` (public API surface), `unit/`, `integration/service.test.ts` (boots a real `MainProcess`), `fixtures/` (test devices & boot classes). |
+| `src/boot/` | Standard boot classes (`BootClass` base, `DeviceManager`, `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`) and the `BootDatabase` family (`BootDatabase`, `BootDatabaseSqlite`, `BootDatabaseMemory`). |
+| `test/` | Vitest tests: `smoke.test.ts` (public API surface), `unit/`, `integration/` (boots a real `MainProcess`: `service`, `device-status`, `device-stop`, `hot-devices`, `boot-database`), `fixtures/` (test devices & boot classes). |
 | `docs/` | Canonical documentation, numbered 00–10 (in Russian). One file = one topic. |
 | `lib/` | **Build output (CommonJS + .d.ts). Never edit by hand.** |
 | `README.md`, `TESTING.md`, `CHANGELOG.md` | Project entry points. |
@@ -67,7 +67,7 @@ Notes:
   (`vrack2-core` → `src/index.ts`, `testkit` → `test/fixtures/boot/index.js`) —
   no build step is required before testing.
 - Integration tests use temp dirs under `os.tmpdir()` and clean up after each test.
-- The only runtime dependency is `vrack-db` (used by `DeviceMetrics`).
+- The only runtime dependency is `vrack-db` (used by `DeviceMetrics` and the `BasicMetric` metric storage).
 
 ## Rules for changes (read before editing)
 

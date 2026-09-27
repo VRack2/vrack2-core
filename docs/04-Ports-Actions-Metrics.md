@@ -113,7 +113,7 @@ actionSetValue(data) {
 - Метод action принимает **ровно один объект**.
 - Для каждой action обязателен хендлер: action `test.action` → метод `actionTestAction`. При регистрации отсутствие проверяется (`CTR_DEVICE_ACTION_NF` / `CTR_DEVICE_ACTION_HANDLER_NF`).
 - Вызов: `Container.deviceAction(device, 'action.name', data)` — устройство должно работать (`running`), иначе `CTR_DEVICE_STOPPED`; далее валидирует `requirements` и вызывает хендлер; результат возвращается вызывающему.
-- `beforeAction(action, data)` вызывается перед каждой action.
+- `beforeAction(action, data)` — хук, объявленный в `Device`; текущее ядро его **не вызывает** (резерв).
 
 ## Метрики
 
