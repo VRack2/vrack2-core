@@ -10,7 +10,6 @@ import Validator from '../src/validator/Validator'
 import CoreError from '../src/errors/CoreError'
 import Port from '../src/ports/Port'
 import StandardPort from '../src/ports/StandardPort'
-import StandartPort from '../src/ports/StandartPort'
 import ReturnPort from '../src/ports/ReturnPort'
 import BasicPort from '../src/ports/BasicPort'
 
@@ -61,13 +60,10 @@ describe('vrack2-core smoke', () => {
         expect(() => Validator.validate(rules, { name: 42, count: 'x' })).toThrow()
     })
 
-    it('StandardPort / StandartPort (deprecated) both emit type "standard"', () => {
+    it('StandardPort emits type "standard"', () => {
         const s = new StandardPort()
-        const deprecated = new StandartPort()
         expect(s).toBeInstanceOf(BasicPort)
-        expect(deprecated).toBeInstanceOf(BasicPort)
         expect(s.export().type).toBe('standard')
-        expect(deprecated.export().type).toBe('standard')
     })
 
     it('ReturnPort emits type "return"', () => {
@@ -77,14 +73,12 @@ describe('vrack2-core smoke', () => {
 
     it('Port factory helpers produce the right ports', () => {
         expect(Port.standard()).toBeInstanceOf(StandardPort)
-        // deprecated factory returns the deprecated StandartPort class
-        expect(Port.standart()).toBeInstanceOf(StandartPort)
         expect(Port.return()).toBeInstanceOf(ReturnPort)
     })
 
     it('Device is a constructible class with expected methods', () => {
         expect(typeof core.Device).toBe('function')
-        expect(typeof core.Device.prototype.process).toBe('function')
+        expect(typeof core.Device.prototype.onStart).toBe('function')
         expect(typeof core.Device.prototype.actions).toBe('function')
         expect(typeof core.Device.prototype.inputs).toBe('function')
         expect(typeof core.Device.prototype.outputs).toBe('function')

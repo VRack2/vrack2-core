@@ -295,32 +295,6 @@ export default class Device {
      */
     onDestroy() { return }
 
-    /*
-     * Deprecated lifecycle hooks — kept for the deprecation window so existing
-     * devices that override the old names keep working. The Container calls the
-     * NEW hooks (`onRegister` / `onStart` / `onStartAsync` / `onStop` /
-     * `onStopAsync` / `onDestroy`) and, for back-compat, the old ones. Keep
-     * logic in only ONE name (the new one). Remove in the next major.
-     */
-
-    /** @deprecated use onRegister() instead of preProcess() */
-    preProcess(): void {}
-
-    /** @deprecated use onStart() instead of process() */
-    process(): void {}
-
-    /** @deprecated use onStartAsync() instead of processPromise() */
-    async processPromise(): Promise<void> {}
-
-    /** @deprecated use onStop() instead of stop() */
-    stop(): void {}
-
-    /** @deprecated use onStopAsync() instead of stopPromise() */
-    async stopPromise(): Promise<void> {}
-
-    /** @deprecated use onDestroy() instead of beforeTerminate() */
-    beforeTerminate(): void {}
-
     /**
      * Sends the current `shares` to external consumers.
      *

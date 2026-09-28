@@ -24,8 +24,9 @@ const nodeGlobals = {
 };
 
 module.exports = [
-    // Build output is not linted (node_modules/ is ignored by default)
-    { ignores: ['lib/**'] },
+    // Build output is not linted (node_modules/ is ignored by default).
+    // .kilo/ holds Kilo config/state and sibling worktrees — not source of this repo.
+    { ignores: ['lib/**', '.kilo/**'] },
 
     js.configs.recommended,
 

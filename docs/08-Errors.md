@@ -76,10 +76,10 @@
 | `CTR_DEVICE_NF` | Устройство не найдено в контейнере. |
 | `CTR_DEVICE_ACTION_NF` | Action на устройстве не найдена. |
 | `CTR_DEVICE_ACTION_HANDLER_NF` | Хендлер action не найден. |
-| `CTR_DEVICE_PROCESS_EXCEPTION` | `process()` устройства выбросил исключение (вложено в `vAddErrors`). |
-| `CTR_DEVICE_PROCESS_PROMISE_EXCEPTION` | `processPromise()` устройства выбросил исключение. |
-| `CTR_DEVICE_STOP_EXCEPTION` | `stop()` устройства выбросил исключение (вложено в `vAddErrors`). |
-| `CTR_DEVICE_STOP_PROMISE_EXCEPTION` | `stopPromise()` устройства выбросил исключение (вложено в `vAddErrors`). |
+ | `CTR_DEVICE_PROCESS_EXCEPTION` | `onStart()` устройства выбросил исключение (вложено в `vAddErrors`). |
+ | `CTR_DEVICE_PROCESS_PROMISE_EXCEPTION` | `onStartAsync()` устройства выбросил исключение. |
+ | `CTR_DEVICE_STOP_EXCEPTION` | `onStop()` устройства выбросил исключение (вложено в `vAddErrors`). |
+ | `CTR_DEVICE_STOP_PROMISE_EXCEPTION` | `onStopAsync()` устройства выбросил исключение (вложено в `vAddErrors`). |
 | `CTR_DEVICE_STOP_ALL_EXCEPTION` | В `stopAll()` не удалось остановить одно или более устройств (ошибки устройств — в `vAddErrors`). |
 | `CTR_DEVICE_STOPPED` | Action вызвана на остановленном (не running) устройстве. |
 | `CTR_DEVICE_PORT_NF` | Порт на устройстве не найден. |
@@ -132,7 +132,7 @@
 
 | Код | Описание |
 |---|---|
-| `DB_NOT_READY` | Вызов публичного метода до завершения старта БД (до `processPromise()`). |
+ | `DB_NOT_READY` | Вызов публичного метода до завершения старта БД (до `onStartAsync()`). |
 | `DB_CLOSED` | Вызов публичного метода после остановки БД (`terminate()`). |
 | `DB_CONNECT_FAILED` | Не удалось подключиться к БД при старте. Сервис не стартует (fail-fast, повторные попытки — за супервайзером). |
 | `DB_QUERY_FAILED` | Ошибка запроса: ошибка драйвера, переупакованная. Несёт `message` и код драйвера (`driverCode`), но не текст SQL и не параметры (сенситивность). |

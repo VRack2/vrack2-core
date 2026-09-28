@@ -45,17 +45,6 @@ export default class BasicType {
     }
     
     /**
-     * Вскоре будет удален
-     * @see required
-     * @deprecated use required()
-    */
-    require(){
-        this.invalidateExport()
-        this.rule.require = true
-        return this
-    }
-    
-    /**
      * Example of a valid value for this rule
      * 
      * @param ex Example valid value 

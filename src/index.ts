@@ -45,7 +45,6 @@ export { default as Metric } from './metrics/Metric'
 
 export { default as BasicPort } from './ports/BasicPort'
 export { default as StandardPort } from './ports/StandardPort'
-export { default as StandartPort } from './ports/StandartPort' // @deprecated use StandardPort
 export { default as ReturnPort } from './ports/ReturnPort'
 export { default as BasicType } from './validator/types/BasicType'
 export { default as BasicMetric } from './metrics/BasicMetric'

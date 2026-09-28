@@ -56,11 +56,6 @@ describe('Rule + Validator: strings', () => {
         expect(p.type).toBe('VR_ERROR_REQUIRED')
     })
 
-    it('deprecated require() alias works like required()', () => {
-        const err = validateError({ s: Rule.string().require() }, {})
-        expect(problemOf(err, 's').type).toBe('VR_ERROR_REQUIRED')
-    })
-
     it('maxLength: length exactly equal to max passes, above fails', () => {
         expect(Validator.validate({ s: Rule.string().maxLength(5) }, { s: 'abcde' })).toBe(true)
         const err = validateError({ s: Rule.string().maxLength(5) }, { s: 'abcdef' })

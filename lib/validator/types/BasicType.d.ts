@@ -21,12 +21,6 @@ export default class BasicType {
      */
     required(): this;
     /**
-     * Вскоре будет удален
-     * @see required
-     * @deprecated use required()
-    */
-    require(): this;
-    /**
      * Example of a valid value for this rule
      *
      * @param ex Example valid value

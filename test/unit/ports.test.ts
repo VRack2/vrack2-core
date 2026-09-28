@@ -6,7 +6,6 @@ import {
     Port,
     BasicPort,
     StandardPort,
-    StandartPort,
     ReturnPort,
     Rule,
 } from 'vrack2-core'
@@ -36,14 +35,11 @@ describe('BasicPort', () => {
     })
 })
 
-describe('StandardPort / StandartPort (deprecated)', () => {
-    it('both are BasicPort subclasses with type "standard"', () => {
+describe('StandardPort', () => {
+    it('is a BasicPort subclass with type "standard"', () => {
         const s = new StandardPort()
-        const deprecated = new StandartPort()
         expect(s).toBeInstanceOf(BasicPort)
-        expect(deprecated).toBeInstanceOf(BasicPort)
         expect(s.export().type).toBe('standard')
-        expect(deprecated.export().type).toBe('standard')
     })
 })
 
@@ -65,13 +61,6 @@ describe('Port factory', () => {
     it('standard() creates a StandardPort', () => {
         const p = Port.standard()
         expect(p).toBeInstanceOf(StandardPort)
-        expect(p).not.toBeInstanceOf(StandartPort)
-        expect(p.export().type).toBe('standard')
-    })
-
-    it('standart() (deprecated) creates a StandartPort', () => {
-        const p = Port.standart()
-        expect(p).toBeInstanceOf(StandartPort)
         expect(p.export().type).toBe('standard')
     })
 

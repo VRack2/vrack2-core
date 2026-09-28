@@ -318,7 +318,6 @@ export default class Container extends EventEmitter {
             try {
                 this.emit('device.start', key)
                 this.devices[key].onStart()
-                this.devices[key].process() // deprecated: remove in next major
             } catch (error) {
                 throw ErrorManager.make('CTR_DEVICE_PROCESS_EXCEPTION', { device: key }).add(error as Error)
             }
@@ -330,7 +329,6 @@ export default class Container extends EventEmitter {
             try {
                 this.emit('device.startAsync', key)
                 await this.devices[key].onStartAsync()
-                await this.devices[key].processPromise() // deprecated: remove in next major
             } catch (error) {
                 throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: key }).add(error as Error)
             }
@@ -359,14 +357,12 @@ export default class Container extends EventEmitter {
         try {
             this.emit('device.start', id)
             this.devices[id].onStart()
-            this.devices[id].process() // deprecated: remove in next major
         } catch (error) {
             throw ErrorManager.make('CTR_DEVICE_PROCESS_EXCEPTION', { device: id }).add(error as Error)
         }
         try {
             this.emit('device.startAsync', id)
             await this.devices[id].onStartAsync()
-            await this.devices[id].processPromise() // deprecated: remove in next major
         } catch (error) {
             throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
@@ -392,13 +388,11 @@ export default class Container extends EventEmitter {
         try {
             this.emit('device.stop', id)
             dev.onStop()
-            dev.stop() // deprecated: remove in next major
         } catch (error) {
             throw ErrorManager.make('CTR_DEVICE_STOP_EXCEPTION', { device: id }).add(error as Error)
         }
         try {
             await dev.onStopAsync()
-            await dev.stopPromise() // deprecated: remove in next major
         } catch (error) {
             throw ErrorManager.make('CTR_DEVICE_STOP_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
@@ -517,7 +511,6 @@ export default class Container extends EventEmitter {
         }
 
         dev.onRegister()
-        dev.preProcess() // deprecated: remove in next major
 
         // Check actions 
         this.deviceActions[dev.id] = dev.actions()
@@ -716,7 +709,6 @@ export default class Container extends EventEmitter {
 
         // 2. Termination hook
         dev.onDestroy()
-        dev.beforeTerminate() // deprecated: remove in next major
 
         // 3. Disconnect all connections touching this device (both sides)
         const ports = [...Object.values(dev.ports.input), ...Object.values(dev.ports.output)]

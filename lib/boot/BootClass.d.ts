@@ -99,12 +99,6 @@ export default class BootClass {
      * `Bootstrap.terminateAll()` may be called multiple times.
      */
     onDestroy(): Promise<void>;
-    /** @deprecated use onStart() instead of process() */
-    process(): void;
-    /** @deprecated use onStartAsync() instead of processPromise() */
-    processPromise(): Promise<void>;
-    /** @deprecated use onDestroy() instead of terminate() */
-    terminate(): Promise<void>;
     /**
      * Method for calling container system errors
      */

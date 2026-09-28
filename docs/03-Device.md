@@ -27,7 +27,7 @@ export default class MyDevice extends Device {
 | `options` | конструктор + `createDevice()` | Опции, проверенные `checkOptions()`. |
 | `ports.input` / `ports.output` | `registerDevice()` | Объекты портов; `push(data)` — на выходных. |
 | `storage` | `service.start.begin` / `device.add` | Персистентное состояние; сохраняется `save()`. |
-| `shares` | конструктор / `preProcess()` | Объект быстро-меняющихся данных (обычный объект); подкласс задаёт его обычным типизированным полем; устройство вызывает `render()` после изменения — событие `device.render`. |
+ | `shares` | конструктор / `onRegister()` | Объект быстро-меняющихся данных (обычный объект); подкласс задаёт его обычным типизированным полем; устройство вызывает `render()` после изменения — событие `device.render`. |
 | `running` | только чтение (геттер) | Состояние работы устройства — выводится из статуса контейнера (`deviceStatus[id].state` через `Container.isRunning(id)`), самим устройством **не управляется**. `false` только у остановленного (`stopped`) или удалённого устройства: его порты отбрасывают `push`, а actions отклоняются ошибкой `CTR_DEVICE_STOPPED`. Не-запущенное (`registered`) устройство остановленным **не считается** — `running = true`, его порты активны, и старт-трафик (например, регистрация команд) проходит. |
 
 ## Жизненный цикл
@@ -38,31 +38,29 @@ export default class MyDevice extends Device {
 2. Копирование опций из конфига, вызов `prepareOptions()` — **подготовка опций до валидации** (производные значения, преобразования).
 3. `Validator.validate(this.checkOptions(), this.options)` — валидация опций; при неудаче — `VR_NOT_PASS` (обёрнут в `CTR_ERROR_PREPARE_OPTIONS` → `CTR_ERROR_INIT_DEVICE`).
 4. `Container.registerDevice()`:
-    - `onRegister()` (устар. `preProcess()`) — **входная точка инициализации**: порты ещё не созданы, shares доступны; здесь назначаются функции для динамических портов;
+    - `onRegister()` — **входная точка инициализации**: порты ещё не созданы, shares доступны; здесь назначаются функции для динамических портов;
    - проверка actions: для каждой action должен существовать хендлер;
     - регистрация метрик (событие `device.metric.register` на каждую);
    - создание входных/выходных портов; проверка и bind входных хендлеров.
 5. Подключение соединений (`addConnection`).
-6. `onStart()` (устар. `process()`) — **входная точка старта работы**: выполнены все шаги выше; здесь стартует основная работа (таймеры, подписки, инициализация соединений).
-7. `await onStartAsync()` (устар. `processPromise()`) — асинхронная инициализация, которую лоадер ждёт у всех устройств (например, инициализация файловых баз).
+6. `onStart()` — **входная точка старта работы**: выполнены все шаги выше; здесь стартует основная работа (таймеры, подписки, инициализация соединений).
+7. `await onStartAsync()` — асинхронная инициализация, которую лоадер ждёт у всех устройств (например, инициализация файловых баз).
 
-Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.terminate()`) вызывает `onStop()` (устар. `stop()`), затем `await onStopAsync()` (устар. `stopPromise()`), и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается** — его можно запустить снова через `Container.startDevice()` (повторно выполняются `onStart()` + `onStartAsync()`, снова включаются порты и actions).
+Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.terminate()`) вызывает `onStop()`, затем `await onStopAsync()`, и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается** — его можно запустить снова через `Container.startDevice()` (повторно выполняются `onStart()` + `onStartAsync()`, снова включаются порты и actions).
 
-Завершение (необратимо): `onDestroy()` (устар. `beforeTerminate()`) вызывается, когда устройство удаляется из работающего сервиса (`ServiceLoader.removeDevice()` → `Container.removeDevice()`). Если устройство работало — сначала выполняется остановка (`onStop()` + `onStopAsync()`), и только потом `onDestroy()`. При простом завершении процесса вызываться не будет.
+Завершение (необратимо): `onDestroy()` вызывается, когда устройство удаляется из работающего сервиса (`ServiceLoader.removeDevice()` → `Container.removeDevice()`). Если устройство работало — сначала выполняется остановка (`onStop()` + `onStopAsync()`), и только потом `onDestroy()`. При простом завершении процесса вызываться не будет.
 
 | Метод | Асинхронный | Когда вызывается |
 |---|---|---|
 | `prepareOptions()` | нет | до проверки опций |
 | `checkOptions()` | нет | возвращает правила опций |
-| `onRegister()` (устар. `preProcess()`) | нет | в `registerDevice()`, до старта |
-| `onStart()` (устар. `process()`) | нет | в `runProcess()` / `startDevice()`, ступень 1 |
-| `onStartAsync()` (устар. `processPromise()`) | да | в `runProcess()` / `startDevice()`, ступень 2, awaited |
-| `onStop()` (устар. `stop()`) | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
-| `onStopAsync()` (устар. `stopPromise()`) | да | при остановке, awaited, после `onStop()` |
-| `beforeAction(action, data)` | нет | хук, объявленный в `Device`; текущее ядро его **не вызывает** (резерв) |
-| `onDestroy()` (устар. `beforeTerminate()`) | нет | при удалении устройства (после остановки, если оно работало) |
-
-> **Имена хуков (депрекейшн).** Канонические имена — `onRegister()` / `onStart()` / `onStartAsync()` / `onStop()` / `onStopAsync()` / `onDestroy()`. Старые имена (`preProcess()`, `process()`, `processPromise()`, `stop()`, `stopPromise()`, `beforeTerminate()`) помечены `@deprecated`: в переходный период ядро вызывает **и** новые, **и** старые; в следующей мажорной версии вызовы старых будут удалены. Базовые реализации — пустые no-op, поэтому переопределять можно **любой** из пары, не трогая другой и **без** `super` (ядро вызывает их независимо). При переходе просто переименуйте метод — устройство продолжит работать.
+ | `onRegister()` | нет | в `registerDevice()`, до старта |
+ | `onStart()` | нет | в `runProcess()` / `startDevice()`, ступень 1 |
+ | `onStartAsync()` | да | в `runProcess()` / `startDevice()`, ступень 2, awaited |
+ | `onStop()` | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
+ | `onStopAsync()` | да | при остановке, awaited, после `onStop()` |
+ | `beforeAction(action, data)` | нет | хук, объявленный в `Device`; текущее ядро его **не вызывает** (резерв) |
+ | `onDestroy()` | нет | при удалении устройства (после остановки, если оно работало) |
 
 Состояния: `CREATED → RUNNING → STOPPED → RUNNING …` (остановка обратима), а из `RUNNING` / `STOPPED` / `CREATED` — `DESTROYED` (удаление необратимо). Управление состоянием — только за контейнером.
 
@@ -139,14 +137,14 @@ getDB(id = 'DB'): BootDatabase
 
 - `id` — id boot-класса из bootstrap-списка; по умолчанию `'DB'`. Не объявлен → `BTSP_CLASS_ID_NOT_FOUND`.
 - Возвращает **интерфейс** `BootDatabase`, а не конкретный адаптер: если нужны методы адаптера, возьмите его класс через `Container.Bootstrap.getBootClass()`.
-- БД гарантированно запущена **до** `processPromise()` устройства (boot-классы завершают старт раньше устройств — [01-Architecture](01-Architecture.md)).
+- БД гарантированно запущена **до** `onStartAsync()` устройства (boot-классы завершают старт раньше устройств — [01-Architecture](01-Architecture.md)).
 - Закрыть/остановить БД из устройства нельзя: это ресурс уровня процесса, останавливается только `Bootstrap.terminateAll()`. Проверка живости — `ping()` (бросает = нежива).
 
 Публичный API: `query(sql, params?)` → строки · `get(sql, params?)` → первая строка или `undefined` · `execute(sql, params?)` → `{ affectedRows, insertId? }` · `transaction(fn)` — авто `COMMIT`, при ошибке в `fn` — `ROLLBACK` и `DB_TRANSACTION_FAILED` · `ping()`. Параметры только позиционные (`?`). Ошибки кодовые: [08-Errors](08-Errors.md).
 
 ```js
 class Track extends Device {
-    async processPromise() {
+    async onStartAsync() {
         const db = this.getDB()
         const row = await db.get('SELECT * FROM tracks WHERE id = ?', [this.options.id])
         this.shares.title = row && row.title
@@ -262,7 +260,7 @@ class MyDevice extends Device {
 }
 ```
 
-Без поля дефолт — пустой `{}`; записи в конструкторе/`preProcess()` тоже работают.
+Без поля дефолт — пустой `{}`; записи в конструкторе/`onRegister()` тоже работают.
 
 Поведение:
 

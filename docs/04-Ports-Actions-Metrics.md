@@ -12,7 +12,6 @@
 ```js
 Port.standard()   // стандартный порт: отправка/каст значения в другой порт
 Port.return()     // return-порт: получение значения через соединение
-Port.standart()   // @deprecated — используйте Port.standard()
 ```
 
 Порт объявляется в `inputs()` / `outputs()`:

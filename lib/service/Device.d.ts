@@ -259,18 +259,6 @@ export default class Device {
      * Note: it may not be called at all (depends on how the service exits).
      */
     onDestroy(): void;
-    /** @deprecated use onRegister() instead of preProcess() */
-    preProcess(): void;
-    /** @deprecated use onStart() instead of process() */
-    process(): void;
-    /** @deprecated use onStartAsync() instead of processPromise() */
-    processPromise(): Promise<void>;
-    /** @deprecated use onStop() instead of stop() */
-    stop(): void;
-    /** @deprecated use onStopAsync() instead of stopPromise() */
-    stopPromise(): Promise<void>;
-    /** @deprecated use onDestroy() instead of beforeTerminate() */
-    beforeTerminate(): void;
     /**
      * Sends the current `shares` to external consumers.
      *

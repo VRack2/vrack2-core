@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026.09.29
+
+### Major
+
+- **Breaking**: убраны все `@deprecated` lifecycle-хуки — ядро вызывает только канонические имена. У `Device` больше не вызываются и не существуют `preProcess()` / `process()` / `processPromise()` / `stop()` / `stopPromise()` / `beforeTerminate()`; у `BootClass` — `process()` / `processPromise()` / `terminate()`. Подклассы, переопределявшие старые имена, переименовывают их на `onRegister()` / `onStart()` / `onStartAsync()` / `onStop()` / `onStopAsync()` / `onDestroy()` (без `super`).
+- **Breaking**: удалён `StandartPort` и фабрика `Port.standart()` (депрекейтед-алиасы `StandardPort` / `Port.standard()`) вместе с экспортом `StandartPort` из публичного API. Использовать `Port.standard()`.
+- **Breaking**: удалён `Rule.require()` — депрекейтед-алиас `Rule.required()`. Использовать `required()`.
+- Миграция ядра: `DeviceFileStorage` теперь переопределяет `onStart()` (вместо `process()`).
+- Тесты: `test/unit/lifecycle-hooks.test.ts` переписан только на канонические `on*` имена (убраны back-compat-кейсы); `smoke.test.ts`, `ports.test.ts`, `validator.test.ts` — убрано покрытие `StandartPort` / `Port.standart()` / `Rule.require()`.
+- Документация: удалены все депрекейшн-заметки и ссылки на старые имена (01-Architecture, 03-Device, 04-Ports-Actions-Metrics, 07-Bootstrap); описания ошибок в 08-Errors и 10-Standalone переписаны на новые имена хуков.
+
 ## 2026.09.28
 
 ### Minor

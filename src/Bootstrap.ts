@@ -207,11 +207,9 @@ export default class Bootstrap {
         }
         for (const bc in this.loaded) {
             this.loaded[bc].onStart()
-            this.loaded[bc].process() // deprecated: remove in next major
         }
         for (const bc in this.loaded) {
             await this.loaded[bc].onStartAsync()
-            await this.loaded[bc].processPromise() // deprecated: remove in next major
         }
     }
 
@@ -260,7 +258,6 @@ export default class Bootstrap {
         for (const bc of Object.keys(this.loaded).reverse()) {
             try {
                 await this.loaded[bc].onDestroy()
-                await this.loaded[bc].terminate() // deprecated: remove in next major
             } catch (e: any) {
                 this.Container?.emit('system.error',
                     ErrorManager.make('BTSP_TERMINATE_FAILED', { id: bc, message: e?.message }))

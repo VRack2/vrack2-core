@@ -9,7 +9,7 @@ export default class DeviceFileStorage extends BootClass {
     checkOptions(): {
         [key: string]: BasicType;
     };
-    process(): void;
+    onStart(): void;
     /**
      * loading a device storage file
      * If the primary storage file does not exist, an attempt will be made

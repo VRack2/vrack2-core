@@ -122,22 +122,6 @@ export default class BootClass {
      */
     async onDestroy() { await Promise.resolve() }
 
-    /*
-     * Deprecated lifecycle hooks — kept for the deprecation window so existing
-     * boot classes that override the old names keep working. The core calls the
-     * NEW hooks (`onStart` / `onStartAsync` / `onDestroy`) and, for back-compat,
-     * the old ones. Keep logic in only ONE name. Remove in the next major.
-     */
-
-    /** @deprecated use onStart() instead of process() */
-    process(): void {}
-
-    /** @deprecated use onStartAsync() instead of processPromise() */
-    async processPromise(): Promise<void> {}
-
-    /** @deprecated use onDestroy() instead of terminate() */
-    async terminate(): Promise<void> {}
-
     /**
      * Method for calling container system errors
      */

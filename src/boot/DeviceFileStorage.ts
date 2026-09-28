@@ -24,7 +24,7 @@ export default class DeviceFileStorage extends BootClass {
         }
     }
 
-    process(): void {
+    onStart(): void {
         if (!ImportManager.isDir(this.options.storageDir)) fs.mkdirSync(this.options.storageDir, { recursive: true })
         
         // Before the start phase, load storage data

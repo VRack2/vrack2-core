@@ -4,7 +4,6 @@
 */
 
 import ReturnPort from "./ReturnPort";
-import StandartPort from "./StandartPort";
 import StandardPort from "./StandardPort";
 /**
  * Creating a new port. Used internally to create a port
@@ -17,13 +16,6 @@ export default class Port {
     */
     static standard() {
         return new StandardPort()
-    }
-
-    /**
-     * @deprecated Use `Port.standard()` instead.
-     */
-    static standart() {
-        return new StandartPort()
     }
 
     /**
