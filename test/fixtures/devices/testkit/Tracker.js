@@ -6,44 +6,44 @@
  *  - action 'ping'  - returns 'pong'
  *
  * Instance flags (set by the lifecycle methods, for assertions):
- *   preProcessCount / processCount / processPromiseCount : number of calls
- *   stopCount / stopPromiseCount : number of stop calls
+ *   onRegisterCount / onStartCount / onStartAsyncCount : number of calls
+ *   onStopCount / onStopAsyncCount : number of stop calls
  *   order : array of lifecycle calls in order (for sequence assertions)
- *   terminated : boolean (true once beforeTerminate() ran)
+ *   destroyed : boolean (true once onDestroy() ran)
  *   count      : current counter value
  */
 import { Device, Port, Action } from 'vrack2-core'
 
 export default class Tracker extends Device {
-    preProcess() {
-        this.preProcessCount = (this.preProcessCount || 0) + 1
-        ;(this.order = this.order || []).push('preProcess')
+    onRegister() {
+        this.onRegisterCount = (this.onRegisterCount || 0) + 1
+        ;(this.order = this.order || []).push('onRegister')
     }
 
-    process() {
-        this.processCount = (this.processCount || 0) + 1
+    onStart() {
+        this.onStartCount = (this.onStartCount || 0) + 1
         this.count = 0
-        ;(this.order = this.order || []).push('process')
+        ;(this.order = this.order || []).push('onStart')
     }
 
-    async processPromise() {
-        this.processPromiseCount = (this.processPromiseCount || 0) + 1
-        ;(this.order = this.order || []).push('processPromise')
+    async onStartAsync() {
+        this.onStartAsyncCount = (this.onStartAsyncCount || 0) + 1
+        ;(this.order = this.order || []).push('onStartAsync')
     }
 
-    stop() {
-        this.stopCount = (this.stopCount || 0) + 1
-        ;(this.order = this.order || []).push('stop')
+    onStop() {
+        this.onStopCount = (this.onStopCount || 0) + 1
+        ;(this.order = this.order || []).push('onStop')
     }
 
-    async stopPromise() {
-        this.stopPromiseCount = (this.stopPromiseCount || 0) + 1
-        ;(this.order = this.order || []).push('stopPromise')
+    async onStopAsync() {
+        this.onStopAsyncCount = (this.onStopAsyncCount || 0) + 1
+        ;(this.order = this.order || []).push('onStopAsync')
     }
 
-    beforeTerminate() {
-        this.terminated = true
-        ;(this.order = this.order || []).push('beforeTerminate')
+    onDestroy() {
+        this.destroyed = true
+        ;(this.order = this.order || []).push('onDestroy')
     }
 
     inputs() {

@@ -13,18 +13,18 @@ class SharesFieldDefault extends Device {
     shares = { data: 1 }
 }
 
-/** Field default refined in preProcess() — the refinement must be preserved */
+/** Field default refined in onRegister() — the refinement must be preserved */
 class SharesFieldRefine extends Device {
     constructor(id, cc) { super(id, 'testkit.SharesFieldRefine', cc) }
     shares = { data: 1 }
-    preProcess() { this.shares.data = 99 }
+    onRegister() { this.shares.data = 99 }
 }
 
-/** Field default replaced in preProcess() — the replacement must win */
+/** Field default replaced in onRegister() — the replacement must win */
 class SharesFieldReplace extends Device {
     constructor(id, cc) { super(id, 'testkit.SharesFieldReplace', cc) }
     shares = { data: 1 }
-    preProcess() { this.shares = { data: 2, extra: true } }
+    onRegister() { this.shares = { data: 2, extra: true } }
 }
 
 export default { SharesFieldDefault, SharesFieldRefine, SharesFieldReplace }

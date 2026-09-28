@@ -4,23 +4,23 @@
  * Verifies the reversible stop semantics (see src/service/Device.ts,
  * src/Container.ts, src/service/DevicePort.ts):
  *
- *  - `Container.stopDevice(id)`: calls `stop()`, then `await stopPromise()`,
+ *  - `Container.stopDevice(id)`: calls `onStop()`, then `await onStopAsync()`,
  *    then marks the device stopped (`running = false`, `isStarted() = false`)
  *  - `stopDevice()` is idempotent; unknown id -> CTR_DEVICE_NF
  *  - stopped device: input ports drop pushed data, actions are rejected
  *    with CTR_DEVICE_STOPPED
  *  - a device that is NOT started is NOT stopped: its ports stay active
- *    (a push made inside `process()` reaches the connected receiver —
+ *    (a push made inside `onStart()` reaches the connected receiver —
  *    the service-side command registration flow)
  *  - restart: `startDevice()` after `stopDevice()` re-runs
- *    `process()` + `processPromise()` and re-enables ports & actions
+ *    `onStart()` + `onStartAsync()` and re-enables ports & actions
  *  - `Container.stopAll()`: stops everything in reverse start order,
  *    best-effort, aggregates failures into CTR_DEVICE_STOP_ALL_EXCEPTION
- *  - `stop()` failure -> CTR_DEVICE_STOP_EXCEPTION
- *  - `stopPromise()` failure -> CTR_DEVICE_STOP_PROMISE_EXCEPTION
- *  - `stopPromise()` is really awaited before the device is stopped
+ *  - `onStop()` failure -> CTR_DEVICE_STOP_EXCEPTION
+ *  - `onStopAsync()` failure -> CTR_DEVICE_STOP_PROMISE_EXCEPTION
+ *  - `onStopAsync()` is really awaited before the device is stopped
  *  - `removeDevice()` on a running device stops it first
- *    (`stop()` -> `stopPromise()` -> `beforeTerminate()`)
+ *    (`onStop()` -> `onStopAsync()` -> `onDestroy()`)
  */
 import { describe, it, expect } from 'vitest'
 import { Container, Device, Port, Action, ErrorManager } from 'vrack2-core'
@@ -29,24 +29,24 @@ import { Container, Device, Port, Action, ErrorManager } from 'vrack2-core'
 class TTracker extends Device {
     order: string[] = []
     count = 0
-    terminated = false
+    destroyed = false
 
     constructor(id: string, c: Container) { super(id, 'test.TTracker', c) }
 
-    process() {
-        this.order.push('process')
+    onStart() {
+        this.order.push('onStart')
         this.count = 0
     }
 
-    async processPromise() { this.order.push('processPromise') }
+    async onStartAsync() { this.order.push('onStartAsync') }
 
-    stop() { this.order.push('stop') }
+    onStop() { this.order.push('onStop') }
 
-    async stopPromise() { this.order.push('stopPromise') }
+    async onStopAsync() { this.order.push('onStopAsync') }
 
-    beforeTerminate() {
-        this.terminated = true
-        this.order.push('beforeTerminate')
+    onDestroy() {
+        this.destroyed = true
+        this.order.push('onDestroy')
     }
 
     inputs() { return { data: Port.standard() } }
@@ -63,52 +63,52 @@ class TTracker extends Device {
     actionPing() { return 'pong' }
 }
 
-/* Device whose stop() throws synchronously */
+/* Device whose onStop() throws synchronously */
 class StopFailSync extends Device {
-    stopCalled = false
+    onStopCalled = false
     promiseCalled = false
 
     constructor(id: string, c: Container) { super(id, 'test.StopFailSync', c) }
 
-    stop() {
-        this.stopCalled = true
+    onStop() {
+        this.onStopCalled = true
         throw new Error('stop-boom')
     }
 
-    async stopPromise() { this.promiseCalled = true }
+    async onStopAsync() { this.promiseCalled = true }
 }
 
-/* Device whose stopPromise() rejects */
+/* Device whose onStopAsync() rejects */
 class StopFailPromise extends Device {
-    stopCalled = false
+    onStopCalled = false
 
     constructor(id: string, c: Container) { super(id, 'test.StopFailPromise', c) }
 
-    stop() { this.stopCalled = true }
+    onStop() { this.onStopCalled = true }
 
-    async stopPromise() { throw new Error('stop-promise-boom') }
+    async onStopAsync() { throw new Error('stop-promise-boom') }
 }
 
-/* Device with a slow stopPromise: proves the Container awaits it */
+/* Device with a slow onStopAsync: proves the Container awaits it */
 class SlowStop extends Device {
     stopDone = false
 
     constructor(id: string, c: Container) { super(id, 'test.SlowStop', c) }
 
-    async stopPromise() {
+    async onStopAsync() {
         await new Promise((r) => setTimeout(r, 10))
         this.stopDone = true
     }
 }
 
-/* Device that pushes to its output port during process() — like the
+/* Device that pushes to its output port during onStart() — like the
    service-side command registration (e.g. Guard -> ServiceManager):
    its own startup is not finished yet, but it is not stopped,
    so the push must reach the connected receiver */
 class RegSender extends Device {
     constructor(id: string, c: Container) { super(id, 'test.RegSender', c) }
 
-    process() { this.ports.output.reg.push(42) }
+    onStart() { this.ports.output.reg.push(42) }
 
     inputs() { return { data: Port.standard() } }
 
@@ -132,7 +132,7 @@ async function catchError(fn: () => Promise<any>) {
 
 describe('Container.stopDevice()', () => {
 
-    it('stops a running device: stop() -> await stopPromise(), state -> stopped', async () => {
+    it('stops a running device: onStop() -> await onStopAsync(), state -> stopped', async () => {
         const c = makeContainer()
         const dev = new TTracker('T1', c)
         c.registerDevice(dev)
@@ -142,7 +142,7 @@ describe('Container.stopDevice()', () => {
 
         await c.stopDevice('T1')
 
-        expect(dev.order).toEqual(['process', 'processPromise', 'stop', 'stopPromise'])
+        expect(dev.order).toEqual(['onStart', 'onStartAsync', 'onStop', 'onStopAsync'])
         expect(dev.running).toBe(false)
         expect(c.isStarted('T1')).toBe(false)
     })
@@ -154,7 +154,7 @@ describe('Container.stopDevice()', () => {
         await c.startDevice('T1')
 
         const events: string[] = []
-        c.on('stop', (id: string) => events.push(id))
+        c.on('device.stop', (id: string) => events.push(id))
 
         await c.stopDevice('T1')
 
@@ -170,8 +170,8 @@ describe('Container.stopDevice()', () => {
         await c.stopDevice('T1')
         await c.stopDevice('T1')
 
-        expect(dev.order.filter((o: string) => o === 'stop')).toHaveLength(1)
-        expect(dev.order.filter((o: string) => o === 'stopPromise')).toHaveLength(1)
+        expect(dev.order.filter((o: string) => o === 'onStop')).toHaveLength(1)
+        expect(dev.order.filter((o: string) => o === 'onStopAsync')).toHaveLength(1)
         expect(c.isStarted('T1')).toBe(false)
     })
 
@@ -195,7 +195,7 @@ describe('Container.stopDevice()', () => {
         expect(ErrorManager.isCode(err, 'CTR_DEVICE_NF')).toBe(true)
     })
 
-    it('stop() failure -> CTR_DEVICE_STOP_EXCEPTION, stopPromise() is not called, device stays started', async () => {
+    it('onStop() failure -> CTR_DEVICE_STOP_EXCEPTION, onStopAsync() is not called, device stays started', async () => {
         const c = makeContainer()
         const dev = new StopFailSync('F1', c)
         c.registerDevice(dev)
@@ -211,7 +211,7 @@ describe('Container.stopDevice()', () => {
         expect(c.isStarted('F1')).toBe(true)
     })
 
-    it('stopPromise() failure -> CTR_DEVICE_STOP_PROMISE_EXCEPTION, device stays started', async () => {
+    it('onStopAsync() failure -> CTR_DEVICE_STOP_PROMISE_EXCEPTION, device stays started', async () => {
         const c = makeContainer()
         const dev = new StopFailPromise('F1', c)
         c.registerDevice(dev)
@@ -222,11 +222,11 @@ describe('Container.stopDevice()', () => {
         expect(err).toBeDefined()
         expect(ErrorManager.isCode(err, 'CTR_DEVICE_STOP_PROMISE_EXCEPTION')).toBe(true)
         expect(err.vAddErrors[0].message).toBe('stop-promise-boom')
-        expect(dev.stopCalled).toBe(true)
+        expect(dev.onStopCalled).toBe(true)
         expect(c.isStarted('F1')).toBe(true)
     })
 
-    it('stopPromise() is really awaited before the device is stopped', async () => {
+    it('onStopAsync() is really awaited before the device is stopped', async () => {
         const c = makeContainer()
         const dev = new SlowStop('S1', c)
         c.registerDevice(dev)
@@ -254,7 +254,7 @@ describe('stopped device behavior', () => {
         dev.ports.input.data.push(7)
         expect(dev.count).toBe(5) // dropped: the device is stopped
 
-        await c.startDevice('T1') // restart: process() resets the counter
+        await c.startDevice('T1') // restart: onStart() resets the counter
         dev.ports.input.data.push(3)
         expect(dev.count).toBe(3) // flowing again
     })
@@ -270,7 +270,7 @@ describe('stopped device behavior', () => {
         expect(dev.running).toBe(true)
     })
 
-    it('a push made during process() reaches the connected receiver (command registration flow)', async () => {
+    it('a push made during onStart() reaches the connected receiver (command registration flow)', async () => {
         const c = makeContainer()
         const sender = new RegSender('S1', c)
         const recv = new TTracker('R1', c)
@@ -278,9 +278,9 @@ describe('stopped device behavior', () => {
         c.registerDevice(recv)
         c.addConnection('S1.reg -> R1.data')
 
-        await c.startDevice('S1') // sender is not stopped: its process() push must be delivered
+        await c.startDevice('S1') // sender is not stopped: its onStart() push must be delivered
 
-        expect(recv.count).toBe(42) // the push from inside process() was delivered
+        expect(recv.count).toBe(42) // the push from inside onStart() was delivered
     })
 
     it('actions are rejected with CTR_DEVICE_STOPPED while stopped, work again after restart', async () => {
@@ -304,7 +304,7 @@ describe('stopped device behavior', () => {
 
 describe('restart', () => {
 
-    it('startDevice() after stopDevice() re-runs process() + processPromise()', async () => {
+    it('startDevice() after stopDevice() re-runs onStart() + onStartAsync()', async () => {
         const c = makeContainer()
         const dev = new TTracker('T1', c)
         c.registerDevice(dev)
@@ -313,9 +313,9 @@ describe('restart', () => {
         await c.startDevice('T1')
 
         expect(dev.order).toEqual([
-            'process', 'processPromise',
-            'stop', 'stopPromise',
-            'process', 'processPromise',
+            'onStart', 'onStartAsync',
+            'onStop', 'onStopAsync',
+            'onStart', 'onStartAsync',
         ])
         expect(dev.running).toBe(true)
         expect(c.isStarted('T1')).toBe(true)
@@ -334,13 +334,13 @@ describe('Container.stopAll()', () => {
         await c.startDevice('B')
 
         const events: string[] = []
-        c.on('beforeStop', () => events.push('beforeStop'))
-        c.on('stop', (id: string) => events.push('stop:' + id))
-        c.on('afterStop', () => events.push('afterStop'))
+        c.on('service.stop.begin', () => events.push('service.stop.begin'))
+        c.on('device.stop', (id: string) => events.push('device.stop:' + id))
+        c.on('service.stop.end', () => events.push('service.stop.end'))
 
         await c.stopAll()
 
-        expect(events).toEqual(['beforeStop', 'stop:B', 'stop:A', 'afterStop'])
+        expect(events).toEqual(['service.stop.begin', 'device.stop:B', 'device.stop:A', 'service.stop.end'])
         expect(c.isStarted('A')).toBe(false)
         expect(c.isStarted('B')).toBe(false)
         expect(a.running).toBe(false)
@@ -355,12 +355,12 @@ describe('Container.stopAll()', () => {
         await c.stopDevice('A')
 
         const events: string[] = []
-        c.on('stop', () => events.push('stop'))
+        c.on('device.stop', () => events.push('device.stop'))
 
         await c.stopAll() // must not throw
 
         expect(events).toEqual([])
-        expect(a.order.filter((o: string) => o === 'stop')).toHaveLength(1)
+        expect(a.order.filter((o: string) => o === 'onStop')).toHaveLength(1)
     })
 
     it('best-effort: keeps stopping the rest on a failure and throws an aggregated error', async () => {
@@ -376,8 +376,8 @@ describe('Container.stopAll()', () => {
 
         // the healthy device was stopped despite the other failure
         expect(c.isStarted('Ok')).toBe(false)
-        expect(ok.order).toContain('stop')
-        expect(ok.order).toContain('stopPromise')
+        expect(ok.order).toContain('onStop')
+        expect(ok.order).toContain('onStopAsync')
         // the failed device did not complete its stop
         expect(c.isStarted('Bad')).toBe(true)
 
@@ -390,7 +390,7 @@ describe('Container.stopAll()', () => {
 
 describe('removeDevice() with stop', () => {
 
-    it('a running device is stopped first: stop() -> stopPromise() -> beforeTerminate()', async () => {
+    it('a running device is stopped first: onStop() -> onStopAsync() -> onDestroy()', async () => {
         const c = makeContainer()
         const dev = new TTracker('T1', c)
         c.registerDevice(dev)
@@ -398,19 +398,19 @@ describe('removeDevice() with stop', () => {
 
         await c.removeDevice('T1')
 
-        expect(dev.order).toEqual(['process', 'processPromise', 'stop', 'stopPromise', 'beforeTerminate'])
+        expect(dev.order).toEqual(['onStart', 'onStartAsync', 'onStop', 'onStopAsync', 'onDestroy'])
         expect(dev.running).toBe(false)
         expect(c.hasDevice('T1')).toBe(false)
     })
 
-    it('a not started device goes straight to beforeTerminate (no stop hooks)', async () => {
+    it('a not started device goes straight to onDestroy (no stop hooks)', async () => {
         const c = makeContainer()
         const dev = new TTracker('T1', c)
         c.registerDevice(dev)
 
         await c.removeDevice('T1')
 
-        expect(dev.terminated).toBe(true)
-        expect(dev.order).toEqual(['beforeTerminate'])
+        expect(dev.destroyed).toBe(true)
+        expect(dev.order).toEqual(['onDestroy'])
     })
 })

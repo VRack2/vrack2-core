@@ -183,7 +183,7 @@ w.on('exit', () => console.log('worker exited'))
 | Структура | `mp.Container.getStructure()` содержит `Lamp1`. |
 | События | Подписки на `device.render` / `device.metric` / `system.error`. |
 | Хранилище | `storage/{containerId}/{deviceId}.json` появилось после `dev.save()`. |
-| Структура на диске | `structure/{containerId}.json` появилось после `serviceLoaded`. |
+| Структура на диске | `structure/{containerId}.json` появилось после `service.loaded`. |
 
 ## Связанные документы
 

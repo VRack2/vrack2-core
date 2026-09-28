@@ -27,8 +27,8 @@ export default class DeviceFileStorage extends BootClass {
     process(): void {
         if (!ImportManager.isDir(this.options.storageDir)) fs.mkdirSync(this.options.storageDir, { recursive: true })
         
-        // Before process load storage data
-        this.Container.on('beforeProcess', () => {
+        // Before the start phase, load storage data
+        this.Container.on('service.start.begin', () => {
             for (const id in this.Container.devices) {
                 try {
                     this.Container.devices[id].storage = this.loadDeviceStorage(id)

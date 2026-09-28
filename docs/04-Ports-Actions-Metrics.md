@@ -142,7 +142,7 @@ metrics() {
 
 ### Как работает
 
-- При `registerDevice()` каждая метрика регистрируется: событие `device.register.metric` → `DeviceMetrics` создаёт её в `vrack-db` (путь — `device.metricname`, нижний регистр).
+- При `registerDevice()` каждая метрика регистрируется: событие `device.metric.register` → `DeviceMetrics` создаёт её в `vrack-db` (путь — `device.metricname`, нижний регистр).
 - Запись: `device.metric(path, value, modify)` → событие `device.metric` → `DB.write`. `modify`: `last` (по умолчанию), `first`, `max`, `min`, `avg`, `sum`. Запись незарегистрированной метрики игнорируется.
 - Чтение: `DeviceMetrics.read(device, name, period, precision, func?)` — `period` вида `'now-6h:now'`, `precision` — `'15m'` или количество точек.
 - Проверка существования: `DeviceMetrics.has(device, name)`.

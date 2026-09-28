@@ -25,7 +25,7 @@ export default interface IDeviceStatus {
     type: string;
     /**
      * Lifecycle state — the single source of lifecycle info in the status.
-     *  - `registered` — created but not started yet (`process()` / `processPromise()` have not run);
+     *  - `registered` — created but not started yet (`onStart()` / `onStartAsync()` have not run);
      *  - `started` — fully running;
      *  - `stopped` — stopped by `stopDevice()` / `stopAll()`.
      * The raw booleans (`Device.running` + the Container's started set) are a

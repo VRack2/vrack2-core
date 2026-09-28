@@ -76,60 +76,34 @@ export default class BootClass {
         [key: string]: any;
     });
     /**
-     * Sync start hook (canonical name): the entry point to start the boot
-     * class. Runs in `Bootstrap.loadBootList()` after all boot classes are
-     * constructed.
+     * Boot-class start hook: the entry point to start the boot-class
+     * operation, mirroring `Device.onStart()`.
      *
-     * During the deprecation window the Bootstrap calls **both** this method
-     * and the deprecated `process()` — keep your logic in only one of them.
+     * Runs in `Bootstrap.runBootClass()` after the class is constructed and
+     * its options are filled.
      */
     onStart(): void;
     /**
-     * The method is the entry point to start the boot class
-     *
-     * @deprecated use onStart() instead of process()
-     */
-    process(): void;
-    /**
-     * Async start hook (canonical name): the asynchronous part of boot-class
-     * startup. The Bootstrap awaits this method for every boot class.
-     *
-     * During the deprecation window the Bootstrap calls **both** this method
-     * and the deprecated `processPromise()` — keep your logic in only one of them.
+     * Async start hook: the asynchronous part of boot-class startup,
+     * mirroring `Device.onStartAsync()`. The Bootstrap awaits this for every
+     * boot-class (staged start). Use it for async initialization.
      */
     onStartAsync(): Promise<void>;
     /**
-     * Similar to `process` but asynchronous,
-     * the bootstrap loader will wait for the execution of all
-     * the  `processPromise` methods of all bootstrap classes.
+     * Destruction hook: called by `Bootstrap.terminateAll()` right before the
+     * boot-class is torn down, mirroring `Device.onDestroy()`.
      *
-     * @deprecated use onStartAsync() instead of processPromise()
-     */
-    processPromise(): Promise<void>;
-    /**
-     * Shutdown hook (canonical name): gracefully stop the boot class and
-     * release its resources. Called from `Bootstrap.terminateAll()` when the
-     * service is being stopped.
-     *
-     * The base implementation does nothing. Implementations must be idempotent:
+     * The boot-class is about to be destroyed — close everything, flush, save.
+     * Release any resources (connections, file handles, etc.) acquired in
+     * `onStartAsync()`. Implementations must be idempotent:
      * `Bootstrap.terminateAll()` may be called multiple times.
-     *
-     * During the deprecation window the Bootstrap calls **both** this method
-     * and the deprecated `terminate()` — keep your logic in only one of them.
      */
     onDestroy(): Promise<void>;
-    /**
-     * Gracefully stop the boot class and release its resources.
-     *
-     * Called from `Bootstrap.terminateAll()` when the service is being stopped.
-     * Boot classes own process-level resources (database pools, file handles)
-     * that are acquired in `processPromise()` — `terminate()` closes them.
-     *
-     * The base implementation does nothing. Implementations must be idempotent:
-     * `Bootstrap.terminateAll()` may be called multiple times.
-     *
-     * @deprecated use onDestroy() instead of terminate()
-     */
+    /** @deprecated use onStart() instead of process() */
+    process(): void;
+    /** @deprecated use onStartAsync() instead of processPromise() */
+    processPromise(): Promise<void>;
+    /** @deprecated use onDestroy() instead of terminate() */
     terminate(): Promise<void>;
     /**
      * Method for calling container system errors

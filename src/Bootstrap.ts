@@ -169,7 +169,7 @@ export default class Bootstrap {
 
     /**
      * True once `terminateAll()` has been executed (idempotency guard).
-     * Re-running it would re-invoke `terminate()` on boot classes that have
+     * Re-running it would re-invoke `onDestroy()` on boot classes that have
      * already released their resources.
      */
     protected terminated = false
@@ -182,7 +182,8 @@ export default class Bootstrap {
      * Load bootclasses
      * 
      * Bootclass has some analogy to devices within VRack services.
-     * They also have options, process, processPromise methods similar to devices
+     * They also have options and lifecycle hooks (onStart, onStartAsync, onDestroy)
+     * similar to devices
      * 
      * Idempotent: a second call is a no-op — boot classes are not re-instantiated
      * and their event handlers are not re-subscribed.
@@ -204,10 +205,14 @@ export default class Bootstrap {
             throw ErrorManager.make('BTSP_INSTANCE_OF_INCORRECT', { id: cn })
         }
         }
-        for (const bc in this.loaded) this.loaded[bc].onStart()
-        for (const bc in this.loaded) this.loaded[bc].process() // deprecated: remove in next major
-        for (const bc in this.loaded) await this.loaded[bc].onStartAsync()
-        for (const bc in this.loaded) await this.loaded[bc].processPromise() // deprecated: remove in next major
+        for (const bc in this.loaded) {
+            this.loaded[bc].onStart()
+            this.loaded[bc].process() // deprecated: remove in next major
+        }
+        for (const bc in this.loaded) {
+            await this.loaded[bc].onStartAsync()
+            await this.loaded[bc].processPromise() // deprecated: remove in next major
+        }
     }
 
     /**
@@ -237,7 +242,7 @@ export default class Bootstrap {
      * a single shared resource while the service is still running would leave
      * the rest of the service without it.
      *
-     * Calls `terminate()` on every loaded boot class. All calls are awaited;
+     * Calls `onDestroy()` on every loaded boot class. All calls are awaited;
      * a single failure is reported as `system.error` and does not prevent the
      * remaining boot classes from terminating — the process is exiting anyway.
      *

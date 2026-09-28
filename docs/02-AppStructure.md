@@ -83,13 +83,13 @@ Boot-класс `DeviceFileStorage` сохраняет состояние уст
 
 - Файл: `storage/{containerId}/{deviceId}.json`.
 - Сохранение: `device.save()` → событие `device.save` → сначала запись во временный файл `{deviceId}-tmp.json`, затем переименование в основной — файл не может остаться «наполовину».
-- Загрузка: по событию `beforeProcess` (первичный старт) и по `device.add` (горячее добавление); если основного файла нет, берётся `-tmp`-резерв.
+- Загрузка: по событию `service.start.begin` (первичный старт) и по `device.add` (горячее добавление); если основного файла нет, берётся `-tmp`-резерв.
 
 Подробности — [07-Bootstrap](07-Bootstrap.md).
 
 ## `structure/` — сохранённая структура сервиса
 
-Boot-класс `StructureStorage` сохраняет структуру контейнера (результат `Container.getStructure()`) в `structure/{containerId}.json` при каждом событии `serviceLoaded`: первичная загрузка и каждое горячее изменение.
+Boot-класс `StructureStorage` сохраняет структуру контейнера (результат `Container.getStructure()`) в `structure/{containerId}.json` при каждом событии `service.loaded`: первичная загрузка и каждое горячее изменение.
 
 Поле `display` устройства (настройки отображения) не теряется при перезаписи файла структуры.
 

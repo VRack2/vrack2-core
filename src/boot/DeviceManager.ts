@@ -135,7 +135,7 @@ export default class DeviceManager extends BootClass {
         }
     }
 
-    process(): void {
+    onStart(): void {
         this.updateDeviceList()
     }
 

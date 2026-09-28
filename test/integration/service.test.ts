@@ -27,7 +27,7 @@ let tmp = ''
 beforeEach(() => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vrack2-int-'))
     ;(testkit.GoodBoot as any).calls = []
-    ;(testkit.TermBoot as any).terminated = []
+    ;(testkit.TermBoot as any).destroyed = []
 })
 afterEach(() => {
     if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true })
@@ -77,13 +77,13 @@ function hasCode(err: any, code: string): boolean {
 
 describe('Bootstrap & boot classes', () => {
 
-    it('loads a custom boot class, passes options, calls process & processPromise', async () => {
+    it('loads a custom boot class, passes options, calls onStart & onStartAsync', async () => {
         const mp = makeMP(EMPTY_SERVICE, {
             GoodBoot: { path: 'testkit.GoodBoot', options: { hello: 'world' } },
         })
         await mp.run()
 
-        expect(testkit.GoodBoot.calls).toEqual(['process', 'processPromise'])
+        expect(testkit.GoodBoot.calls).toEqual(['onStart', 'onStartAsync'])
         const bc = mp.Bootstrap.getBootClass('GoodBoot', (testkit as any).GoodBoot)
         expect(bc.options).toEqual({ hello: 'world' })
         expect(bc.id).toBe('GoodBoot')
@@ -160,16 +160,16 @@ describe('Bootstrap & boot classes', () => {
         const mp = makeMP(EMPTY_SERVICE)
         await mp.run()
 
-        // DeviceMetrics subscribes to these in its process()
+        // DeviceMetrics subscribes to these in its onStart()
         const metricListeners = mp.Container.listenerCount('device.metric')
-        const registerListeners = mp.Container.listenerCount('device.register.metric')
+        const registerListeners = mp.Container.listenerCount('device.metric.register')
         expect(metricListeners).toBeGreaterThan(0)
         expect(registerListeners).toBeGreaterThan(0)
 
         await mp.run() // must be a no-op: no duplicate boot classes / listeners
 
         expect(mp.Container.listenerCount('device.metric')).toBe(metricListeners)
-        expect(mp.Container.listenerCount('device.register.metric')).toBe(registerListeners)
+        expect(mp.Container.listenerCount('device.metric.register')).toBe(registerListeners)
     })
 })
 
@@ -718,7 +718,7 @@ describe('StructureStorage', () => {
 
 describe('MainProcess.terminate()', () => {
 
-    it('stops all running devices: stop() + stopPromise(), but no beforeTerminate()', async () => {
+    it('stops all running devices: onStop() + onStopAsync(), but no onDestroy()', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'T1', type: 'testkit.Tracker', options: {} },
@@ -734,11 +734,11 @@ describe('MainProcess.terminate()', () => {
         await mp.terminate()
 
         // stop hooks ran exactly once, after start
-        expect(t1.order).toEqual(['preProcess', 'process', 'processPromise', 'stop', 'stopPromise'])
-        expect(t2.order).toEqual(['preProcess', 'process', 'processPromise', 'stop', 'stopPromise'])
-        // termination is not a removal: beforeTerminate() must not be called
-        expect(t1.terminated).toBeUndefined()
-        expect(t2.terminated).toBeUndefined()
+        expect(t1.order).toEqual(['onRegister', 'onStart', 'onStartAsync', 'onStop', 'onStopAsync'])
+        expect(t2.order).toEqual(['onRegister', 'onStart', 'onStartAsync', 'onStop', 'onStopAsync'])
+        // termination is not a removal: onDestroy() must not be called
+        expect(t1.destroyed).toBeUndefined()
+        expect(t2.destroyed).toBeUndefined()
         // devices stay registered in the container, just not running
         expect(mp.Container.hasDevice('T1')).toBe(true)
         expect(mp.Container.hasDevice('T2')).toBe(true)
@@ -757,9 +757,9 @@ describe('MainProcess.terminate()', () => {
         await mp.terminate() // must be a no-op
 
         const t1: any = mp.Container.devices['T1']
-        expect(t1.stopCount).toBe(1)
-        expect(t1.stopPromiseCount).toBe(1)
-        expect(t1.order.filter((o: string) => o === 'stop')).toHaveLength(1)
+        expect(t1.onStopCount).toBe(1)
+        expect(t1.onStopAsyncCount).toBe(1)
+        expect(t1.order.filter((o: string) => o === 'onStop')).toHaveLength(1)
     })
 
     it('propagates stop failures: CTR_DEVICE_STOP_ALL_EXCEPTION, other devices still stopped', async () => {
@@ -784,7 +784,7 @@ describe('MainProcess.terminate()', () => {
         expect(hasCode(err, 'CTR_DEVICE_STOP_EXCEPTION')).toBe(true)
         // best-effort: the healthy device was stopped despite the failure
         const good: any = mp.Container.devices['Good']
-        expect(good.stopCount).toBe(1)
+        expect(good.onStopCount).toBe(1)
         expect(mp.Container.isStarted('Good')).toBe(false)
         // the failing device also stays registered (it was not removed)
         expect(mp.Container.hasDevice('Bad')).toBe(true)
@@ -793,7 +793,7 @@ describe('MainProcess.terminate()', () => {
 
 describe('Bootstrap.terminateAll()', () => {
 
-    it('calls terminate() on every loaded boot class exactly once', async () => {
+    it('calls onDestroy() on every loaded boot class exactly once', async () => {
         const mp = makeMP(EMPTY_SERVICE, {
             TermA: { path: 'testkit.TermBoot', options: {} },
             TermB: { path: 'testkit.TermBoot', options: {} },
@@ -802,12 +802,12 @@ describe('Bootstrap.terminateAll()', () => {
 
         await mp.Bootstrap.terminateAll()
 
-        // every loaded boot class (standard + custom) was terminated,
-        // in the REVERSE order of their load (TermB loaded last -> terminated first)
-        expect((testkit.TermBoot as any).terminated).toEqual(['TermB', 'TermA'])
+        // every loaded boot class (standard + custom) was destroyed,
+        // in the REVERSE order of their load (TermB loaded last -> destroyed first)
+        expect((testkit.TermBoot as any).destroyed).toEqual(['TermB', 'TermA'])
     })
 
-    it('is idempotent: the second call does not re-run terminate()', async () => {
+    it('is idempotent: the second call does not re-run onDestroy()', async () => {
         const mp = makeMP(EMPTY_SERVICE, {
             TermA: { path: 'testkit.TermBoot', options: {} },
         })
@@ -816,7 +816,7 @@ describe('Bootstrap.terminateAll()', () => {
         await mp.Bootstrap.terminateAll()
         await mp.Bootstrap.terminateAll() // must be a no-op
 
-        expect((testkit.TermBoot as any).terminated).toEqual(['TermA'])
+        expect((testkit.TermBoot as any).destroyed).toEqual(['TermA'])
     })
 
     it('one failing boot class does not block the others and is reported as system.error', async () => {
@@ -832,8 +832,8 @@ describe('Bootstrap.terminateAll()', () => {
         // must not throw
         await mp.Bootstrap.terminateAll()
 
-        // the healthy boot class was terminated despite the failure
-        expect((testkit.TermBoot as any).terminated).toEqual(['GoodTerm'])
+        // the healthy boot class was destroyed despite the failure
+        expect((testkit.TermBoot as any).destroyed).toEqual(['GoodTerm'])
         // the failure surfaced as a coded system.error
         expect(errors.some((e) => ErrorManager.isCode(e, 'BTSP_TERMINATE_FAILED'))).toBe(true)
     })

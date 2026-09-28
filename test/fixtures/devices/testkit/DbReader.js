@@ -1,7 +1,7 @@
 /*
  * Test fixture device: reads/writes the service database boot class via getDB().
  *
- * - processPromise(): `SELECT 1` through getDB() → shares.one
+ * - onStartAsync(): `SELECT 1` through getDB() → shares.one
  * - action 'write': upsert into kv (required: k, v) inside a transaction;
  *   returns the stored value read back from the same connection
  */
@@ -17,7 +17,7 @@ export default class DbReader extends Device {
         }
     }
 
-    async processPromise() {
+    async onStartAsync() {
         const db = this.getDB()
         const rows = await db.query('SELECT 1 AS one')
         this.shares.one = rows[0].one

@@ -24,10 +24,10 @@ class FieldDevice extends Device {
     constructor(id: string, c: Container) { super(id, 'test.Field', c) }
 }
 
-/** Legacy style: shares written in preProcess() (no field) */
+/** Legacy style: shares written in onRegister() (no field) */
 class PreProcDevice extends Device {
     constructor(id: string, c: Container) { super(id, 'test.PreProc', c) }
-    preProcess() { this.shares = { on: false, count: 0 } }
+    onRegister() { this.shares = { on: false, count: 0 } }
 }
 
 /** Untyped device — free-form shares (Record<string, any>) */
@@ -54,7 +54,7 @@ describe('Device shares (plain object)', () => {
         expect(events).toHaveLength(0) // mutations render nothing
     })
 
-    it('supports preProcess() writes (no field)', () => {
+    it('supports onRegister() writes (no field)', () => {
         const { c, events } = makeContainer()
         const dev = new PreProcDevice('P2', c)
         c.registerDevice(dev)
@@ -133,7 +133,7 @@ describe('legacy `shares` class field (BC)', () => {
         expect(events[0].trace).toEqual({ data: 42 })
     })
 
-    it('keeps preProcess() refinement of the field default', () => {
+    it('keeps onRegister() refinement of the field default', () => {
         const { c, events } = makeContainer()
         const dev = new SharesFieldRefine('F2', c)
         c.registerDevice(dev)
@@ -141,7 +141,7 @@ describe('legacy `shares` class field (BC)', () => {
         expect(dev.shares).toEqual({ data: 99 })
     })
 
-    it('keeps preProcess() reassignment of the field default', () => {
+    it('keeps onRegister() reassignment of the field default', () => {
         const { c, events } = makeContainer()
         const dev = new SharesFieldReplace('F3', c)
         c.registerDevice(dev)

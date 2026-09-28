@@ -82,7 +82,7 @@ export default class Bootstrap {
     protected loadAttempted: boolean;
     /**
      * True once `terminateAll()` has been executed (idempotency guard).
-     * Re-running it would re-invoke `terminate()` on boot classes that have
+     * Re-running it would re-invoke `onDestroy()` on boot classes that have
      * already released their resources.
      */
     protected terminated: boolean;
@@ -91,7 +91,8 @@ export default class Bootstrap {
      * Load bootclasses
      *
      * Bootclass has some analogy to devices within VRack services.
-     * They also have options, process, processPromise methods similar to devices
+     * They also have options and lifecycle hooks (onStart, onStartAsync, onDestroy)
+     * similar to devices
      *
      * Idempotent: a second call is a no-op — boot classes are not re-instantiated
      * and their event handlers are not re-subscribed.
@@ -121,7 +122,7 @@ export default class Bootstrap {
      * a single shared resource while the service is still running would leave
      * the rest of the service without it.
      *
-     * Calls `terminate()` on every loaded boot class. All calls are awaited;
+     * Calls `onDestroy()` on every loaded boot class. All calls are awaited;
      * a single failure is reported as `system.error` and does not prevent the
      * remaining boot classes from terminating — the process is exiting anyway.
      *

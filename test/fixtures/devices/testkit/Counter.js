@@ -46,7 +46,7 @@ export default class Counter extends Device {
         }
     }
 
-    process() {
+    onStart() {
         this.count = this.storage.count ?? 0
         this.shares.count = this.count
     }

@@ -14,7 +14,7 @@ import IMetricSettings from "../metrics/IMetricSettings";
  * 
  * @see SingleDB
  *
- * Uses the `device.metric` and `device.register.metric` events
+ * Uses the `device.metric` and `device.metric.register` events
  * 
  * @see deviceMetric()
  * @see deviceRegisterMetric()
@@ -25,9 +25,9 @@ export default class DeviceMetrics extends BootClass {
     */
     DB = new SingleDB()
 
-    process(): void {
+    onStart(): void {
         this.Container.on('device.metric', this.deviceMetric.bind(this))
-        this.Container.on('device.register.metric', this.deviceRegisterMetric.bind(this))
+        this.Container.on('device.metric.register', this.deviceRegisterMetric.bind(this))
     }
     
     /**
@@ -60,7 +60,7 @@ export default class DeviceMetrics extends BootClass {
      * Registers the device metric
      * 
      * When a device is initialized - the container gets a list of 
-     * device metrics and passes them to the `device.register.metric` event for each metric.
+     * device metrics and passes them to the `device.metric.register` event for each metric.
      * 
      * @param nEvent Object like a { device: 'Device ID',  data: 'metric.name', trace: IMetricSettings object}
      * @see IMetricSettings

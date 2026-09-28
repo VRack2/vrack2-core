@@ -50,7 +50,7 @@ export default class MainProcess {
     run(): Promise<void>;
     /**
      * Graceful service termination: stops all running devices
-     * (`stop()` + `await stopPromise()` for each, in reverse start order).
+     * (`onStop()` + `await onStopAsync()` for each, in reverse start order).
      *
      * The service structure, device registry and storage files remain
      * intact — a new process can load the same service again.

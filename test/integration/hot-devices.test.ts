@@ -6,10 +6,10 @@
  *   - Loader.checkDevice() / Loader.checkConnection()   (dry-run, no side effects)
  *   - Loader.addDevice() + Container.startDevice()      (hot add + idempotent start)
  *   - Loader.addConnection()                            (hot connection)
- *   - Loader.removeDevice()                             (cleanup + beforeTerminate + event)
+ *   - Loader.removeDevice()                             (cleanup + onDestroy + event)
  *   - Container.hasDevice() / getDevice() / deviceList() / isStarted()
  *
- * The Loader emits `serviceLoaded` after each hot mutation, which is what
+ * The Loader emits `service.loaded` after each hot mutation, which is what
  * persists the structure to disk.
  *
  * Uses the `testkit` fixture vendor (Lamp, Counter, ReturnSrc, Tracker).
@@ -198,15 +198,15 @@ describe('addDevice() / startDevice()', () => {
         const t: any = await mp.Loader.addDevice({ id: 'Tracker2', type: 'testkit.Tracker', options: {} })
 
         await mp.Container.startDevice('Tracker2')
-        expect(t.processCount).toBe(1)
-        expect(t.processPromiseCount).toBe(1)
+        expect(t.onStartCount).toBe(1)
+        expect(t.onStartAsyncCount).toBe(1)
 
-        // Mutate state; a re-run of process() would reset the count
+        // Mutate state; a re-run of onStart() would reset the count
         t.count = 42
         await mp.Container.startDevice('Tracker2')
 
-        expect(t.processCount).toBe(1)         // no re-run
-        expect(t.processPromiseCount).toBe(1)  // no re-run
+        expect(t.onStartCount).toBe(1)         // no re-run
+        expect(t.onStartAsyncCount).toBe(1)    // no re-run
         expect(t.count).toBe(42)               // not reset -> no re-run
         expect(mp.Container.isStarted('Tracker2')).toBe(true)
     })
@@ -286,14 +286,14 @@ describe('removeDevice()', () => {
         const events: string[] = []
         mp.Container.on('device.remove', (id: string) => events.push(id))
 
-        // Tracker to record stop() / stopPromise() / beforeTerminate()
+        // Tracker to record onStop() / onStopAsync() / onDestroy()
         const tracker: any = await mp.Loader.addDevice({ id: 'Tracker1', type: 'testkit.Tracker', options: {} })
         await mp.Container.startDevice('Tracker1')
-        expect(tracker.terminated).toBeUndefined()
+        expect(tracker.destroyed).toBeUndefined()
         await mp.Loader.removeDevice('Tracker1')
-        expect(tracker.terminated).toBe(true)
-        // a running device is stopped first: stop -> stopPromise -> beforeTerminate
-        expect(tracker.order).toEqual(['preProcess', 'process', 'processPromise', 'stop', 'stopPromise', 'beforeTerminate'])
+        expect(tracker.destroyed).toBe(true)
+        // a running device is stopped first: onStop -> onStopAsync -> onDestroy
+        expect(tracker.order).toEqual(['onRegister', 'onStart', 'onStartAsync', 'onStop', 'onStopAsync', 'onDestroy'])
 
         await mp.Loader.removeDevice('Lamp1')
 

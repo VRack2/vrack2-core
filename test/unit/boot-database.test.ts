@@ -73,7 +73,7 @@ describe('BootDatabase', () => {
 
     it('start failure goes to closed and throws DB_CONNECT_FAILED (fail-fast)', async () => {
         const db: any = id({ connectShouldFail: true })
-        await expect(db.processPromise()).rejects.toMatchObject({ vShort: 'DB_CONNECT_FAILED', driverCode: 'SQLITE_CANTOPEN', boot: 'DB' })
+        await expect(db.onStartAsync()).rejects.toMatchObject({ vShort: 'DB_CONNECT_FAILED', driverCode: 'SQLITE_CANTOPEN', boot: 'DB' })
         expect((db as any).ready).toBe(false)
         await expect(db.query('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
         expect((db as any).disconnected).toBe(false) // connect died, no disconnect to do
@@ -81,7 +81,7 @@ describe('BootDatabase', () => {
 
     it('query/get/execute work after a successful start and route through the adapter', async () => {
         const db: any = id()
-        await db.processPromise()
+        await db.onStartAsync()
         expect(db.ready).toBe(true)
 
         const rows = await db.query<{ v: number }>('SELECT v FROM t', [1, 2])
@@ -96,7 +96,7 @@ describe('BootDatabase', () => {
 
     it('wraps driver errors into DB_QUERY_FAILED keeping message and driver code, never SQL', async () => {
         const db: any = id()
-        await db.processPromise()
+        await db.onStartAsync()
         db.queryShouldFail = true
         let err: any
         try {
@@ -113,7 +113,7 @@ describe('BootDatabase', () => {
 
     it('transaction commits on success and calls the callback with a bound context', async () => {
         const db: any = id()
-        await db.processPromise()
+        await db.onStartAsync()
         let seen: any = null
         const result = await db.transaction(async (tx: BootDatabase) => {
             seen = tx
@@ -131,7 +131,7 @@ describe('BootDatabase', () => {
 
     it('transaction rolls back on callback error and throws DB_TRANSACTION_FAILED', async () => {
         const db: any = id()
-        await db.processPromise()
+        await db.onStartAsync()
         let err: any
         try {
             await db.transaction(async () => {
@@ -151,7 +151,7 @@ describe('BootDatabase', () => {
 
     it('transaction wraps the connection-acquire failure (e.g. DBS_BUSY semantics)', async () => {
         const db: any = id()
-        await db.processPromise()
+        await db.onStartAsync()
         await db.acquire() // lock taken externally
         let err: any
         try {
@@ -168,7 +168,7 @@ describe('BootDatabase', () => {
 
     it('rejects a nested transaction() from within the open transaction (DB_TX_LOCKED)', async () => {
         const db: any = id()
-        await db.processPromise()
+        await db.onStartAsync()
         let err: any
         try {
             await db.transaction(async (tx: BootDatabase) => {
@@ -183,8 +183,8 @@ describe('BootDatabase', () => {
 
     it('terminate closes the database; every later call rejects with DB_CLOSED', async () => {
         const db: any = id()
-        await db.processPromise()
-        await db.terminate()
+        await db.onStartAsync()
+        await db.onDestroy()
         expect(db.disconnected).toBe(true)
         expect(db.ready).toBe(false)
         await expect(db.query('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
@@ -196,8 +196,8 @@ describe('BootDatabase', () => {
         const db: any = id({ disconnectShouldFail: true })
         const sysError = vi.fn()
         db.Container = { emit: sysError }
-        await db.terminate()
-        await db.terminate()
+        await db.onDestroy()
+        await db.onDestroy()
         expect((sysError as any).mock.calls.length).toBe(1)
         expect((sysError as any).mock.calls[0][0]).toBe('system.error')
         expect((sysError as any).mock.calls[0][1].vShort).toBe('EM_ERROR_CONVERT')

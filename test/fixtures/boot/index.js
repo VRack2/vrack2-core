@@ -5,37 +5,37 @@
 import { BootClass, Rule } from 'vrack2-core'
 
 /**
- * A correct boot class. Records the order of process()/processPromise() calls.
+ * A correct boot class. Records the order of onStart()/onStartAsync() calls.
  */
 class GoodBoot extends BootClass {
     static calls = []
-    process() {
-        GoodBoot.calls.push('process')
+    onStart() {
+        GoodBoot.calls.push('onStart')
     }
-    async processPromise() {
-        GoodBoot.calls.push('processPromise')
+    async onStartAsync() {
+        GoodBoot.calls.push('onStartAsync')
     }
 }
 
 /**
- * A boot class that records every `terminate()` call.
+ * A boot class that records every `onDestroy()` call.
  * Used to verify `Bootstrap.terminateAll()`.
  */
 class TermBoot extends BootClass {
-    static terminated = []
-    async terminate() {
-        TermBoot.terminated.push(this.id)
+    static destroyed = []
+    async onDestroy() {
+        TermBoot.destroyed.push(this.id)
     }
 }
 
 /**
- * A boot class whose `terminate()` throws.
+ * A boot class whose `onDestroy()` throws.
  * Used to verify that one failing boot class does not prevent the
  * remaining ones from terminating and that the failure is reported
  * as a `system.error` (BTSP_TERMINATE_FAILED).
  */
 class FailTermBoot extends BootClass {
-    async terminate() {
+    async onDestroy() {
         throw new Error('cannot release db pool')
     }
 }

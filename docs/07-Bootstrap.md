@@ -103,7 +103,7 @@ Boot-классы владеют ресурсами уровня процесс�
 
 События:
 
-- `beforeProcess` (первичный старт) → `dev.storage = loadDeviceStorage(id)`;
+- `service.start.begin` (первичный старт) → `dev.storage = loadDeviceStorage(id)`;
 - `device.add` (hot add) → `dev.storage = loadDeviceStorage(id)`;
 - `device.save` → `saveDeviceStorage(device, trace)`.
 
@@ -115,7 +115,7 @@ Boot-классы владеют ресурсами уровня процесс�
 
 События:
 
-- `device.register.metric` → `DB.metric({ name, retentions, tStorage, vStorage, CInterval })`;
+- `device.metric.register` → `DB.metric({ name, retentions, tStorage, vStorage, CInterval })`;
 - `device.metric` → `DB.write(path, value, 0, modify)`.
 
 Путь метрики — `device.metricname` (нижний регистр). Методы: `has(device, name)`, `read(device, name, period, precision, func?)`.
@@ -128,7 +128,7 @@ Boot-классы владеют ресурсами уровня процесс�
 |---|---|
 | `structureDir` | `./structure` |
 
-События: `serviceLoaded` → `structureStorage()`.
+События: `service.loaded` → `structureStorage()`.
 
 Файл: `structure/{containerId}.json`. При записи сохраняется поле `display` из файла (если оно есть в файле). Методы: `getById(id)`, `updateById(id, structure)`.
 

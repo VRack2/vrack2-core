@@ -4,7 +4,7 @@
  * Boots a real MainProcess whose `bootstrap` section contains a database
  * (`vrack2-core.BootDatabaseSqlite` / `vrack2-core.BootDatabaseMemory`)
  * alongside the standard boot classes, and verifies the full lifecycle:
- *   - `run()` opens the database (boot class `processPromise()`)
+ *   - `run()` opens the database (boot class `onStartAsync()`)
  *   - the service (devices) runs while the database is up
  *   - `terminate()` + `terminateAll()` close it (DB_CLOSED afterwards)
  *   - data is durable across two process boots (WAL checkpoint on close)
@@ -148,7 +148,7 @@ describe('Service with a file-backed SQLite database', () => {
         const mp = makeMP(service, 'DB', { file: path.join(tmp, 'svc.db') })
         await mp.run()
 
-        // the device's processPromise() already ran `SELECT 1` through this.getDB(): shares prove it
+        // the device's onStartAsync() already ran `SELECT 1` through this.getDB(): shares prove it
         expect((mp.Container.devices['Reader1'] as any).shares.one).toBe(1)
 
         const db = mp.Bootstrap.getBootClass('DB', BootDatabaseSqlite)

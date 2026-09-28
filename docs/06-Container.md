@@ -41,10 +41,10 @@ constructor(id: string, bootstrap: Bootstrap)
 Принимает устройство, **уже созданное и валидированное** (`ServiceLoader.createDevice()`), и:
 
 1. кладёт в `devices` и создаёт запись структуры;
-2. вызывает `dev.preProcess()` (порты ещё не созданы — здесь назначаются динамические хендлеры);
+2. вызывает `dev.onRegister()` (порты ещё не созданы — здесь назначаются динамические хендлеры);
 3. регистрирует actions: для каждой action обязан существовать метод `actionXxx` (`CTR_DEVICE_ACTION_NF`), снимок правила попадает в структуру;
 4. `settings()` устройства → структура;
-5. регистрирует метрики: для каждой — `emit('device.register.metric', { device, data, trace })` (boot-класс `DeviceMetrics` создаёт метрику в `vrack-db`);
+5. регистрирует метрики: для каждой — `emit('device.metric.register', { device, data, trace })` (boot-класс `DeviceMetrics` создаёт метрику в `vrack-db`);
 6. создаёт входные порты: динамические раскрываются (`%d` → `1..count`, `CTR_INCORRECT_DYNAMIC_PN`), имя проверяется (`CTR_INCORRECT_PN`), **обязателен** хендлер `inputXxx` (`CTR_INPUT_HANDLER_NF`), хендлер биндится в `port.bind`;
 7. создаёт выходные порты.
 
@@ -55,25 +55,25 @@ constructor(id: string, bootstrap: Bootstrap)
 Выполняется один раз на контейнер (страж `runProcessAttempted`). Устройства, которые уже стартовали (например, через `startDevice()`), пропускаются — поэтому вызывать безопасно и после горячего добавления:
 
 ```
-emit 'beforeProcess'
-  → для каждого устройства (не в started): emit 'process', id; dev.process()
-emit 'afterProcess'
-emit 'beforeProcessPromise'
-  → для каждого устройства (не в started): emit 'processPromise', id; await dev.processPromise(); started.add(id)
-emit 'afterProcessPromise'
-emit 'beforeLoaded'
-emit 'loaded'
+emit 'service.start.begin'
+  → для каждого устройства (не в started): emit 'device.start', id; dev.onStart()
+emit 'service.start.end'
+emit 'service.startAsync.begin'
+  → для каждого устройства (не в started): emit 'device.startAsync', id; await dev.onStartAsync(); started.add(id)
+emit 'service.startAsync.end'
+emit 'service.ready.begin'
+emit 'service.ready'
 ```
 
-Падение `process()` → `CTR_DEVICE_PROCESS_EXCEPTION`; `processPromise()` → `CTR_DEVICE_PROCESS_PROMISE_EXCEPTION` (вложенная ошибка — в `vAddErrors`).
+Падение `onStart()` → `CTR_DEVICE_PROCESS_EXCEPTION`; `onStartAsync()` → `CTR_DEVICE_PROCESS_PROMISE_EXCEPTION` (вложенная ошибка — в `vAddErrors`).
 
 ### `startDevice(id)`
 
-Старт одного зарегистрированного устройства: `process()` + `await processPromise()` + `started.add(id)`. Повторный вызов ничего не делает. Используется для горячего добавления. Неизвестное устройство — `CTR_DEVICE_NF`.
+Старт одного зарегистрированного устройства: `onStart()` + `await onStartAsync()` + `started.add(id)`. Повторный вызов ничего не делает. Используется для горячего добавления. Неизвестное устройство — `CTR_DEVICE_NF`.
 
 ### `isStarted(id)`
 
-`true`, если устройство прошло `process()` + `processPromise()`. После `stopDevice()` / `stopAll()` — `false` (устройство можно запустить снова через `startDevice()`).
+`true`, если устройство прошло `onStart()` + `onStartAsync()`. После `stopDevice()` / `stopAll()` — `false` (устройство можно запустить снова через `startDevice()`).
 
 ### `isRunning(id)`
 
@@ -81,26 +81,26 @@ emit 'loaded'
 
 ### Остановка: `stopDevice(id)` / `stopAll()`
 
-Остановка **обратима**: устройство не разрушается и запускается снова через `startDevice()` (повтор `process()` + `processPromise()`, снова включаются порты и actions).
+Остановка **обратима**: устройство не разрушается и запускается снова через `startDevice()` (повтор `onStart()` + `onStartAsync()`, снова включаются порты и actions).
 
 `stopDevice(id)`:
 
 ```
 if (!(id in devices)) throw CTR_DEVICE_NF
 if (!started.has(id)) return                      // уже остановлено — no-op (идемпотентно)
-  → emit('stop', id)
-  → dev.stop()                                    // падение → CTR_DEVICE_STOP_EXCEPTION (исходная ошибка в vAddErrors)
-  → await dev.stopPromise()                       // падение → CTR_DEVICE_STOP_PROMISE_EXCEPTION
+  → emit('device.stop', id)
+  → dev.onStop()                                  // падение → CTR_DEVICE_STOP_EXCEPTION (исходная ошибка в vAddErrors)
+  → await dev.onStopAsync()                       // падение → CTR_DEVICE_STOP_PROMISE_EXCEPTION
   → started.delete(id); state = 'stopped'          // отсюда running = false
 ```
 
 `stopAll()`:
 
 ```
-emit('beforeStop')
+emit('service.stop.begin')
   → для каждого id в started, в ОБРАТНОМ порядке запуска: stopDevice(id)
      (падение одного не останавливает остальных — best-effort)
-emit('afterStop')
+emit('service.stop.end')
 → если были падения: throw CTR_DEVICE_STOP_ALL_EXCEPTION (ошибки устройств — в vAddErrors)
 ```
 
@@ -175,10 +175,10 @@ Hot-соединение двух уже зарегистрированных п
 
 ```
 if (!(id in devices)) throw CTR_DEVICE_NF
-  → если started.has(id): await stopDevice(id)  // stop() + await stopPromise();
-                                                // падение хуков остановки → удаление прерывается (fail-closed),
-                                                // устройство остаётся в контейнере
-  → dev.beforeTerminate()
+  → если started.has(id): await stopDevice(id)  // onStop() + await onStopAsync();
+                                                 // падение хуков остановки → удаление прерывается (fail-closed),
+                                                 // устройство остаётся в контейнере
+  → dev.onDestroy()
   → отключение всех соединений (обе стороны, дедупликация по DeviceConnect)
   → удаление записи структуры + всех ссылок на устройство (у других устройств)
   → удаление из devices / deviceActions / deviceMetrics / started
@@ -220,19 +220,20 @@ if (!(id in devices)) throw CTR_DEVICE_NF
 
 | Событие | Аргумент | Когда |
 |---|---|---|
-| `beforeProcess` / `afterProcess` | — | Ступенчатый старт. |
-| `process` / `processPromise` | `id` | Перед `process()` / `processPromise()` устройства. |
-| `beforeProcessPromise` / `afterProcessPromise` | — | Ступенчатый старт. |
-| `beforeLoaded` / `loaded` | — | Конец `runProcess()`. |
-| `stop` | `id` | При `stopDevice()` — **до** хуков `stop()` / `stopPromise()`. |
-| `beforeStop` / `afterStop` | — | Начало / конец `stopAll()` (выдаются всегда, даже если остановленных устройств нет). |
-| `connection` | `{ outputDevice, outputPort, inputDevice, inputPort }` | При `addConnection()`. |
+| `service.start.begin` / `service.start.end` | — | Ступенчатый старт (синхронная фаза `runProcess()`). |
+| `device.start` | `id` | Перед `onStart()` устройства. |
+| `service.startAsync.begin` / `service.startAsync.end` | — | Ступенчатый старт (асинхронная фаза `runProcess()`). |
+| `device.startAsync` | `id` | Перед `onStartAsync()` устройства. |
+| `service.ready.begin` / `service.ready` | — | Конец `runProcess()` (сервис собран). |
+| `device.stop` | `id` | При `stopDevice()` — **до** хуков `onStop()` / `onStopAsync()`. |
+| `service.stop.begin` / `service.stop.end` | — | Начало / конец `stopAll()` (выдаются всегда, даже если остановленных устройств нет). |
+| `service.connection` | `{ outputDevice, outputPort, inputDevice, inputPort }` | При `addConnection()`. |
 | `device.remove` | `id` | При `removeDevice()`. |
-| `device.register.metric` | `{ device, data, trace }` | При `registerDevice()`. |
+| `device.metric.register` | `{ device, data, trace }` | При `registerDevice()`. |
 | `device.status` | `{ device, data: 'status', trace: IDeviceStatus }` | Автоматический канал — при каждом изменении статуса устройства (см. «Статус устройства»). |
 | `device.render` / `device.metric` / `device.save` / `device.error` / `device.terminal` / `device.notify` / `device.event` / `device.alert` / `device.terminate` | `{ device, data, trace, ... }` | Сообщения устройств. |
 | `system.error` | `CoreError` | Boot-класс сообщил об ошибке. |
-| `serviceLoaded` | — | Финализация структуры (ServiceLoader). |
+| `service.loaded` | — | Финализация структуры (ServiceLoader). |
 
 ## Связанные документы
 

@@ -72,7 +72,7 @@ export default class MainProcess  {
         // Container is a pure runtime container (no service / confFile)
         this.Container = new this.options.ContainerClass(this.options.id, this.Bootstrap)
         // ServiceLoader owns config loading, device creation, hot mutations
-        // and the `serviceLoaded` finalization event
+        // and the `service.loaded` finalization event
         this.Loader = new ServiceLoader(this.Container, this.options.service, this.options.confFile)
     }
 
@@ -100,7 +100,7 @@ export default class MainProcess  {
 
     /**
      * Graceful service termination: stops all running devices
-     * (`stop()` + `await stopPromise()` for each, in reverse start order).
+     * (`onStop()` + `await onStopAsync()` for each, in reverse start order).
      * 
      * The service structure, device registry and storage files remain
      * intact — a new process can load the same service again.

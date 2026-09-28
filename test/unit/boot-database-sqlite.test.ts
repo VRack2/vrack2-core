@@ -14,7 +14,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 const make = (cls: any, options: { [key: string]: any }) => new cls('DB', 'Test', null, options)
-const start = async (db: any) => { await db.processPromise(); return db }
+const start = async (db: any) => { await db.onStartAsync(); return db }
 
 const tmpDirs: string[] = []
 const tmpFile = (name: string) => {
@@ -50,7 +50,7 @@ describe('BootDatabaseSqlite', () => {
         expect(await db.get('SELECT name FROM users WHERE name = ?', ['alice'])).toEqual({ name: 'alice' })
         expect(await db.get('SELECT name FROM users WHERE name = ?', ['ghost'])).toBeUndefined()
 
-        await db.terminate()
+        await db.onDestroy()
         expect(fs.existsSync(file)).toBe(true) // the file exists even after close
     })
 
@@ -67,21 +67,21 @@ describe('BootDatabaseSqlite', () => {
         expect(update).toMatchObject({ affectedRows: 1 })
         expect(update.insertId).toBeUndefined() // no INSERT here
 
-        await db.terminate()
+        await db.onDestroy()
     })
 
-    it('persistence: data survives terminate() and a new instance on the same file', async () => {
+    it('persistence: data survives onDestroy() and a new instance on the same file', async () => {
         const file = tmpFile('persist.db')
         const db = make(BootDatabaseSqlite, { file })
         await start(db)
         await setupUsers(db)
         await db.execute('INSERT INTO users (name) VALUES (?)', ['alice'])
-        await db.terminate()
+        await db.onDestroy()
 
         const db2 = make(BootDatabaseSqlite, { file })
         await start(db2)
         expect(await db2.get('SELECT name FROM users WHERE id = 1')).toEqual({ name: 'alice' })
-        await db2.terminate()
+        await db2.onDestroy()
     })
 
     it('WAL is enabled by default on file databases and can be turned off', async () => {
@@ -89,17 +89,17 @@ describe('BootDatabaseSqlite', () => {
         const db = make(BootDatabaseSqlite, { file })
         await start(db)
         expect((await db.get("PRAGMA journal_mode"))?.journal_mode).toBe('wal')
-        await db.terminate()
+        await db.onDestroy()
 
         const db2 = make(BootDatabaseSqlite, { file, wal: false })
         await start(db2)
         // WAL cannot be switched off from inside; a freshly created file keeps the default delete mode
         const file2 = tmpFile('wal-off.db')
-        await db2.terminate()
+        await db2.onDestroy()
         const db3 = make(BootDatabaseSqlite, { file: file2, wal: false })
         await start(db3)
         expect((await db3.get("PRAGMA journal_mode"))?.journal_mode).toBe('delete')
-        await db3.terminate()
+        await db3.onDestroy()
     })
 
     it('opens read-only when requested: SELECT works, INSERT fails with a coded DB_QUERY_FAILED', async () => {
@@ -108,7 +108,7 @@ describe('BootDatabaseSqlite', () => {
         await start(rw)
         await setupUsers(rw)
         await rw.execute('INSERT INTO users (name) VALUES (?)', ['alice'])
-        await rw.terminate()
+        await rw.onDestroy()
 
         const ro = make(BootDatabaseSqlite, { file, readOnly: true })
         await start(ro)
@@ -120,7 +120,7 @@ describe('BootDatabaseSqlite', () => {
             // "SELECT 1" returns a row { 1: 1 } in node:sqlite — the shape is driver-specific, the key check is that it resolved
             expect.anything()
         ])
-        await ro.terminate()
+        await ro.onDestroy()
     })
 
     it('a bad path fails the start with DB_CONNECT_FAILED and a driver code', async () => {
@@ -129,7 +129,7 @@ describe('BootDatabaseSqlite', () => {
         const db = make(BootDatabaseSqlite, { file: path.join(file, 'inner.db') })
         let err: any
         try {
-            await db.processPromise()
+            await db.onStartAsync()
         } catch (e) {
             err = e
         }
@@ -151,7 +151,7 @@ describe('BootDatabaseSqlite', () => {
         expect(ErrorManager.isCode(err, 'DB_QUERY_FAILED')).toBe(true)
         expect(typeof err.driverCode).toBe('string')
         expect(JSON.stringify(err)).not.toContain('table_that_does_not_exist')
-        await db.terminate()
+        await db.onDestroy()
     })
 
     it('a real transaction commits on success', async () => {
@@ -168,7 +168,7 @@ describe('BootDatabaseSqlite', () => {
         expect(result).toBe('done')
         expect(await db.query('SELECT COUNT(1) AS total FROM users')).toEqual([{ total: 2 }])
 
-        await db.terminate()
+        await db.onDestroy()
     })
 
     it('a real transaction rolls back atomically on error', async () => {
@@ -192,7 +192,7 @@ describe('BootDatabaseSqlite', () => {
         await db.transaction(async (tx: any) => {
             await tx.execute('INSERT INTO users (name) VALUES (?)', ['two'])
         })
-        await db.terminate()
+        await db.onDestroy()
     })
 
     it('a second concurrent transaction on the single connection is DBS_BUSY and the database stays usable afterwards', async () => {
@@ -216,7 +216,7 @@ describe('BootDatabaseSqlite', () => {
             await tx.execute('INSERT INTO users (name) VALUES (?)', ['after'])
         })
         expect(await db.query('SELECT COUNT(1) AS total FROM users')).toEqual([{ total: 1 }])
-        await db.terminate()
+        await db.onDestroy()
     })
 })
 
@@ -233,7 +233,7 @@ describe('BootDatabaseMemory', () => {
         await (db as any).execute('INSERT INTO t (v) VALUES (?)', ['x'])
         expect(await (db as any).get('SELECT v FROM t WHERE id = 1')).toEqual({ v: 'x' })
 
-        await db.terminate()
+        await db.onDestroy()
         // nothing was written to the requested directory
         expect(fs.readdirSync(dir)).toEqual([])
     })
@@ -255,8 +255,8 @@ describe('BootDatabaseMemory', () => {
         }
         expect(ErrorManager.isCode(err, 'DB_QUERY_FAILED')).toBe(true)
 
-        await a.terminate()
-        await b.terminate()
+        await a.onDestroy()
+        await b.onDestroy()
     })
 
     it('accepts an explicit file and behaves as a regular file database (persistence)', async () => {
@@ -267,13 +267,13 @@ describe('BootDatabaseMemory', () => {
         await start(db)
         await (db as any).execute(`CREATE TABLE t (id INTEGER PRIMARY KEY, v TEXT)`)
         await (db as any).execute('INSERT INTO t (v) VALUES (?)', ['x'])
-        await db.terminate()
+        await db.onDestroy()
         expect(fs.existsSync(file)).toBe(true)
 
         const db2 = make(BootDatabaseMemory, { file })
         await start(db2)
         expect(await (db2 as any).get('SELECT v FROM t WHERE id = 1')).toEqual({ v: 'x' })
-        await db2.terminate()
+        await db2.onDestroy()
         void dir
     })
 })

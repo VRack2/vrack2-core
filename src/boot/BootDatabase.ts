@@ -11,7 +11,7 @@ import Rule from '../validator/Rule'
 ErrorManager.registerMany('BootDatabase', [
     {
         short: 'DB_NOT_READY',
-        description: 'A call was made before the database finished starting (before processPromise() resolved)',
+        description: 'A call was made before the database finished starting (before onStartAsync() resolved)',
         rules: {
             boot: Rule.string().required().description('Boot class id')
         }
@@ -120,7 +120,7 @@ export default abstract class BootDatabase extends BootClass {
     protected abstract connect(): Promise<void>
 
     /**
-     * Disconnect from the database. Called from `terminate()`.
+     * Disconnect from the database. Called from `onDestroy()`.
      */
     protected abstract disconnect(): Promise<void>
 
@@ -165,7 +165,7 @@ export default abstract class BootDatabase extends BootClass {
      * On failure the class goes to `closed` and throws `DB_CONNECT_FAILED`
      * so the service does not start (fail-fast).
      */
-    async processPromise(): Promise<void> {
+    async onStartAsync(): Promise<void> {
         try {
             await this.connect()
         } catch (e: any) {
@@ -187,7 +187,7 @@ export default abstract class BootDatabase extends BootClass {
      * is exiting anyway and `Bootstrap.terminateAll()` must continue
      * with the remaining boot classes.
      */
-    async terminate(): Promise<void> {
+    async onDestroy(): Promise<void> {
         if (this._state === 'closed') return
         try {
             await this.disconnect()

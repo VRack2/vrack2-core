@@ -48,7 +48,7 @@ export default abstract class BootDatabase extends BootClass {
      */
     protected abstract connect(): Promise<void>;
     /**
-     * Disconnect from the database. Called from `terminate()`.
+     * Disconnect from the database. Called from `onDestroy()`.
      */
     protected abstract disconnect(): Promise<void>;
     /**
@@ -86,7 +86,7 @@ export default abstract class BootDatabase extends BootClass {
      * On failure the class goes to `closed` and throws `DB_CONNECT_FAILED`
      * so the service does not start (fail-fast).
      */
-    processPromise(): Promise<void>;
+    onStartAsync(): Promise<void>;
     /**
      * Stop the database: `disconnect()` and go to `closed`.
      *
@@ -95,7 +95,7 @@ export default abstract class BootDatabase extends BootClass {
      * is exiting anyway and `Bootstrap.terminateAll()` must continue
      * with the remaining boot classes.
      */
-    terminate(): Promise<void>;
+    onDestroy(): Promise<void>;
     /**
      * True once the database is started and connected
      */

@@ -30,8 +30,8 @@ ErrorManager.registerMany('StructureStorage', [
  * @see getById
  * @see updateById
  * 
- * The loader emits a single `serviceLoaded` finalization event after the
- * initial `load()` and after each hot mutation (add/remove device/connection).
+  * The loader emits a single `service.loaded` finalization event after the
+  * initial `load()` and after each hot mutation (add/remove device/connection).
  * StructureStorage reacts to it by persisting the container structure once.
  * 
  * @see structureStorage
@@ -45,18 +45,18 @@ export default class StructureStorage extends BootClass {
         }
     }
 
-    process(): void {
+    onStart(): void {
         if (!existsSync(this.options.structureDir)) mkdirSync(this.options.structureDir, { recursive: true })
         // Persist structure once on loader finalization (initial load + each hot mutation)
-        this.Container.on('serviceLoaded', this.structureStorage.bind(this))
+        this.Container.on('service.loaded', this.structureStorage.bind(this))
     }
 
     /**
      * Updates the structure on disk using the structure of
-     * the container itself, triggered by the `serviceLoaded` event
+     * the container itself, triggered by the `service.loaded` event
      * 
      * 
-     * @see StructureStorage.process
+     * @see StructureStorage.onStart
     */
     async structureStorage(){
         const fp = this.makeFilePath(this.Container.id)

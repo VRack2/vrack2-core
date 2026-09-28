@@ -1,5 +1,5 @@
 /*
- * Test fixture device: its `stop()` hook throws synchronously.
+ * Test fixture device: its `onStop()` hook throws synchronously.
  *
  * Used to verify best-effort stop aggregation
  * (Container.stopAll() / MainProcess.terminate()).
@@ -7,10 +7,10 @@
 import { Device, Port, Action } from 'vrack2-core'
 
 export default class StopFail extends Device {
-    stopCalled = false
+    onStopCalled = false
 
-    stop() {
-        this.stopCalled = true
+    onStop() {
+        this.onStopCalled = true
         throw new Error('stop-boom')
     }
 

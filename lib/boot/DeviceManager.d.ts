@@ -90,7 +90,7 @@ export default class DeviceManager extends BootClass {
     checkOptions(): {
         [key: string]: BasicType;
     };
-    process(): void;
+    onStart(): void;
     /**
      * Return vendor list
      *

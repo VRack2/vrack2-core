@@ -104,8 +104,8 @@ export default class Container extends EventEmitter {
     /**
      * True once `runProcess()` has been **called** — even if the attempt
      * failed. It is an idempotency guard against re-calls, not a
-     * "start succeeded" indicator: a re-call would re-run `process()` /
-     * `processPromise()` of the devices that are not in `started` yet.
+     * "start succeeded" indicator: a re-call would re-run `onStart()` /
+     * `onStartAsync()` of the devices that are not in `started` yet.
      * A failed attempt does not reset the guard — the error propagates to
      * the host and the process/worker is being killed anyway.
      */
@@ -135,7 +135,7 @@ export default class Container extends EventEmitter {
     protected structure: IContainerStructure;
     /**
      * Set of device ids that are fully started
-     * (`process()` + `processPromise()` completed).
+     * (`onStart()` + `onStartAsync()` completed).
      * Used to make `startDevice()` idempotent.
     */
     protected started: Set<string>;
@@ -160,17 +160,16 @@ export default class Container extends EventEmitter {
      */
     constructor(id: string, bootstrap: Bootstrap);
     /**
-     * Run process & processPromise of all devices
+     * Start all devices: `onStart()` of every (not yet started) device, then
+     * `onStartAsync()` of every (not yet started) device.
      *
-     * Staged start: first `process()` of every (not yet started) device,
-     * then `processPromise()` of every (not yet started) device.
      * Devices that were already started via `startDevice()` are skipped,
      * which makes this method safe to call after hot adds.
     */
     runProcess(): Promise<void>;
     /**
-     * Start a single (already registered) device: run `process()` and then
-     * `processPromise()`.
+     * Start a single (already registered) device: run `onStart()` and then
+     * `onStartAsync()`.
      *
      * Idempotent — calling it again for the same device is a no-op.
      * Used to hot-start a device that was added via `addDevice()`.
@@ -179,7 +178,7 @@ export default class Container extends EventEmitter {
     */
     startDevice(id: string): Promise<void>;
     /**
-     * Stop a single running device: call `stop()`, then `await stopPromise()`,
+     * Stop a single running device: call `onStop()`, then `await onStopAsync()`,
      * then mark it stopped (status state → `stopped`, removed from `started`).
      *
      * Reversible — the device can be started again with `startDevice()`.
@@ -200,7 +199,7 @@ export default class Container extends EventEmitter {
      */
     stopAll(): Promise<void>;
     /**
-     * Whether a device has been fully started (`process` + `processPromise`).
+     * Whether a device has been fully started (`onStart` + `onStartAsync`).
      *
      * @param id Device ID
     */
@@ -233,9 +232,9 @@ export default class Container extends EventEmitter {
      * container:
      *  - add to the devices map
      *  - create the structure entry
-     *  - run `preProcess()`
+     *  - run `onRegister()`
      *  - register actions
-     *  - register metrics (emit `device.register.metric`)
+     *  - register metrics (emit `device.metric.register`)
      *  - create input & output ports
      *
      * @param dev A device created via `ServiceLoader.createDevice()`
@@ -296,8 +295,8 @@ export default class Container extends EventEmitter {
     protected toCheckResult(error: any): ICheckResult;
     /**
      * Remove a device from the container:
-     *  - stop it first, if it is running: `stop()` + `await stopPromise()`
-     *  - call `beforeTerminate()`
+     *  - stop it first, if it is running: `onStop()` + `await onStopAsync()`
+     *  - call `onDestroy()`
      *  - disconnect all its connections (both sides)
      *  - remove its structure entry and all references to it
      *  - remove it from the devices / actions / metrics maps & `started`

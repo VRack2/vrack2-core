@@ -55,7 +55,7 @@ ErrorManager.registerMany('Container', [
     },
     {
         short: 'CTR_DEVICE_PROCESS_PROMISE_EXCEPTION',
-        description: 'During processPromise execution - the device threw an exception',
+        description: 'During onStartAsync execution - the device threw an exception',
         rules: { device: Rule.string().description('Device ID') }
     },
     {
@@ -65,7 +65,7 @@ ErrorManager.registerMany('Container', [
     },
     {
         short: 'CTR_DEVICE_STOP_PROMISE_EXCEPTION',
-        description: 'During stopPromise execution - the device threw an exception',
+        description: 'During onStopAsync execution - the device threw an exception',
         rules: { device: Rule.string().description('Device ID') }
     },
     {
@@ -238,8 +238,8 @@ export default class Container extends EventEmitter {
     /**
      * True once `runProcess()` has been **called** — even if the attempt
      * failed. It is an idempotency guard against re-calls, not a
-     * "start succeeded" indicator: a re-call would re-run `process()` /
-     * `processPromise()` of the devices that are not in `started` yet.
+     * "start succeeded" indicator: a re-call would re-run `onStart()` /
+     * `onStartAsync()` of the devices that are not in `started` yet.
      * A failed attempt does not reset the guard — the error propagates to
      * the host and the process/worker is being killed anyway.
      */
@@ -265,7 +265,7 @@ export default class Container extends EventEmitter {
 
     /**
      * Set of device ids that are fully started
-     * (`process()` + `processPromise()` completed).
+     * (`onStart()` + `onStartAsync()` completed).
      * Used to make `startDevice()` idempotent.
     */
     protected started: Set<string> = new Set()
@@ -303,33 +303,32 @@ export default class Container extends EventEmitter {
     }
 
     /**
-     * Run process & processPromise of all devices
+     * Start all devices: `onStart()` of every (not yet started) device, then
+     * `onStartAsync()` of every (not yet started) device.
      *
-     * Staged start: first `process()` of every (not yet started) device,
-     * then `processPromise()` of every (not yet started) device.
      * Devices that were already started via `startDevice()` are skipped,
      * which makes this method safe to call after hot adds.
     */
     async runProcess() {
         if (this.runProcessAttempted) return
         this.runProcessAttempted = true
-        this.emit('beforeProcess')
+        this.emit('service.start.begin')
         for (const key in this.devices) {
             if (this.started.has(key)) continue
             try {
-                this.emit('process',key)
+                this.emit('device.start', key)
                 this.devices[key].onStart()
                 this.devices[key].process() // deprecated: remove in next major
             } catch (error) {
                 throw ErrorManager.make('CTR_DEVICE_PROCESS_EXCEPTION', { device: key }).add(error as Error)
             }
         }
-        this.emit('afterProcess')
-        this.emit('beforeProcessPromise')
+        this.emit('service.start.end')
+        this.emit('service.startAsync.begin')
         for (const key in this.devices) {
             if (this.started.has(key)) continue
             try {
-                this.emit('processPromise', key)
+                this.emit('device.startAsync', key)
                 await this.devices[key].onStartAsync()
                 await this.devices[key].processPromise() // deprecated: remove in next major
             } catch (error) {
@@ -340,14 +339,14 @@ export default class Container extends EventEmitter {
             if (st) st.state = 'started'
             this.emitDeviceStatus(key)
         }
-        this.emit('afterProcessPromise')
-        this.emit('beforeLoaded')
-        this.emit('loaded')
+        this.emit('service.startAsync.end')
+        this.emit('service.ready.begin')
+        this.emit('service.ready')
     }
 
     /**
-     * Start a single (already registered) device: run `process()` and then
-     * `processPromise()`.
+     * Start a single (already registered) device: run `onStart()` and then
+     * `onStartAsync()`.
      *
      * Idempotent — calling it again for the same device is a no-op.
      * Used to hot-start a device that was added via `addDevice()`.
@@ -358,14 +357,14 @@ export default class Container extends EventEmitter {
         if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
         if (this.started.has(id)) return
         try {
-            this.emit('process', id)
+            this.emit('device.start', id)
             this.devices[id].onStart()
             this.devices[id].process() // deprecated: remove in next major
         } catch (error) {
             throw ErrorManager.make('CTR_DEVICE_PROCESS_EXCEPTION', { device: id }).add(error as Error)
         }
         try {
-            this.emit('processPromise', id)
+            this.emit('device.startAsync', id)
             await this.devices[id].onStartAsync()
             await this.devices[id].processPromise() // deprecated: remove in next major
         } catch (error) {
@@ -378,7 +377,7 @@ export default class Container extends EventEmitter {
     }
 
     /**
-     * Stop a single running device: call `stop()`, then `await stopPromise()`,
+     * Stop a single running device: call `onStop()`, then `await onStopAsync()`,
      * then mark it stopped (status state → `stopped`, removed from `started`).
      *
      * Reversible — the device can be started again with `startDevice()`.
@@ -391,7 +390,7 @@ export default class Container extends EventEmitter {
         if (!this.started.has(id)) return
         const dev = this.devices[id]
         try {
-            this.emit('stop', id)
+            this.emit('device.stop', id)
             dev.onStop()
             dev.stop() // deprecated: remove in next major
         } catch (error) {
@@ -422,7 +421,7 @@ export default class Container extends EventEmitter {
     async stopAll(): Promise<void> {
         const ids = [...this.started].reverse()
         const errors: Error[] = []
-        this.emit('beforeStop')
+        this.emit('service.stop.begin')
         for (const id of ids) {
             try {
                 await this.stopDevice(id)
@@ -430,7 +429,7 @@ export default class Container extends EventEmitter {
                 errors.push(error as Error)
             }
         }
-        this.emit('afterStop')
+        this.emit('service.stop.end')
         if (errors.length > 0) {
             let ner = ErrorManager.make('CTR_DEVICE_STOP_ALL_EXCEPTION')
             for (const error of errors) ner = ner.add(error)
@@ -439,7 +438,7 @@ export default class Container extends EventEmitter {
     }
 
     /**
-     * Whether a device has been fully started (`process` + `processPromise`).
+     * Whether a device has been fully started (`onStart` + `onStartAsync`).
      *
      * @param id Device ID
     */
@@ -494,9 +493,9 @@ export default class Container extends EventEmitter {
      * container:
      *  - add to the devices map
      *  - create the structure entry
-     *  - run `preProcess()`
+     *  - run `onRegister()`
      *  - register actions
-     *  - register metrics (emit `device.register.metric`)
+     *  - register metrics (emit `device.metric.register`)
      *  - create input & output ports
      *
      * @param dev A device created via `ServiceLoader.createDevice()`
@@ -536,7 +535,7 @@ export default class Container extends EventEmitter {
         for (const metric in this.deviceMetrics[dev.id]) {
             const raw = this.deviceMetrics[dev.id][metric].export()
             const nEvent: IDeviceEvent = { device: dev.id, data: metric, trace: raw }
-            this.emit('device.register.metric', nEvent)
+            this.emit('device.metric.register', nEvent)
             this.structure[dev.id].metrics[metric] = raw
         }
 
@@ -653,7 +652,7 @@ export default class Container extends EventEmitter {
     */
     addConnection(conn: string) {
         const cc = this.checkConnectionCore(conn)
-        this.emit('connection', cc)
+        this.emit('service.connection', cc)
         this.makeConnection(cc)
     }
 
@@ -690,8 +689,8 @@ export default class Container extends EventEmitter {
 
     /**
      * Remove a device from the container:
-     *  - stop it first, if it is running: `stop()` + `await stopPromise()`
-     *  - call `beforeTerminate()`
+     *  - stop it first, if it is running: `onStop()` + `await onStopAsync()`
+     *  - call `onDestroy()`
      *  - disconnect all its connections (both sides)
      *  - remove its structure entry and all references to it
      *  - remove it from the devices / actions / metrics maps & `started`

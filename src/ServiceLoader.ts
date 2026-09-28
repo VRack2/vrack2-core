@@ -50,15 +50,15 @@ ErrorManager.registerMany('ServiceLoader', [
  * ServiceLoader — device creation & validation from config, hot add/remove,
  * connection wiring, and the *structure finalization* signal.
  *
- *  - **ServiceLoader** owns *device creation & validation*, *hot add/remove*,
- *    *connection wiring*, and emits `serviceLoaded` (the finalization
- *    event that triggers persistence of the structure).
+  *  - **ServiceLoader** owns *device creation & validation*, *hot add/remove*,
+  *    *connection wiring*, and emits `service.loaded` (the finalization
+  *    event that triggers persistence of the structure).
  *  - **Container** owns *registration, connections state, staged start, and
  *    runtime actions* (`registerDevice`, `addConnection`, `startDevice`, ...).
  *
  * The Loader is constructed with the Container and the service structure.
- * `load()` materializes all devices & connections (the previous
- * `Container.init()`), then emits `serviceLoaded`.
+  * `load()` materializes all devices & connections (the previous
+  * `Container.init()`), then emits `service.loaded`.
  */
 export default class ServiceLoader {
 
@@ -93,16 +93,18 @@ export default class ServiceLoader {
      * Load the full structure from `this.service` into the container.
      *
      * This re-homes the previous `Container.init()`:
-     * 1. `configure` event, then `fillConfFile()` (override device options;
-     *    failures wrapped in `CTR_CONF_EXTENDS_PROBLEM`).
-     * 2. `beforeInit` / `init` events, then for each device: `initDevice`
-     *    event + `createDevice()` + `Container.registerDevice()` (failures
-     *    wrapped in `CTR_ERROR_INIT_DEVICE`).
-     * 3. `afterInit` / `beforeConnections` / `connections` events, then wire
-     *    every device connection and `service.connections` entry (failures
-     *    wrapped in `CTR_ERROR_INIT_CONNECTION`).
-     * 4. `afterConnections` event.
-     * 5. **`serviceLoaded`** — the finalization signal. Listeners such as
+     * 1. `service.configure` event, then `fillConfFile()` (override device
+     *    options; failures wrapped in `CTR_CONF_EXTENDS_PROBLEM`).
+     * 2. `service.init.begin` / `service.init` events, then for each device:
+     *    `device.register` event + `createDevice()` +
+     *    `Container.registerDevice()` (failures wrapped in
+     *    `CTR_ERROR_INIT_DEVICE`).
+     * 3. `service.init.end` / `service.connect.begin` / `service.connect`
+     *    events, then wire every device connection (`service.connection`
+     *    event) and `service.connections` entry (failures wrapped in
+     *    `CTR_ERROR_INIT_CONNECTION`).
+     * 4. `service.connect.end` event.
+     * 5. **`service.loaded`** — the finalization signal. Listeners such as
      *    `StructureStorage` react to it by persisting the structure once.
      *
      * Idempotent — a second call is a no-op.
@@ -110,7 +112,7 @@ export default class ServiceLoader {
     async load(): Promise<void> {
         if (this.inited) return
         this.inited = true
-        this.Container.emit('configure')
+        this.Container.emit('service.configure')
         try {
             this.fillConfFile()
         } catch (err) {
@@ -120,11 +122,11 @@ export default class ServiceLoader {
             }
             throw err
         }
-        this.Container.emit('beforeInit')
-        this.Container.emit('init')
+        this.Container.emit('service.init.begin')
+        this.Container.emit('service.init')
         for (const device of this.service.devices) {
             try {
-                this.Container.emit('initDevice', device)
+                this.Container.emit('device.register', device)
                 const dev = await this.createDevice(device)
                 this.Container.registerDevice(dev)
             } catch (error) {
@@ -133,13 +135,13 @@ export default class ServiceLoader {
                 throw ner
             }
         }
-        this.Container.emit('afterInit')
-        this.Container.emit('beforeConnections')
-        this.Container.emit('connections')
+        this.Container.emit('service.init.end')
+        this.Container.emit('service.connect.begin')
+        this.Container.emit('service.connect')
         for (const device of this.service.devices) {
             if (!device.connections) continue
             for (const conn of device.connections) {
-                this.Container.emit('connection', conn)
+                this.Container.emit('service.connection', conn)
                 this.initConnection(conn)
             }
         }
@@ -148,10 +150,10 @@ export default class ServiceLoader {
                 this.initConnection(conn)
             }
         }
-        this.Container.emit('afterConnections')
+        this.Container.emit('service.connect.end')
 
         // Structure finalization — triggers persistence (StructureStorage, ...)
-        this.Container.emit('serviceLoaded')
+        this.Container.emit('service.loaded')
     }
 
     /**
@@ -169,8 +171,8 @@ export default class ServiceLoader {
     }
 
     /**
-     * Hot-add a device: create it, register it in the container, and emit
-     * `initDevice` + `device.add` + `serviceLoaded`.
+      * Hot-add a device: create it, register it in the container, and emit
+      * `device.register` + `device.add` + `service.loaded`.
      *
      * The device is registered (structure, ports, actions, metrics) but is
      * **not** started. Start it with `Container.startDevice(id)`.
@@ -184,11 +186,11 @@ export default class ServiceLoader {
         }
         this.pending.add(dconf.id)
         try {
-            this.Container.emit('initDevice', dconf)
+            this.Container.emit('device.register', dconf)
             const dev = await this.createDevice(dconf)
             this.Container.registerDevice(dev)
             this.Container.emit('device.add', dconf.id)
-            this.Container.emit('serviceLoaded')
+            this.Container.emit('service.loaded')
             return dev
         } finally {
             this.pending.delete(dconf.id)
@@ -196,28 +198,28 @@ export default class ServiceLoader {
     }
 
     /**
-     * Hot-remove a device from the container and emit `serviceLoaded`.
+     * Hot-remove a device from the container and emit `service.loaded`.
      *
      * If the device is running, it is stopped first
-     * (`stop()` + `await stopPromise()`) and then destroyed
-     * (`beforeTerminate()` + cleanup).
+     * (`onStop()` + `await onStopAsync()`) and then destroyed
+     * (`onDestroy()` + cleanup).
      *
      * @param id Device ID
      */
     async removeDevice(id: string): Promise<void> {
         await this.Container.removeDevice(id)
         this.pending.delete(id)
-        this.Container.emit('serviceLoaded')
+        this.Container.emit('service.loaded')
     }
 
     /**
-     * Hot-add a connection and emit `serviceLoaded`.
+     * Hot-add a connection and emit `service.loaded`.
      *
      * @param conn Device connection string like "DevID.port -> DevIDTO.port"
      */
     addConnection(conn: string): void {
         this.Container.addConnection(conn)
-        this.Container.emit('serviceLoaded')
+        this.Container.emit('service.loaded')
     }
 
     /**

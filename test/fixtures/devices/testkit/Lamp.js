@@ -33,7 +33,7 @@ export default class Lamp extends Device {
         }
     }
 
-    process() {
+    onStart() {
         this.state = { on: false, brightness: 0 }
     }
 
