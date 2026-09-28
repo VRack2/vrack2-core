@@ -237,6 +237,16 @@ export default class Device {
     outputs(): { [key: string]: BasicPort } { return {} }
 
     /**
+     * Registration hook (canonical name): the entry point to start device
+     * initialization. Runs in `Container.registerDevice()`, before ports and
+     * connections are created — use it to assign functions for dynamic ports.
+     *
+     * During the deprecation window the Container calls **both** this method
+     * and the deprecated `preProcess()` — keep your logic in only one of them.
+     */
+    onRegister() { return }
+
+    /**
      * The method is an input point to start device initialization
      * 
      * The device will only go through the following device creation steps:
@@ -246,8 +256,21 @@ export default class Device {
      * 
      * Must be used to assign functions to call dynamic ports
      * of the device.
-    */
+     *
+     * @deprecated use onRegister() instead of preProcess()
+     */
     preProcess() { return }
+
+    /**
+     * Sync start hook (canonical name): the entry point to start device
+     * operation. Runs in `Container.runProcess()` / `startDevice()` after
+     * ports and connections are wired — start basic operation here (timers,
+     * subscriptions, connections).
+     *
+     * During the deprecation window the Container calls **both** this method
+     * and the deprecated `process()` — keep your logic in only one of them.
+     */
+    onStart() { return }
 
     /**
      * The method is an input point for the start of device operation
@@ -262,8 +285,21 @@ export default class Device {
      * 
      * Must be used to start basic operation of the device
      * e.g. initialization of connections, creation of timers, etc.
-    */
+     *
+     * @deprecated use onStart() instead of process()
+     */
     process() { return }
+
+    /**
+     * Async start hook (canonical name): the asynchronous part of startup.
+     * The Container awaits this method for every device (staged start, after
+     * all sync `onStart()` calls). Use it for async initialization (file
+     * databases, connections, etc.).
+     *
+     * During the deprecation window the Container calls **both** this method
+     * and the deprecated `processPromise()` — keep your logic in only one of them.
+     */
+    async onStartAsync() { return }
 
     /**
      * Similar to `process` but asynchronous, the loader will wait for the execution of all the 
@@ -271,8 +307,23 @@ export default class Device {
      * 
      * Used when there is a need to execute before starting the rack
      * and wait for asynchronous code to execute (initialization of some file databases, etc.)
-    */
+     *
+     * @deprecated use onStartAsync() instead of processPromise()
+     */
     async processPromise() { return }
+
+    /**
+     * Sync stop hook (canonical name): the synchronous part of device
+     * stopping. Called by the Container (`stopDevice()` / `stopAll()`) when
+     * the device is running. The device is **not destroyed** — it can be
+     * started again with `Container.startDevice()`.
+     *
+     * Use it to pause the device work: stop timers, pause consumers, etc.
+     *
+     * During the deprecation window the Container calls **both** this method
+     * and the deprecated `stop()` — keep your logic in only one of them.
+     */
+    onStop() { return }
 
     /**
      * The synchronous part of device stopping.
@@ -282,8 +333,22 @@ export default class Device {
      * with `Container.startDevice()` (which re-runs `process()` + `processPromise()`).
      *
      * Use it to pause the device work: stop timers, pause consumers, etc.
+     *
+     * @deprecated use onStop() instead of stop()
      */
     stop() { return }
+
+    /**
+     * Async stop hook (canonical name): the asynchronous part of stopping —
+     * the Container awaits it before the device is considered stopped.
+     *
+     * Use it for async cleanup that must complete before the device is
+     * stopped: closing reusable connections, flushing pending work, etc.
+     *
+     * During the deprecation window the Container calls **both** this method
+     * and the deprecated `stopPromise()` — keep your logic in only one of them.
+     */
+    async onStopAsync() { return }
 
     /**
      * Similar to `stop` but asynchronous — the Container awaits it
@@ -291,8 +356,23 @@ export default class Device {
      *
      * Use it for async cleanup that must complete before the device is
      * stopped: closing reusable connections, flushing pending work, etc.
+     *
+     * @deprecated use onStopAsync() instead of stopPromise()
      */
     async stopPromise() { return }
+
+    /**
+     * Destruction hook (canonical name): called by the Container
+     * (`removeDevice()`) right before the device is removed from the
+     * container. Not called by `stopDevice()` — a stopped device is reusable.
+     *
+     * The device is about to be destroyed — close everything, flush, save.
+     * Note: it may not be called at all (depends on how the service exits).
+     *
+     * During the deprecation window the Container calls **both** this method
+     * and the deprecated `beforeTerminate()` — keep your logic in only one of them.
+     */
+    onDestroy(){ return }
 
     /**
      * Destruction hook: called by the Container (`removeDevice()`)
@@ -301,6 +381,8 @@ export default class Device {
      *
      * The device is about to be destroyed — close everything, flush, save.
      * Note: it may not be called at all (depends on how the service exits)
+     *
+     * @deprecated use onDestroy() instead of beforeTerminate()
      */
     beforeTerminate(){ return }
 

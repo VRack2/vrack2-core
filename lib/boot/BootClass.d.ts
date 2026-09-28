@@ -76,15 +76,48 @@ export default class BootClass {
         [key: string]: any;
     });
     /**
+     * Sync start hook (canonical name): the entry point to start the boot
+     * class. Runs in `Bootstrap.loadBootList()` after all boot classes are
+     * constructed.
+     *
+     * During the deprecation window the Bootstrap calls **both** this method
+     * and the deprecated `process()` — keep your logic in only one of them.
+     */
+    onStart(): void;
+    /**
      * The method is the entry point to start the boot class
-    */
+     *
+     * @deprecated use onStart() instead of process()
+     */
     process(): void;
+    /**
+     * Async start hook (canonical name): the asynchronous part of boot-class
+     * startup. The Bootstrap awaits this method for every boot class.
+     *
+     * During the deprecation window the Bootstrap calls **both** this method
+     * and the deprecated `processPromise()` — keep your logic in only one of them.
+     */
+    onStartAsync(): Promise<void>;
     /**
      * Similar to `process` but asynchronous,
      * the bootstrap loader will wait for the execution of all
      * the  `processPromise` methods of all bootstrap classes.
-    */
+     *
+     * @deprecated use onStartAsync() instead of processPromise()
+     */
     processPromise(): Promise<void>;
+    /**
+     * Shutdown hook (canonical name): gracefully stop the boot class and
+     * release its resources. Called from `Bootstrap.terminateAll()` when the
+     * service is being stopped.
+     *
+     * The base implementation does nothing. Implementations must be idempotent:
+     * `Bootstrap.terminateAll()` may be called multiple times.
+     *
+     * During the deprecation window the Bootstrap calls **both** this method
+     * and the deprecated `terminate()` — keep your logic in only one of them.
+     */
+    onDestroy(): Promise<void>;
     /**
      * Gracefully stop the boot class and release its resources.
      *
@@ -94,6 +127,8 @@ export default class BootClass {
      *
      * The base implementation does nothing. Implementations must be idempotent:
      * `Bootstrap.terminateAll()` may be called multiple times.
+     *
+     * @deprecated use onDestroy() instead of terminate()
      */
     terminate(): Promise<void>;
     /**

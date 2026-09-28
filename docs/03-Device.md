@@ -38,29 +38,31 @@ export default class MyDevice extends Device {
 2. Копирование опций из конфига, вызов `prepareOptions()` — **подготовка опций до валидации** (производные значения, преобразования).
 3. `Validator.validate(this.checkOptions(), this.options)` — валидация опций; при неудаче — `VR_NOT_PASS` (обёрнут в `CTR_ERROR_PREPARE_OPTIONS` → `CTR_ERROR_INIT_DEVICE`).
 4. `Container.registerDevice()`:
-   - `preProcess()` — **входная точка инициализации**: порты ещё не созданы, shares доступны; здесь назначаются функции для динамических портов;
+    - `onRegister()` (устар. `preProcess()`) — **входная точка инициализации**: порты ещё не созданы, shares доступны; здесь назначаются функции для динамических портов;
    - проверка actions: для каждой action должен существовать хендлер;
    - регистрация метрик (событие `device.register.metric` на каждую);
    - создание входных/выходных портов; проверка и bind входных хендлеров.
 5. Подключение соединений (`addConnection`).
-6. `process()` — **входная точка старта работы**: выполнены все шаги выше; здесь стартует основная работа (таймеры, подписки, инициализация соединений).
-7. `await processPromise()` — асинхронная инициализация, которую лоадер ждёт у всех устройств (например, инициализация файловых баз).
+6. `onStart()` (устар. `process()`) — **входная точка старта работы**: выполнены все шаги выше; здесь стартует основная работа (таймеры, подписки, инициализация соединений).
+7. `await onStartAsync()` (устар. `processPromise()`) — асинхронная инициализация, которую лоадер ждёт у всех устройств (например, инициализация файловых баз).
 
-Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.terminate()`) вызывает `stop()`, затем `await stopPromise()`, и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается** — его можно запустить снова через `Container.startDevice()` (повторно выполняются `process()` + `processPromise()`, снова включаются порты и actions).
+Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.terminate()`) вызывает `onStop()` (устар. `stop()`), затем `await onStopAsync()` (устар. `stopPromise()`), и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается** — его можно запустить снова через `Container.startDevice()` (повторно выполняются `onStart()` + `onStartAsync()`, снова включаются порты и actions).
 
-Завершение (необратимо): `beforeTerminate()` вызывается, когда устройство удаляется из работающего сервиса (`ServiceLoader.removeDevice()` → `Container.removeDevice()`). Если устройство работало — сначала выполняется остановка (`stop()` + `stopPromise()`), и только потом `beforeTerminate()`. При простом завершении процесса вызываться не будет.
+Завершение (необратимо): `onDestroy()` (устар. `beforeTerminate()`) вызывается, когда устройство удаляется из работающего сервиса (`ServiceLoader.removeDevice()` → `Container.removeDevice()`). Если устройство работало — сначала выполняется остановка (`onStop()` + `onStopAsync()`), и только потом `onDestroy()`. При простом завершении процесса вызываться не будет.
 
 | Метод | Асинхронный | Когда вызывается |
 |---|---|---|
 | `prepareOptions()` | нет | до проверки опций |
 | `checkOptions()` | нет | возвращает правила опций |
-| `preProcess()` | нет | в `registerDevice()`, до `process()` |
-| `process()` | нет | в `runProcess()` / `startDevice()`, ступень 1 |
-| `processPromise()` | да | в `runProcess()` / `startDevice()`, ступень 2, awaited |
-| `stop()` | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
-| `stopPromise()` | да | при остановке, awaited, после `stop()` |
+| `onRegister()` (устар. `preProcess()`) | нет | в `registerDevice()`, до старта |
+| `onStart()` (устар. `process()`) | нет | в `runProcess()` / `startDevice()`, ступень 1 |
+| `onStartAsync()` (устар. `processPromise()`) | да | в `runProcess()` / `startDevice()`, ступень 2, awaited |
+| `onStop()` (устар. `stop()`) | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
+| `onStopAsync()` (устар. `stopPromise()`) | да | при остановке, awaited, после `onStop()` |
 | `beforeAction(action, data)` | нет | хук, объявленный в `Device`; текущее ядро его **не вызывает** (резерв) |
-| `beforeTerminate()` | нет | при удалении устройства (после остановки, если оно работало) |
+| `onDestroy()` (устар. `beforeTerminate()`) | нет | при удалении устройства (после остановки, если оно работало) |
+
+> **Имена хуков (депрекейшн).** Канонические имена — `onRegister()` / `onStart()` / `onStartAsync()` / `onStop()` / `onStopAsync()` / `onDestroy()`. Старые имена (`preProcess()`, `process()`, `processPromise()`, `stop()`, `stopPromise()`, `beforeTerminate()`) помечены `@deprecated`: в переходный период ядро вызывает **и** новые, **и** старые; в следующей мажорной версии вызовы старых будут удалены. Базовые реализации — пустые no-op, поэтому переопределять можно **любой** из пары, не трогая другой и **без** `super` (ядро вызывает их независимо). При переходе просто переименуйте метод — устройство продолжит работать.
 
 Состояния: `CREATED → RUNNING → STOPPED → RUNNING …` (остановка обратима), а из `RUNNING` / `STOPPED` / `CREATED` — `DESTROYED` (удаление необратимо). Управление состоянием — только за контейнером.
 

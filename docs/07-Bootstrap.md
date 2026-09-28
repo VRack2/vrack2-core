@@ -23,14 +23,16 @@ class MyBoot extends BootClass {
     options: object            // опции из списка (валидируются)
 
     checkOptions(): { [key: string]: BasicType } { ... }  // правила опций
-    process() { }               // входная точка старта (синхронная)
-    async processPromise() { }  // асинхронный старт (лоадер ждёт всех)
-    async terminate() { }       // graceful-остановка (вызывается Bootstrap.terminateAll())
+    onStart() { }               // входная точка старта (синхронная) — устар. process()
+    async onStartAsync() { }    // асинхронный старт (лоадер ждёт всех) — устар. processPromise()
+    async onDestroy() { }       // graceful-остановка (вызывается Bootstrap.terminateAll()) — устар. terminate()
     error(error: Error) { }     // Container.emit('system.error', error)
 }
 ```
 
 Конструктор: `(id, type, Container, options)` — проверяет `options` по правилам `checkOptions()`; при несовпадении — исключение (тот же валидатор, что и для опций устройств).
+
+> **Имена хуков (депрекейшн).** Канонические — `onStart()` / `onStartAsync()` / `onDestroy()`. Старые `process()` / `processPromise()` / `terminate()` помечены `@deprecated`: в переходный период ядро вызывает **и** новые, **и** старые; в следующей мажорной версии — только новые. Базовые реализации — no-op, переопределять можно любой из пары **без** `super` (ядро вызывает их независимо).
 
 ## `Bootstrap` лоадер
 
@@ -53,8 +55,8 @@ await bootstrap.terminateAll()   // graceful-остановка ВСЕХ boot-к
   loaded[id] = new ExClass(id, importClassName(path), Container, options)
   if (!(loaded[id] instanceof BootClass)) throw BTSP_INSTANCE_OF_INCORRECT
 
-для каждого загруженного: process()
-для каждого загруженного: await processPromise()
+для каждого загруженного: onStart()  (и устар. process())
+для каждого загруженного: await onStartAsync()  (и устар. processPromise())
 ```
 
 Ошибки: `BTSP_CLASS_ID_NOT_FOUND`, `BTSP_INSTANCE_OF_INCORRECT`, `BTSP_TERMINATE_FAILED`.
@@ -64,7 +66,7 @@ await bootstrap.terminateAll()   // graceful-остановка ВСЕХ boot-к
 Boot-классы владеют ресурсами уровня процесса (пул БД, файловые дескрипторы), которые живут всё время жизни сервиса, поэтому останавливаются **только все сразу** — нет публичного «остановить один boot-класс»: закрыть один общий ресурс, пока сервис ещё работает, оставило бы остальные без него.
 
 ```
-для каждого загруженного В ОБРАТНОМ порядке загрузки: await terminate()   // ошибки не прерывают цикл
+для каждого загруженного В ОБРАТНОМ порядке загрузки: await onDestroy()  (и устар. terminate())   // ошибки не прерывают цикл
 ```
 
 Поведение:
