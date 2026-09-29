@@ -34,6 +34,29 @@ describe('vrack2-core smoke', () => {
         expect(core.mergeBootList).toBeTypeOf('function')
     })
 
+    it('exports exactly the documented public API surface (strict set)', () => {
+        // Single source of truth for this list: docs/11-API.md.
+        // Add a new public export there (with purpose/since) before exporting it.
+        const expected = [
+            'Action', 'BasicAction', 'BasicMetric', 'BasicPort', 'BasicType',
+            'BootClass', 'BootDatabase', 'BootDatabaseMemory', 'BootDatabaseSqlite',
+            'Bootstrap', 'Container', 'CoreError', 'Device', 'DeviceConnect',
+            'DeviceFileStorage', 'DeviceManager', 'DeviceMetrics', 'DevicePort',
+            'EDeviceMessageTypes', 'ErrorManager', 'ImportManager', 'MainProcess',
+            'Metric', 'Port', 'ReactiveRef', 'ReturnPort', 'Rule', 'ServiceLoader',
+            'StandardPort', 'StorageTypes', 'StructureStorage', 'SubruleNames',
+            'UniversalWorker', 'Validator', 'mergeBootList',
+        ]
+        // Type-only re-exports (interfaces) are compile-time: in the ESM/vite
+        // runtime they surface as `undefined`-valued keys, in the CommonJS build
+        // (tsc) they are erased entirely. Assert only the VALUE exports — the
+        // real runtime public API — which is identical in both.
+        const defined = Object.keys(core).filter((k) => {
+            try { return (core as Record<string, unknown>)[k] !== undefined } catch { return false }
+        })
+        expect(defined.sort()).toEqual([...expected].sort())
+    })
+
     it('ErrorManager registers and makes errors with codes', () => {
         ErrorManager.register('smoke-test', 'SMOKE_TEST_ERR', 'Smoke test error', {})
 

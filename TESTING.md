@@ -38,8 +38,8 @@ npx vitest run test/unit/validator.test.ts
   fixture vendor and covers layered boot-list config, device registration,
   options validation, port connections, device input/action/output/metric
   behavior, metric storage through in-memory `vrack-db`, structure and
-  device storage persistence, `MainProcess.terminate()` and
-  `Bootstrap.terminateAll()`.
+   device storage persistence, `MainProcess.stop()` and
+   `Bootstrap.destroyAll()`.
 - `test/integration/device-status.test.ts` — the `device.status` channel:
   initial status, lifecycle transitions, alert/error tracking, removal.
 - `test/integration/device-stop.test.ts` — `Container.stopDevice()` /
@@ -47,7 +47,7 @@ npx vitest run test/unit/validator.test.ts
 - `test/integration/hot-devices.test.ts` — hot add/remove of devices and
   connections in a running service.
 - `test/integration/boot-database.test.ts` — a service with a file-backed /
-  in-memory SQLite database: start, fail-fast on connect faults, terminate.
+   in-memory SQLite database: start, fail-fast on connect faults, stop.
 - `test/fixtures/boot/index.js` — boot-class fixtures (`GoodBoot`,
   `NotABoot`, `OptionsBoot`, `DefaultBoot`, `TermBoot`, `FailTermBoot`).
 - `test/fixtures/devices/testkit/` — fixture devices (`Counter`, `DbReader`,

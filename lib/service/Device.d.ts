@@ -158,12 +158,18 @@ export default class Device {
         [key: string]: BasicMetric;
     };
     /**
-     * Run before each device action
+     * Hook: run before every device action — after argument validation, before
+     * the action handler. Override to veto the action: return `false` and the
+     * action is rejected with `CTR_DEVICE_ACTION_VETOED`.
      *
-     * @param action "device.action" like string
-     * @param data  data for action
-    */
-    beforeAction(action: string, data: any): boolean;
+     * The Container emits `device.action.before` right before calling this
+     * (event data: action name, trace: action arguments).
+     *
+     * @param action Device action name (without the `action.` prefix)
+     * @param data Action arguments (already validated)
+     * @returns `true` to allow the action, `false` to veto it
+     */
+    onBeforeAction(action: string, data: any): boolean;
     /**
      * Prepare options
      *
@@ -216,7 +222,7 @@ export default class Device {
     onRegister(): void;
     /**
      * Sync start hook: the entry point to start device operation. Runs in
-     * `Container.runProcess()` / `startDevice()` after ports and connections
+     * `Container.runStart()` / `startDevice()` after ports and connections
      * are wired — start basic operation here (timers, subscriptions,
      * connections).
      *

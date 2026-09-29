@@ -155,7 +155,7 @@ describe('checkConnection()', () => {
 
 describe('addDevice() / startDevice()', () => {
 
-    it('addDevice after runProcess registers (not started) a working device', async () => {
+    it('addDevice after runStart registers (not started) a working device', async () => {
         const mp = makeMP({ devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }], connections: [] })
         await mp.run()
 

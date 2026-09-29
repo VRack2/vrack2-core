@@ -47,18 +47,27 @@ ErrorManager.registerMany('ServiceLoader', [
 ])
 
 /**
- * ServiceLoader — device creation & validation from config, hot add/remove,
- * connection wiring, and the *structure finalization* signal.
+ * Сборка сервиса из JSON.
  *
-  *  - **ServiceLoader** owns *device creation & validation*, *hot add/remove*,
-  *    *connection wiring*, and emits `service.loaded` (the finalization
-  *    event that triggers persistence of the structure).
- *  - **Container** owns *registration, connections state, staged start, and
- *    runtime actions* (`registerDevice`, `addConnection`, `startDevice`, ...).
+ * Владеет конфигом сервиса: находит классы устройств (`vendor.Class`),
+ * проверяет опции, создаёт устройства, соединяет порты, добавляет/удаляет
+ * устройства в работающем сервисе и эмитит `service.loaded` — сигнал
+ * «структура изменилась», который запускает сохранение структуры.
  *
- * The Loader is constructed with the Container and the service structure.
-  * `load()` materializes all devices & connections (the previous
-  * `Container.init()`), then emits `service.loaded`.
+ * **`Container`** при этом владеет регистрацией, состоянием соединений,
+ * ступенчатым стартом и runtime-действиями (`registerDevice`,
+ * `addConnection`, `startDevice`, ...). Лоадер создаётся вместе с Container
+ * и структурой сервиса; `load()` материализует все устройства и соединения
+ * и эмитит `service.loaded`.
+ *
+ * @example
+ * ```js
+ * import ServiceLoader, Container from 'vrack2-core'
+ *
+ * const c = new Container('main')
+ * const loader = new ServiceLoader(c, serviceJson)
+ * await loader.load()
+ * ```
  */
 export default class ServiceLoader {
 

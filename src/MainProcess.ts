@@ -32,6 +32,26 @@ export interface IMainProcessOptions {
     bootstrap?: IBootListConfig
 }
 
+/**
+ * Точка входа: корень всей конструкции сервиса.
+ *
+ * Принимает `id`, `service` (структуру в JSON), `bootstrap` (список
+ * служебных модулей) и опционально `ContainerClass` / `confFile`. Создаёт
+ * `Bootstrap`, `Container` и `ServiceLoader` и связывает их между собой.
+ *
+ * `run()` — «собрать» (Bootstrap → ServiceLoader) и «запустить»
+ * (Container). `stop()` — graceful-завершение сервиса. Каноническая
+ * стартовая последовательность описана в
+ * [01-Architecture](docs/01-Architecture.md).
+ *
+ * @example
+ * ```js
+ * import MainProcess from 'vrack2-core'
+ *
+ * const mp = new MainProcess({ id: 'main', service: serviceJson })
+ * await mp.run()
+ * ```
+ */
 export default class MainProcess  {
     /**
      * Core default boot class set (lowest priority layer in the merge).
@@ -93,9 +113,23 @@ export default class MainProcess  {
         return conf.bootstrap as IBootListConfig
     }
 
+    /**
+     * Полный запуск: сборка сервиса и старт устройств.
+     *
+     * Сначала `check()` (boot-классы + `ServiceLoader.load()`), затем
+     * `Container.runStart()`. Идемпотентен: повторный вызов не пересоздаёт
+     * уже собранные объекты и не запускает уже стартовавшие устройства.
+     *
+     * @returns Promise<void>
+     *
+     * @example
+     * ```js
+     * await mp.run()
+     * ```
+     */
     async run (){
         await this.check()
-        await this.Container.runProcess()
+        await this.Container.runStart()
     }
 
     /**
@@ -105,17 +139,26 @@ export default class MainProcess  {
      * The service structure, device registry and storage files remain
      * intact — a new process can load the same service again.
      * The framework does not manage the host process lifecycle (no
-     * `process.exit()`) — after `terminate()` the host decides what to do.
+      * `process.exit()`) — after `stop()` the host decides what to do.
      * 
      * Idempotent: if no device is running, this is a no-op.
      * If one or more devices failed to stop, throws
      * `CTR_DEVICE_STOP_ALL_EXCEPTION` with the device errors attached
      * (`vAddErrors`).
      */
-    async terminate (){
+    async stop (){
         await this.Container.stopAll()
     }
 
+    /**
+     * «Собрать» сервис без запуска устройств: загрузить boot-классы и
+     * выполнить `ServiceLoader.load()` (создание устройств, соединения,
+     * событие `service.loaded`).
+     *
+     * Идемпотентен: повторный вызов безопасен.
+     *
+     * @returns Promise<void>
+     */
     async check(){
         await this.Bootstrap.loadBootList(this.Container)
         await this.Loader.load()

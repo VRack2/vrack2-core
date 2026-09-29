@@ -90,13 +90,13 @@ export default class BootClass {
      */
     onStartAsync(): Promise<void>;
     /**
-     * Destruction hook: called by `Bootstrap.terminateAll()` right before the
+      * Destruction hook: called by `Bootstrap.destroyAll()` right before the
      * boot-class is torn down, mirroring `Device.onDestroy()`.
      *
      * The boot-class is about to be destroyed — close everything, flush, save.
      * Release any resources (connections, file handles, etc.) acquired in
      * `onStartAsync()`. Implementations must be idempotent:
-     * `Bootstrap.terminateAll()` may be called multiple times.
+      * `Bootstrap.destroyAll()` may be called multiple times.
      */
     onDestroy(): Promise<void>;
     /**

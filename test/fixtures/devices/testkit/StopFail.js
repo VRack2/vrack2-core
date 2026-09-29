@@ -2,7 +2,7 @@
  * Test fixture device: its `onStop()` hook throws synchronously.
  *
  * Used to verify best-effort stop aggregation
- * (Container.stopAll() / MainProcess.terminate()).
+ * (Container.stopAll() / MainProcess.stop()).
  */
 import { Device, Port, Action } from 'vrack2-core'
 

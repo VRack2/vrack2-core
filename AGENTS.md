@@ -73,9 +73,12 @@ Notes:
 
 1. **Source code is the source of truth.** If docs and code disagree, the code
    is right — fix the docs.
-2. **Public API = `src/index.ts`.** Do not remove or rename exports without reason.
-   Some exports are deprecated aliases kept for compatibility
-   (e.g. `StandartPort` — use `StandardPort` instead).
+2. **Public API = `src/index.ts`.** The full surface (name / purpose / since /
+   deprecated status) is documented **only** in `docs/11-API.md` — the single
+   source of truth for deprecations — and is pinned by the strict set test in
+   `test/smoke.test.ts`. Add a new export to that table before exporting it;
+   record any deprecation there and in `CHANGELOG.md`. Do not remove or rename
+   exports without reason.
 3. **Errors must be coded.** Expected failures are thrown with
    `ErrorManager.make('CODE', data)` using a code *registered* for the module
    (registry and full list — `docs/08-Errors.md`). Don't throw bare `Error` for
@@ -106,6 +109,7 @@ Notes:
 | All error codes | `docs/08-Errors.md` |
 | Utilities (`ImportManager`, workers, `ReactiveRef`) | `docs/09-Utils.md` |
 | Running a service standalone | `docs/10-Standalone.md` |
+| Public API surface & deprecation status (single source of truth) | `docs/11-API.md` |
 | Testing | `TESTING.md` |
 
 ## Good first moves when contributing

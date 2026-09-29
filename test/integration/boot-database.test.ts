@@ -6,7 +6,7 @@
  * alongside the standard boot classes, and verifies the full lifecycle:
  *   - `run()` opens the database (boot class `onStartAsync()`)
  *   - the service (devices) runs while the database is up
- *   - `terminate()` + `terminateAll()` close it (DB_CLOSED afterwards)
+ *   - `stop()` + `destroyAll()` close it (DB_CLOSED afterwards)
  *   - data is durable across two process boots (WAL checkpoint on close)
  *   - an invalid database configuration fails the service start (fail-fast)
  *
@@ -38,8 +38,8 @@ beforeEach(() => {
 })
 afterEach(async () => {
     if (lastMP) {
-        try { await lastMP.terminate() } catch { /* startup already failed */ }
-        try { await lastMP.Bootstrap.terminateAll() } catch { /* startup already failed */ }
+        try { await lastMP.stop() } catch { /* startup already failed */ }
+        try { await lastMP.Bootstrap.destroyAll() } catch { /* startup already failed */ }
     }
     lastMP = undefined
     if (tmp && fs.existsSync(tmp)) fs.rmSync(tmp, { recursive: true, force: true })
@@ -111,8 +111,8 @@ describe('Service with a file-backed SQLite database', () => {
         c.ports.input.data.push(7)
         expect(c.count).toBe(7)
 
-        await mp.terminate()
-        await mp.Bootstrap.terminateAll()
+        await mp.stop()
+        await mp.Bootstrap.destroyAll()
 
         // the database is closed: every public call rejects with DB_CLOSED
         await expect(db.get('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
@@ -129,8 +129,8 @@ describe('Service with a file-backed SQLite database', () => {
             await tx.execute('CREATE TABLE kv (k TEXT PRIMARY KEY, v INTEGER)')
             await tx.execute('INSERT INTO kv (k, v) VALUES (?, ?)', ['first', 42])
         })
-        await first.terminate()
-        await first.Bootstrap.terminateAll()
+        await first.stop()
+        await first.Bootstrap.destroyAll()
         lastMP = undefined
 
         // second process: same file — the row must be there
@@ -163,8 +163,8 @@ describe('Service with a file-backed SQLite database', () => {
         try { (mp.Container.devices['Reader1'] as any).getDB('Nope') } catch (e) { caught = e }
         expect(caught?.vShort).toBe('BTSP_CLASS_ID_NOT_FOUND')
 
-        await mp.terminate()
-        await mp.Bootstrap.terminateAll()
+        await mp.stop()
+        await mp.Bootstrap.destroyAll()
     })
 })
 

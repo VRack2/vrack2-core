@@ -25,7 +25,7 @@ class MyBoot extends BootClass {
     checkOptions(): { [key: string]: BasicType } { ... }  // правила опций
     onStart() { }               // входная точка старта (синхронная)
     async onStartAsync() { }    // асинхронный старт (лоадер ждёт всех)
-    async onDestroy() { }       // graceful-остановка (вызывается Bootstrap.terminateAll())
+    async onDestroy() { }       // graceful-остановка (вызывается Bootstrap.destroyAll())
     error(error: Error) { }     // Container.emit('system.error', error)
 }
 ```
@@ -42,7 +42,7 @@ interface IBootListConfig {
 new Bootstrap(config)
 await bootstrap.loadBootList(Container)
 bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
-await bootstrap.terminateAll()   // graceful-остановка ВСЕХ boot-классов
+await bootstrap.destroyAll()   // graceful-остановка ВСЕХ boot-классов
 ```
 
 `loadBootList(Container)`:
@@ -59,7 +59,7 @@ await bootstrap.terminateAll()   // graceful-остановка ВСЕХ boot-к
 
 Ошибки: `BTSP_CLASS_ID_NOT_FOUND`, `BTSP_INSTANCE_OF_INCORRECT`, `BTSP_TERMINATE_FAILED`.
 
-### `terminateAll()` — остановка boot-классов
+### `destroyAll()` — остановка boot-классов
 
 Boot-классы владеют ресурсами уровня процесса (пул БД, файловые дескрипторы), которые живут всё время жизни сервиса, поэтому останавливаются **только все сразу** — нет публичного «остановить один boot-класс»: закрыть один общий ресурс, пока сервис ещё работает, оставило бы остальные без него.
 
@@ -167,7 +167,7 @@ await db.ping()             // SELECT 1; бросает, если БД недо�
 Поведение:
 
 - Старт — fail-fast: сбой `connect()` → сервис **не стартует** (`DB_CONNECT_FAILED`); повторные попытки — за супервайзером.
-- Остановка только через `Bootstrap.terminateAll()`: «закрыть одну БД» из device-кода нельзя (это общий ресурс).
+- Остановка только через `Bootstrap.destroyAll()`: «закрыть одну БД» из device-кода нельзя (это общий ресурс).
 
 ## Стандартный список boot-классов
 

@@ -4,12 +4,21 @@
 
 ### Major
 
-- **Breaking**: убраны все `@deprecated` lifecycle-хуки — ядро вызывает только канонические имена. У `Device` больше не вызываются и не существуют `preProcess()` / `process()` / `processPromise()` / `stop()` / `stopPromise()` / `beforeTerminate()`; у `BootClass` — `process()` / `processPromise()` / `terminate()`. Подклассы, переопределявшие старые имена, переименовывают их на `onRegister()` / `onStart()` / `onStartAsync()` / `onStop()` / `onStopAsync()` / `onDestroy()` (без `super`).
-- **Breaking**: удалён `StandartPort` и фабрика `Port.standart()` (депрекейтед-алиасы `StandardPort` / `Port.standard()`) вместе с экспортом `StandartPort` из публичного API. Использовать `Port.standard()`.
-- **Breaking**: удалён `Rule.require()` — депрекейтед-алиас `Rule.required()`. Использовать `required()`.
-- Миграция ядра: `DeviceFileStorage` теперь переопределяет `onStart()` (вместо `process()`).
-- Тесты: `test/unit/lifecycle-hooks.test.ts` переписан только на канонические `on*` имена (убраны back-compat-кейсы); `smoke.test.ts`, `ports.test.ts`, `validator.test.ts` — убрано покрытие `StandartPort` / `Port.standart()` / `Rule.require()`.
-- Документация: удалены все депрекейшн-заметки и ссылки на старые имена (01-Architecture, 03-Device, 04-Ports-Actions-Metrics, 07-Bootstrap); описания ошибок в 08-Errors и 10-Standalone переписаны на новые имена хуков.
+- **Breaking**: `beforeAction()` переименован в `onBeforeAction()` и **подключён** к `Container.deviceAction()`: хук вызывается после валидации аргументов, до хендлера, с событием `action.before`; если вернуть `false` — действие отклоняется ошибкой `CTR_DEVICE_ACTION_VETOED` (fail-closed). Базовая реализация — `return true` (нет-то).
+- **Запланировано к удалению в 2.0.0** (на текущий момент алиасы **ещё присутствуют** в коде, помечены `@deprecated`; single source of truth — [docs/11-API.md](docs/11-API.md)):
+  - `StandartPort` / `Port.standart()` → использовать `StandardPort` / `Port.standard()`;
+  - `Rule.require()` → использовать `Rule.required()`;
+  - lifecycle-хуки `Device`: `preProcess()` / `process()` / `processPromise()` / `stop()` / `stopPromise()` / `beforeTerminate()` → `onRegister()` / `onStart()` / `onStartAsync()` / `onStop()` / `onStopAsync()` / `onDestroy()`;
+  - lifecycle-хуки `BootClass`: `process()` / `processPromise()` / `terminate()` → `onStart()` / `onStartAsync()` / `onDestroy()`;
+  - `beforeAction()` → `onBeforeAction()`.
+
+### Minor
+
+- **Миграция boot-классов завершена**: ядро-обвязка (в т.ч. `DeviceFileStorage`) использует только канонические `on*` имена (`process()` / `processPromise()` в boot-классах убраны); `test/unit/lifecycle-hooks.test.ts` переписан на канонические имена (back-compat-кейсы убраны); депрекейшн-заметки удалены из доков (01, 03, 04, 07). Оставшиеся `@deprecated` алиасы живут только в базовых классах `Device` / `BootClass` (для back-compat пользовательских подклассов) и удаляются в 2.0.0 — см. «Запланировано к удалению в 2.0.0».
+- Новый документ [docs/11-API.md](docs/11-API.md) — таблица публичного API (`src/index.ts`) со столбцами `name / purpose / since / deprecated` — **single source of truth** по депрекациям. Строгий smoke-тест `test/smoke.test.ts` фиксирует точный набор value-экспортов (несовпадение с таблицей — падение).
+- `docs/01-Architecture.md`: добавлены mermaid-диаграммы — последовательность запуска (sequence) и состояния устройства (state diagram).
+- JSDoc публичных классов (`Device`, `BootClass`, `Container`, `MainProcess`, `ServiceLoader`, `Bootstrap`) приведён к единому шаблону: описание / `@returns` / `@example`.
+- `MainProcess`: добавлен class-level JSDoc и JSDoc у `run()` / `check()` (у `stop()` уже был).
 
 ## 2026.09.28
 

@@ -117,27 +117,30 @@ ErrorManager.registerMany('Bootstrap', [
 ])
 
 /**
- * Bootstrap is a class for running bootclasses, 
- * which should work above Container and is required 
- * for Container to work. 
- * 
- * For example DeviceManager class - it is 
- * necessary for Container to work but it must be 
- * replaceable and customizable. 
- * 
- * Bootstrap handles the loading of DeviceManager and 
- * provides the ability to work with it from Container. 
- * Bootclasses are a forced exception. 
- * 
- * This is the minimum code that is needed to do everything
- * else in the style of VRack service.
- * 
-*/
+ * Загрузка и запуск boot-классов (служебных модулей сервиса).
+ *
+ * `Bootstrap` идёт по списку, находит каждый класс, создаёт модуль и
+ * передаёт ему контейнер. Boot-классы — служебные модули «над» контейнером
+ * (хранилище, метрики, структура, база данных): они «слушают» события и
+ * обслуживают сервис, но **не** знают об устройствах. `DeviceManager` —
+ * обязательный boot-класс, без которого контейнер не работает.
+ *
+ * Публичный API и описание boot-классов —
+ * [07-Bootstrap](docs/07-Bootstrap.md).
+ *
+ * @example
+ * ```js
+ * import Bootstrap from 'vrack2-core'
+ *
+ * const bs = new Bootstrap({ list: { DM: { path: 'vrack2-core.DeviceManager', options: {} } } })
+ * bs.loadBootList()
+ * ```
+ */
 export default class Bootstrap {
 
     /**
      * Container for which boot classes are loaded (set by `loadBootList()`).
-     * Used to report `terminateAll()` failures as `system.error` events.
+     * Used to report `destroyAll()` failures as `system.error` events.
      */
     protected Container: Container | undefined
 
@@ -168,11 +171,11 @@ export default class Bootstrap {
     protected loadAttempted = false
 
     /**
-     * True once `terminateAll()` has been executed (idempotency guard).
+     * True once `destroyAll()` has been executed (idempotency guard).
      * Re-running it would re-invoke `onDestroy()` on boot classes that have
      * already released their resources.
      */
-    protected terminated = false
+    protected destroyed = false
 
     constructor(config: IBootListConfig){
         this.config = config
@@ -235,7 +238,7 @@ export default class Bootstrap {
      *
      * Boot classes own process-level resources (database pools, file handles)
      * that live for the whole service lifetime, so they cannot be terminated
-     * one by one — `terminateAll()` stops the entire set at once. There is
+     * one by one — `destroyAll()` stops the entire set at once. There is
      * deliberately no public "terminate one boot class" entry point: closing
      * a single shared resource while the service is still running would leave
      * the rest of the service without it.
@@ -252,9 +255,9 @@ export default class Bootstrap {
      * first, so shared resources owned by earlier classes (for example a
      * database) stay alive while the classes that depend on them finish.
      */
-    async terminateAll() {
-        if (this.terminated) return
-        this.terminated = true
+    async destroyAll() {
+        if (this.destroyed) return
+        this.destroyed = true
         for (const bc of Object.keys(this.loaded).reverse()) {
             try {
                 await this.loaded[bc].onDestroy()

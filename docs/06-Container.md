@@ -14,7 +14,7 @@
 - реестром устройств (`devices`) и их actions/метрик;
 - живой структурой (`structure`);
 - состоянием соединений (через `DevicePort` / `DeviceConnect`);
-- запуском и остановкой устройств (`runProcess` / `startDevice` / `stopDevice` / `stopAll`);
+- запуском и остановкой устройств (`runStart` / `startDevice` / `stopDevice` / `stopAll`);
 - статусами устройств (`deviceStatus`) — по записи `IDeviceStatus` на каждое зарегистрированное устройство.
 
 Конфигурацией сервиса и созданием устройств не владеет — это `ServiceLoader` ([01-Architecture](01-Architecture.md), § «MainProcess + ServiceLoader»).
@@ -50,9 +50,9 @@ constructor(id: string, bootstrap: Bootstrap)
 
 ## Ступенчатый старт
 
-### `runProcess()`
+### `runStart()`
 
-Выполняется один раз на контейнер (страж `runProcessAttempted`). Устройства, которые уже стартовали (например, через `startDevice()`), пропускаются — поэтому вызывать безопасно и после горячего добавления:
+Выполняется один раз на контейнер (страж `runStartAttempted`). Устройства, которые уже стартовали (например, через `startDevice()`), пропускаются — поэтому вызывать безопасно и после горячего добавления:
 
 ```
 emit 'service.start.begin'
@@ -212,7 +212,7 @@ if (!(id in devices)) throw CTR_DEVICE_NF
 Статус меняется, и при каждом изменении **полный снапшот** эмитится на канал `status` — событие `device.status`, конверт `{ device, data: 'status', trace: <IDeviceStatus> }`:
 
 1. `registerDevice()` — начальный статус (`state = 'registered'`);
-2. успешный `startDevice()` / `runProcess()` — `state = 'started'`;
+2. успешный `startDevice()` / `runStart()` — `state = 'started'`;
 3. успешная `stopDevice()` — `state = 'stopped'`;
 4. события `device.alert`, `device.error`, `device.terminate` — обновление `lastAlert`/`lastError` и счётчиков (устройство при этом продолжает работать).
 
@@ -220,11 +220,11 @@ if (!(id in devices)) throw CTR_DEVICE_NF
 
 | Событие | Аргумент | Когда |
 |---|---|---|
-| `service.start.begin` / `service.start.end` | — | Ступенчатый старт (синхронная фаза `runProcess()`). |
+| `service.start.begin` / `service.start.end` | — | Ступенчатый старт (синхронная фаза `runStart()`). |
 | `device.start` | `id` | Перед `onStart()` устройства. |
-| `service.startAsync.begin` / `service.startAsync.end` | — | Ступенчатый старт (асинхронная фаза `runProcess()`). |
+| `service.startAsync.begin` / `service.startAsync.end` | — | Ступенчатый старт (асинхронная фаза `runStart()`). |
 | `device.startAsync` | `id` | Перед `onStartAsync()` устройства. |
-| `service.ready.begin` / `service.ready` | — | Конец `runProcess()` (сервис собран). |
+| `service.ready.begin` / `service.ready` | — | Конец `runStart()` (сервис собран). |
 | `device.stop` | `id` | При `stopDevice()` — **до** хуков `onStop()` / `onStopAsync()`. |
 | `service.stop.begin` / `service.stop.end` | — | Начало / конец `stopAll()` (выдаются всегда, даже если остановленных устройств нет). |
 | `service.connection` | `{ outputDevice, outputPort, inputDevice, inputPort }` | При `addConnection()`. |

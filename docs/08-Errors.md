@@ -81,8 +81,9 @@
  | `CTR_DEVICE_STOP_EXCEPTION` | `onStop()` устройства выбросил исключение (вложено в `vAddErrors`). |
  | `CTR_DEVICE_STOP_PROMISE_EXCEPTION` | `onStopAsync()` устройства выбросил исключение (вложено в `vAddErrors`). |
 | `CTR_DEVICE_STOP_ALL_EXCEPTION` | В `stopAll()` не удалось остановить одно или более устройств (ошибки устройств — в `vAddErrors`). |
-| `CTR_DEVICE_STOPPED` | Action вызвана на остановленном (не running) устройстве. |
-| `CTR_DEVICE_PORT_NF` | Порт на устройстве не найден. |
+ | `CTR_DEVICE_STOPPED` | Action вызвана на остановленном (не running) устройстве. |
+ | `CTR_DEVICE_ACTION_VETOED` | Action отменена хуком `onBeforeAction()` устройства (возврат `false`). |
+ | `CTR_DEVICE_PORT_NF` | Порт на устройстве не найден. |
 | `CTR_INPUT_HANDLER_NF` | Хендлер порта входа не найден. |
 | `CTR_INCORRECT_PN` | Неверное имя порта. |
 | `CTR_INCORRECT_DYNAMIC_PN` | Неверное имя динамического порта (нет `%d`). |
@@ -110,7 +111,7 @@
 | `BS_BAD_BOOTLIST` | Неверный состав списка boot-классов: некорректная запись (нет `options`) или запись без `path`, которая не совпадает ни с одним id нижних слоёв при слоевом merge (`mergeBootList`). |
 | `BTSP_CLASS_ID_NOT_FOUND` | Id boot-класса не найден. |
 | `BTSP_INSTANCE_OF_INCORRECT` | Boot-класс не является экземпляром `BootClass`. |
-| `BTSP_TERMINATE_FAILED` | Не удалось остановить boot-класс (`Bootstrap.terminateAll()`). |
+| `BTSP_TERMINATE_FAILED` | Не удалось остановить boot-класс (`Bootstrap.destroyAll()`). |
 
 ### DeviceManager (`DM_*`)
 

@@ -92,7 +92,7 @@ export default abstract class BootDatabase extends BootClass {
      *
      * Idempotent: a second call is a no-op. A `disconnect()` failure is
      * reported as a `system.error` event and is not thrown: the process
-     * is exiting anyway and `Bootstrap.terminateAll()` must continue
+      * is exiting anyway and `Bootstrap.destroyAll()` must continue
      * with the remaining boot classes.
      */
     onDestroy(): Promise<void>;

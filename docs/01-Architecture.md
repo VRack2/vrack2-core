@@ -54,6 +54,46 @@
  6. **Устройства запускаются — в два этапа.** Сначала `onStart()` у **всех** устройств (синхронный старт), потом `await onStartAsync()` у **всех** (асинхронная инициализация). Смысл: на момент первого этапа все устройства уже «включены», и каждое делает свою медленную работу.
 7. **События `service.ready.begin` / `service.ready`.** Сервис работает: данные текут, события уходят наружу, состояние сохраняется.
 
+### Диаграмма запуска
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant MP as MainProcess
+    participant BS as Bootstrap
+    participant SL as ServiceLoader
+    participant C as Container
+    participant D as Device
+
+    MP->>BS: loadBootList()
+    loop каждый boot-класс
+        BS->>BS: new Class → onStart() → await onStartAsync()
+    end
+    MP->>SL: load()  (идемпотентно)
+    SL->>SL: service.configure + переопределение из confFile
+    SL->>C: service.init.begin / service.init
+    loop каждое устройство из service.json
+        SL->>SL: резолв класса, проверка id, валидация опций
+        SL->>C: register → событие device.register
+        C->>D: onRegister()
+        C->>C: actions (гвард хендлера), метрики, входы/выходы
+    end
+    SL->>SL: service.connect.begin → service.connection… → service.connect.end
+    SL->>SL: service.loaded  (структура сохраняется в файл)
+    MP->>C: runStart()  (идемпотентно)
+    C->>C: service.start.begin
+    loop каждое устройство
+        C->>D: device.start → onStart()
+    end
+    C->>C: service.start.end
+    C->>C: service.startAsync.begin
+    loop каждое устройство
+        C->>D: device.startAsync → await onStartAsync()
+    end
+    C->>C: service.startAsync.end
+    C->>C: service.ready.begin / service.ready
+```
+
 ### Техническая схема (все события)
 
 Для отладки и подписки на нужные события:
@@ -79,7 +119,7 @@ await mp.run()
           ├─ для каждого соединения: событие service.connection, соединение портов
           ├─ событие: service.connect.end
           └─ событие: service.loaded                 ← структура сохраняется в файл
-   └─ Container.runProcess()                         // идемпотентно
+   └─ Container.runStart()                         // идемпотентно
       ├─ событие: service.start.begin
        ├─ для каждого устройства: событие device.start, dev.onStart()
       ├─ событие: service.start.end
@@ -91,7 +131,7 @@ await mp.run()
 
 Замечания:
 
-- **Идемпотентность** (термин = «повторный вызов безопасен») вшита в ядро: `load()` и `runProcess()` не выполнятся дважды. Поэтому повторный `run()` после добавления устройств безопасен — уже стартовавшие устройства просто пропускаются.
+- **Идемпотентность** (термин = «повторный вызов безопасен») вшита в ядро: `load()` и `runStart()` не выполнятся дважды. Поэтому повторный `run()` после добавления устройств безопасен — уже стартовавшие устройства просто пропускаются.
 - **`service.loaded`** — сигнал «структура изменилась»: первичный запуск + каждая hot-мутация. `StructureStorage` слушает его и сохраняет структуру.
 - **Ошибки.** Любое падение на этом пути — `CoreError` с устойчивым кодом (например, `VR_NOT_PASS` на плохих опциях). Все коды — [08-Errors](08-Errors.md).
 
@@ -172,7 +212,7 @@ this.save()
 
 ## MainProcess + ServiceLoader
 
-**`MainProcess`** — корень всей конструкции. Принимает `id`, `service` (структуру сервиса в JSON), `bootstrap` (список служебных модулей), опционально `ContainerClass` и `confFile`. Создаёт `Bootstrap`, `Container` и `ServiceLoader`. `run()` = «собрать» + «запустить». `terminate()` = graceful-завершение сервиса: останавливает все работающие устройства (обратимо на уровне контейнера — структура и хранилища остаются; процесс не убивается — это решение хост-кода).
+**`MainProcess`** — корень всей конструкции. Принимает `id`, `service` (структуру сервиса в JSON), `bootstrap` (список служебных модулей), опционально `ContainerClass` и `confFile`. Создаёт `Bootstrap`, `Container` и `ServiceLoader`. `run()` = «собрать» + «запустить». `stop()` = graceful-завершение сервиса: останавливает все работающие устройства (обратимо на уровне контейнера — структура и хранилища остаются; процесс не убивается — это решение хост-кода).
 
 **`ServiceLoader`** — это и есть «сборка». Его методы — инструменты работы со структурой сервиса:
 
@@ -215,6 +255,22 @@ this.save()
 - `stopDevice(id)` — если устройство работает: `onStop()` + `await onStopAsync()`, затем статус `state = 'stopped'` (отсюда `running = false`; событие `stop`). Идемпотентно: повторный вызов — no-op.
 - `stopAll()` — останавливает все работающие устройства в обратном порядке запуска. Best-effort: остальные останавливаются, даже если одно из них упало; в конце бросается одна сводная ошибка `CTR_DEVICE_STOP_ALL_EXCEPTION` (ошибки устройств — в `vAddErrors`). События: `service.stop.begin` → `device.stop` (на каждое) → `service.stop.end`.
 - После остановки устройство запускается снова: `Container.startDevice(id)` — повторно выполняются `onStart()` + `onStartAsync()`, снова включаются порты и actions.
+
+### Диаграмма состояний устройства
+
+`running` — производный флаг: `true`, когда `state = 'started'` (см. [03-Device](03-Device.md)).
+
+```mermaid
+stateDiagram-v2
+    [*] --> registered : registerDevice()
+    registered --> started : startDevice() / runStart()\nonStart() → await onStartAsync()
+    started --> stopped : stopDevice() / stopAll()\nonStop() → await onStopAsync()
+    stopped --> started : startDevice()\nonStart() → await onStartAsync()
+    registered --> destroyed : removeDevice()\nonDestroy()
+    started --> destroyed : removeDevice()\nonStop()… then onDestroy()
+    stopped --> destroyed : removeDevice()\nonDestroy()
+    destroyed --> [*]
+```
 
 ## Связанные документы
 

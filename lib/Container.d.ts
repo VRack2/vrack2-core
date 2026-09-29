@@ -65,15 +65,25 @@ export interface IDeviceStructurePort extends IPort {
     direct: string;
 }
 /**
- * Pure runtime container.
+ * Рантайм-контейнер сервиса.
  *
- * Holds the device registry, the live `structure`, connection state
- * and the staged start. It does **not** own the service config or device
- * creation — those belong to `ServiceLoader`.
+ * Владеет реестром устройств, живой `structure`, состоянием соединений и
+ * ступенчатым стартом. **Не** владеет конфигом сервиса и созданием
+ * устройств — это задача `ServiceLoader`.
  *
- * This class is a bit complicated for a simple description.
- * It is recommended to familiarize yourself with the source code
-*/
+ * «Обслуживание» сервиса: регистрирует устройства, соединяет порты,
+ * запускает их в два этапа, двигает данные, выполняет actions, хранит
+ * состояние и эмитит все события. Публичный API и список событий —
+ * [06-Container](docs/06-Container.md).
+ *
+ * @example
+ * ```js
+ * import Container from 'vrack2-core'
+ *
+ * const c = new Container('main')
+ * c.on('device.render', (e) => console.log(e.trace))
+ * ```
+ */
 export default class Container extends EventEmitter {
     /** Unique service ID */
     id: string;
@@ -102,14 +112,14 @@ export default class Container extends EventEmitter {
     */
     Bootstrap: Bootstrap;
     /**
-     * True once `runProcess()` has been **called** — even if the attempt
+     * True once `runStart()` has been **called** — even if the attempt
      * failed. It is an idempotency guard against re-calls, not a
      * "start succeeded" indicator: a re-call would re-run `onStart()` /
      * `onStartAsync()` of the devices that are not in `started` yet.
      * A failed attempt does not reset the guard — the error propagates to
      * the host and the process/worker is being killed anyway.
      */
-    protected runProcessAttempted: boolean;
+    protected runStartAttempted: boolean;
     /**
      * List of all device actions
      *
@@ -166,7 +176,7 @@ export default class Container extends EventEmitter {
      * Devices that were already started via `startDevice()` are skipped,
      * which makes this method safe to call after hot adds.
     */
-    runProcess(): Promise<void>;
+    runStart(): Promise<void>;
     /**
      * Start a single (already registered) device: run `onStart()` and then
      * `onStartAsync()`.

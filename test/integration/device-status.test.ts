@@ -5,7 +5,7 @@
  * (src/service/IDeviceStatus.ts) and emits a full snapshot on the
  * 'device.status' channel every time it changes:
  *  - registerDevice()                    -> initial state 'registered'
- *  - startDevice() / runProcess() success-> state 'started'
+ *  - startDevice() / runStart() success-> state 'started'
  *  - stopDevice() success                -> state 'stopped'
  *  - device.alert / device.error /
  *    device.terminate messages           -> lastAlert/lastError + counters
@@ -96,7 +96,7 @@ describe('lifecycle transitions', () => {
         expect(states).toEqual(['registered', 'started', 'stopped', 'started'])
     })
 
-    it('runProcess() marks all devices started (initial snapshots included)', async () => {
+    it('runStart() marks all devices started (initial snapshots included)', async () => {
         const c = makeContainer()
         c.registerDevice(new SStatus('A', c))
         c.registerDevice(new SStatus('B', c))
@@ -104,7 +104,7 @@ describe('lifecycle transitions', () => {
         const last: Record<string, string> = {}
         c.on('device.status', (e: IStatusEvent) => { last[e.device] = e.trace.state })
 
-        await c.runProcess()
+        await c.runStart()
 
         expect(c.getDeviceStatus('A')!.state).toBe('started')
         expect(c.getDeviceStatus('B')!.state).toBe('started')

@@ -549,6 +549,38 @@ describe('Counter: input, actions, output, metric, storage', () => {
         expect(ErrorManager.isCode(err, 'CTR_DEVICE_ACTION_NF')).toBe(true)
     })
 
+    it('lets onBeforeAction() veto an action and emits device.action.before', async () => {
+        const mp = makeMP({
+            devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
+            connections: [],
+        })
+        await mp.run()
+
+        const c: any = mp.Container.devices['Counter1']
+        c.ports.input.data.push(5)
+        expect(c.count).toBe(5)
+
+        const events: any[] = []
+        mp.Container.on('device.action.before', (e: any) => events.push(e))
+
+        // Default hook returns true — the action proceeds.
+        expect(await mp.Container.deviceAction('Counter1', 'set.value', { value: 10 })).toBe(10)
+        expect(c.count).toBe(10)
+        expect(events.length).toBe(1)
+        expect(events[0]).toEqual({ device: 'Counter1', data: 'set.value', trace: { value: 10 } })
+
+        // Veto — onBeforeAction returns false: the action is rejected before the handler.
+        c.onBeforeAction = () => false
+        let err: any
+        try {
+            await mp.Container.deviceAction('Counter1', 'set.value', { value: 99 })
+        } catch (e) {
+            err = e
+        }
+        expect(ErrorManager.isCode(err, 'CTR_DEVICE_ACTION_VETOED')).toBe(true)
+        expect(c.count).toBe(10) // unchanged — the handler never ran
+    })
+
     it('drives the connected device through its output port', async () => {
         const mp = makeMP({
             devices: [
@@ -713,10 +745,10 @@ describe('StructureStorage', () => {
 })
 
 /* ================================================================== */
-/*  MAINPROCESS.TERMINATE()                                           */
+/* MAINPROCESS.STOP()                                              */
 /* ================================================================== */
 
-describe('MainProcess.terminate()', () => {
+describe('MainProcess.stop()', () => {
 
     it('stops all running devices: onStop() + onStopAsync(), but no onDestroy()', async () => {
         const mp = makeMP({
@@ -731,7 +763,7 @@ describe('MainProcess.terminate()', () => {
         const t1: any = mp.Container.devices['T1']
         const t2: any = mp.Container.devices['T2']
 
-        await mp.terminate()
+        await mp.stop()
 
         // stop hooks ran exactly once, after start
         expect(t1.order).toEqual(['onRegister', 'onStart', 'onStartAsync', 'onStop', 'onStopAsync'])
@@ -753,8 +785,8 @@ describe('MainProcess.terminate()', () => {
         })
         await mp.run()
 
-        await mp.terminate()
-        await mp.terminate() // must be a no-op
+        await mp.stop()
+        await mp.stop() // must be a no-op
 
         const t1: any = mp.Container.devices['T1']
         expect(t1.onStopCount).toBe(1)
@@ -774,7 +806,7 @@ describe('MainProcess.terminate()', () => {
 
         let err: any
         try {
-            await mp.terminate()
+            await mp.stop()
         } catch (e) {
             err = e
         }
@@ -791,7 +823,7 @@ describe('MainProcess.terminate()', () => {
     })
 })
 
-describe('Bootstrap.terminateAll()', () => {
+describe('Bootstrap.destroyAll()', () => {
 
     it('calls onDestroy() on every loaded boot class exactly once', async () => {
         const mp = makeMP(EMPTY_SERVICE, {
@@ -800,7 +832,7 @@ describe('Bootstrap.terminateAll()', () => {
         })
         await mp.run()
 
-        await mp.Bootstrap.terminateAll()
+        await mp.Bootstrap.destroyAll()
 
         // every loaded boot class (standard + custom) was destroyed,
         // in the REVERSE order of their load (TermB loaded last -> destroyed first)
@@ -813,8 +845,8 @@ describe('Bootstrap.terminateAll()', () => {
         })
         await mp.run()
 
-        await mp.Bootstrap.terminateAll()
-        await mp.Bootstrap.terminateAll() // must be a no-op
+        await mp.Bootstrap.destroyAll()
+        await mp.Bootstrap.destroyAll() // must be a no-op
 
         expect((testkit.TermBoot as any).destroyed).toEqual(['TermA'])
     })
@@ -830,7 +862,7 @@ describe('Bootstrap.terminateAll()', () => {
         mp.Container.on('system.error', (e: any) => errors.push(e))
 
         // must not throw
-        await mp.Bootstrap.terminateAll()
+        await mp.Bootstrap.destroyAll()
 
         // the healthy boot class was destroyed despite the failure
         expect((testkit.TermBoot as any).destroyed).toEqual(['GoodTerm'])

@@ -19,7 +19,7 @@ class GoodBoot extends BootClass {
 
 /**
  * A boot class that records every `onDestroy()` call.
- * Used to verify `Bootstrap.terminateAll()`.
+ * Used to verify `Bootstrap.destroyAll()`.
  */
 class TermBoot extends BootClass {
     static destroyed = []

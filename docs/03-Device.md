@@ -46,7 +46,7 @@ export default class MyDevice extends Device {
 6. `onStart()` — **входная точка старта работы**: выполнены все шаги выше; здесь стартует основная работа (таймеры, подписки, инициализация соединений).
 7. `await onStartAsync()` — асинхронная инициализация, которую лоадер ждёт у всех устройств (например, инициализация файловых баз).
 
-Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.terminate()`) вызывает `onStop()`, затем `await onStopAsync()`, и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается** — его можно запустить снова через `Container.startDevice()` (повторно выполняются `onStart()` + `onStartAsync()`, снова включаются порты и actions).
+Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.stop()`) вызывает `onStop()`, затем `await onStopAsync()`, и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается** — его можно запустить снова через `Container.startDevice()` (повторно выполняются `onStart()` + `onStartAsync()`, снова включаются порты и actions).
 
 Завершение (необратимо): `onDestroy()` вызывается, когда устройство удаляется из работающего сервиса (`ServiceLoader.removeDevice()` → `Container.removeDevice()`). Если устройство работало — сначала выполняется остановка (`onStop()` + `onStopAsync()`), и только потом `onDestroy()`. При простом завершении процесса вызываться не будет.
 
@@ -55,11 +55,11 @@ export default class MyDevice extends Device {
 | `prepareOptions()` | нет | до проверки опций |
 | `checkOptions()` | нет | возвращает правила опций |
  | `onRegister()` | нет | в `registerDevice()`, до старта |
- | `onStart()` | нет | в `runProcess()` / `startDevice()`, ступень 1 |
- | `onStartAsync()` | да | в `runProcess()` / `startDevice()`, ступень 2, awaited |
+ | `onStart()` | нет | в `runStart()` / `startDevice()`, ступень 1 |
+ | `onStartAsync()` | да | в `runStart()` / `startDevice()`, ступень 2, awaited |
  | `onStop()` | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
  | `onStopAsync()` | да | при остановке, awaited, после `onStop()` |
- | `beforeAction(action, data)` | нет | хук, объявленный в `Device`; текущее ядро его **не вызывает** (резерв) |
+ | `onBeforeAction(action, data)` | нет | вызывается в `deviceAction()` **после** валидации аргументов, **перед** хендлером action; возвращение `false` отменяет action (`CTR_DEVICE_ACTION_VETOED`) |
  | `onDestroy()` | нет | при удалении устройства (после остановки, если оно работало) |
 
 Состояния: `CREATED → RUNNING → STOPPED → RUNNING …` (остановка обратима), а из `RUNNING` / `STOPPED` / `CREATED` — `DESTROYED` (удаление необратимо). Управление состоянием — только за контейнером.
@@ -121,7 +121,7 @@ settings(): IDeviceSettings {
 | `metric(path, value, modify)` | `device.metric` | Записать метрику; `modify`: `last` (по умолчанию), `first`, `max`, `min`, `avg`, `sum` |
 | `terminate(error, action)` | `device.terminate` | Сообщить о критической ошибке: устройство не может продолжать работу |
 
-> **Не путайте:** `Device.terminate(error, action)` — это **сообщение** о критической ошибке (событие `device.terminate`); оно само по себе **не останавливает** устройство. Остановка устройства — `Container.stopDevice()` / `stopAll()`; graceful-остановка всего сервиса — `MainProcess.terminate()` (см. [01-Architecture](01-Architecture.md)).
+> **Не путайте:** `Device.terminate(error, action)` — это **сообщение** о критической ошибке (событие `device.terminate`); оно само по себе **не останавливает** устройство. Остановка устройства — `Container.stopDevice()` / `stopAll()`; graceful-остановка всего сервиса — `MainProcess.stop()` (см. [01-Architecture](01-Architecture.md)).
 
 Метод `settings()` объявляет каналы, которыми пользуется устройство — по умолчанию все: `terminal`, `notify`, `event`, `action`, `alert`, `error`, `render`, `status`.
 
@@ -138,7 +138,7 @@ getDB(id = 'DB'): BootDatabase
 - `id` — id boot-класса из bootstrap-списка; по умолчанию `'DB'`. Не объявлен → `BTSP_CLASS_ID_NOT_FOUND`.
 - Возвращает **интерфейс** `BootDatabase`, а не конкретный адаптер: если нужны методы адаптера, возьмите его класс через `Container.Bootstrap.getBootClass()`.
 - БД гарантированно запущена **до** `onStartAsync()` устройства (boot-классы завершают старт раньше устройств — [01-Architecture](01-Architecture.md)).
-- Закрыть/остановить БД из устройства нельзя: это ресурс уровня процесса, останавливается только `Bootstrap.terminateAll()`. Проверка живости — `ping()` (бросает = нежива).
+- Закрыть/остановить БД из устройства нельзя: это ресурс уровня процесса, останавливается только `Bootstrap.destroyAll()`. Проверка живости — `ping()` (бросает = нежива).
 
 Публичный API: `query(sql, params?)` → строки · `get(sql, params?)` → первая строка или `undefined` · `execute(sql, params?)` → `{ affectedRows, insertId? }` · `transaction(fn)` — авто `COMMIT`, при ошибке в `fn` — `ROLLBACK` и `DB_TRANSACTION_FAILED` · `ping()`. Параметры только позиционные (`?`). Ошибки кодовые: [08-Errors](08-Errors.md).
 

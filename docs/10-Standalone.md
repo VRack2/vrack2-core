@@ -142,15 +142,15 @@ npm run start
 
 ## Аккуратное завершение
 
-`MainProcess.terminate()` — graceful-остановка сервиса: останавливает все работающие устройства (`onStop()` + `await onStopAsync()` у каждого). Структура, реестр устройств и файлы хранилища остаются на месте; процесс **не** убивается — что делать после `terminate()`, решает хост-код. Идемпотентна: повторный вызов — no-op. Падение хуков остановки — `CTR_DEVICE_STOP_ALL_EXCEPTION` (best-effort: остальные устройства останавливаются).
+`MainProcess.stop()` — graceful-остановка сервиса: останавливает все работающие устройства (`onStop()` + `await onStopAsync()` у каждого). Структура, реестр устройств и файлы хранилища остаются на месте; процесс **не** убивается — что делать после `stop()`, решает хост-код. Идемпотентна: повторный вызов — no-op. Падение хуков остановки — `CTR_DEVICE_STOP_ALL_EXCEPTION` (best-effort: остальные устройства останавливаются).
 
 ```js
 // после mp.run():
 process.on('SIGINT', async () => {
     try {
-        await mp.terminate()
+        await mp.stop()
     } catch (e) {
-        console.error('terminate error:', e)
+        console.error('stop error:', e)
         process.exit(1)
     }
     process.exit(0)
