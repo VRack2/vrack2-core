@@ -15,7 +15,7 @@ export interface ICheckResult {
     valid: boolean;
     /** Error description (present only when `valid === false`) */
     error?: {
-        /** VRack Error Manager short code (e.g. `CTR_DEVICE_DUPLICATE`) */
+        /** VRack Error Manager short code (e.g. `CONT_DEVICE_DUPLICATE`) */
         code: string;
         /** Human readable error message */
         message: string;

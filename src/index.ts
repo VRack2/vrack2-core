@@ -20,6 +20,7 @@ export { default as MainProcess } from './MainProcess';
 
 export {default as UniversalWorker } from './UniversalWorkers'
 export {default as ReactiveRef } from './ReactiveRef'
+export { default as Utility } from './Utility'
 
 /* ---------------- BOOTSTRAP ------------------- */
 
@@ -65,7 +66,3 @@ export { default as ICheckResult} from './ICheckResult'
 export { IMainProcessOptions } from './MainProcess'
 
 export { StorageTypes } from 'vrack-db';
-
-export * from './service/Device'
-export * from './service/DeviceConnect'
-export * from './service/DevicePort'

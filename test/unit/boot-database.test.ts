@@ -61,21 +61,21 @@ describe('BootDatabase', () => {
         // flags are plain properties of the fake adapter
     })
 
-    it('rejects every public API call before start with DB_NOT_READY', async () => {
+    it('rejects every public API call before start with BDB_NOT_READY', async () => {
         const db = id()
-        await expect((db as any).query('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_NOT_READY' })
-        await expect((db as any).get('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_NOT_READY' })
-        await expect((db as any).execute('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_NOT_READY' })
-        await expect((db as any).transaction(async () => 1)).rejects.toMatchObject({ vShort: 'DB_NOT_READY' })
-        await expect((db as any).ping()).rejects.toMatchObject({ vShort: 'DB_NOT_READY' })
+        await expect((db as any).query('SELECT 1')).rejects.toMatchObject({ vShort: 'BDB_NOT_READY' })
+        await expect((db as any).get('SELECT 1')).rejects.toMatchObject({ vShort: 'BDB_NOT_READY' })
+        await expect((db as any).execute('SELECT 1')).rejects.toMatchObject({ vShort: 'BDB_NOT_READY' })
+        await expect((db as any).transaction(async () => 1)).rejects.toMatchObject({ vShort: 'BDB_NOT_READY' })
+        await expect((db as any).ping()).rejects.toMatchObject({ vShort: 'BDB_NOT_READY' })
         expect((db as any).ready).toBe(false)
     })
 
-    it('start failure goes to closed and throws DB_CONNECT_FAILED (fail-fast)', async () => {
+    it('start failure goes to closed and throws BDB_CONNECT_FAILED (fail-fast)', async () => {
         const db: any = id({ connectShouldFail: true })
-        await expect(db.onStartAsync()).rejects.toMatchObject({ vShort: 'DB_CONNECT_FAILED', driverCode: 'SQLITE_CANTOPEN', boot: 'DB' })
+        await expect(db.onStartAsync()).rejects.toMatchObject({ vShort: 'BDB_CONNECT_FAILED', driverCode: 'SQLITE_CANTOPEN', boot: 'DB' })
         expect((db as any).ready).toBe(false)
-        await expect(db.query('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
+        await expect(db.query('SELECT 1')).rejects.toMatchObject({ vShort: 'BDB_CLOSED' })
         expect((db as any).disconnected).toBe(false) // connect died, no disconnect to do
     })
 
@@ -94,7 +94,7 @@ describe('BootDatabase', () => {
         await db.ping()
     })
 
-    it('wraps driver errors into DB_QUERY_FAILED keeping message and driver code, never SQL', async () => {
+    it('wraps driver errors into BDB_QUERY_FAILED keeping message and driver code, never SQL', async () => {
         const db: any = id()
         await db.onStartAsync()
         db.queryShouldFail = true
@@ -104,7 +104,7 @@ describe('BootDatabase', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_QUERY_FAILED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'BDB_QUERY_FAILED')).toBe(true)
         expect(err.message).toBe('boom query')
         expect(err.driverCode).toBe('SQLITE_CONSTRAINT_FOREIGNKEY')
         expect(JSON.stringify(err)).not.toContain('secret')
@@ -129,7 +129,7 @@ describe('BootDatabase', () => {
         expect(order.indexOf('INSERT INTO t VALUES (1)')).toBeLessThan(order.indexOf('COMMIT'))
     })
 
-    it('transaction rolls back on callback error and throws DB_TRANSACTION_FAILED', async () => {
+    it('transaction rolls back on callback error and throws BDB_TRANSACTION_FAILED', async () => {
         const db: any = id()
         await db.onStartAsync()
         let err: any
@@ -141,7 +141,7 @@ describe('BootDatabase', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_TRANSACTION_FAILED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'BDB_TRANSACTION_FAILED')).toBe(true)
         expect(err.message).toBe('boom in fn')
         const order = db.rows.map((r: any) => r.sql)
         expect(order).toContain('ROLLBACK')
@@ -149,7 +149,7 @@ describe('BootDatabase', () => {
         expect(db.txActive).toBe(false) // connection released
     })
 
-    it('transaction wraps the connection-acquire failure (e.g. DBS_BUSY semantics)', async () => {
+    it('transaction wraps the connection-acquire failure (e.g. BDB_BUSY semantics)', async () => {
         const db: any = id()
         await db.onStartAsync()
         await db.acquire() // lock taken externally
@@ -159,14 +159,14 @@ describe('BootDatabase', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_TRANSACTION_FAILED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'BDB_TRANSACTION_FAILED')).toBe(true)
         expect(err.message).toBe('database is locked')
         expect(err.vAddErrors[0].code).toBe('SQLITE_BUSY')
         // acquire failed -> nothing was released -> the external lock stays held
         expect(db.txActive).toBe(true)
     })
 
-    it('rejects a nested transaction() from within the open transaction (DB_TX_LOCKED)', async () => {
+    it('rejects a nested transaction() from within the open transaction (BDB_TX_LOCKED)', async () => {
         const db: any = id()
         await db.onStartAsync()
         let err: any
@@ -177,19 +177,19 @@ describe('BootDatabase', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_TRANSACTION_FAILED')).toBe(true)
-        expect(err.vAddErrors[0].vShort).toBe('DB_TX_LOCKED')
+        expect(ErrorManager.isCode(err, 'BDB_TRANSACTION_FAILED')).toBe(true)
+        expect(err.vAddErrors[0].vShort).toBe('BDB_TX_LOCKED')
     })
 
-    it('terminate closes the database; every later call rejects with DB_CLOSED', async () => {
+    it('terminate closes the database; every later call rejects with BDB_CLOSED', async () => {
         const db: any = id()
         await db.onStartAsync()
         await db.onDestroy()
         expect(db.disconnected).toBe(true)
         expect(db.ready).toBe(false)
-        await expect(db.query('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
-        await expect(db.transaction(async () => 1)).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
-        await expect(db.ping()).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
+        await expect(db.query('SELECT 1')).rejects.toMatchObject({ vShort: 'BDB_CLOSED' })
+        await expect(db.transaction(async () => 1)).rejects.toMatchObject({ vShort: 'BDB_CLOSED' })
+        await expect(db.ping()).rejects.toMatchObject({ vShort: 'BDB_CLOSED' })
     })
 
     it('terminate is idempotent and never throws on driver failure (reported via system.error)', async () => {

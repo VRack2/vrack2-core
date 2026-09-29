@@ -22,25 +22,25 @@ import { existsSync } from "fs";
 
 ErrorManager.registerMany('ServiceLoader', [
     {
-        short: 'CTR_ERROR_INIT_DEVICE',
+        short: 'SLDR_ERROR_INIT_DEVICE',
         description: 'Device initialization error',
         rules: { deviceConfig: Rule.object().description('Device configuration') }
     },
     {
-        short: 'CTR_ERROR_INIT_CONNECTION',
+        short: 'SLDR_ERROR_INIT_CONNECTION',
         description: 'Connection initialization error',
         rules: { connection: Rule.string().description('Connection string') }
     },
     {
-        short: 'CTR_CONF_EXTENDS_PROBLEM',
+        short: 'SLDR_CONF_EXTENDS_PROBLEM',
         description: 'Problem with extending service configuration.'
     },
     {
-        short: 'CTR_INCORRECT_DEVICE_ID',
+        short: 'SLDR_INCORRECT_DEVICE_ID',
         description: 'Incorrect device id'
     },
     {
-        short: 'CTR_ERROR_PREPARE_OPTIONS',
+        short: 'SLDR_ERROR_PREPARE_OPTIONS',
         description: 'An error occurred while preparing options',
         rules: { message: Rule.string().description('Exception error string') }
     },
@@ -103,15 +103,15 @@ export default class ServiceLoader {
      *
      * This re-homes the previous `Container.init()`:
      * 1. `service.configure` event, then `fillConfFile()` (override device
-     *    options; failures wrapped in `CTR_CONF_EXTENDS_PROBLEM`).
+     *    options; failures wrapped in `SLDR_CONF_EXTENDS_PROBLEM`).
      * 2. `service.init.begin` / `service.init` events, then for each device:
      *    `device.register` event + `createDevice()` +
      *    `Container.registerDevice()` (failures wrapped in
-     *    `CTR_ERROR_INIT_DEVICE`).
+     *    `SLDR_ERROR_INIT_DEVICE`).
      * 3. `service.init.end` / `service.connect.begin` / `service.connect`
      *    events, then wire every device connection (`service.connection`
      *    event) and `service.connections` entry (failures wrapped in
-     *    `CTR_ERROR_INIT_CONNECTION`).
+     *    `SLDR_ERROR_INIT_CONNECTION`).
      * 4. `service.connect.end` event.
      * 5. **`service.loaded`** — the finalization signal. Listeners such as
      *    `StructureStorage` react to it by persisting the structure once.
@@ -126,7 +126,7 @@ export default class ServiceLoader {
             this.fillConfFile()
         } catch (err) {
             if (err instanceof Error) {
-                const ner = ErrorManager.make('CTR_CONF_EXTENDS_PROBLEM', {}).setTrace(err as Error).add(err)
+                const ner = ErrorManager.make('SLDR_CONF_EXTENDS_PROBLEM', {}).setTrace(err as Error).add(err)
                 throw ner
             }
             throw err
@@ -139,7 +139,7 @@ export default class ServiceLoader {
                 const dev = await this.createDevice(device)
                 this.Container.registerDevice(dev)
             } catch (error) {
-                const ner = ErrorManager.make('CTR_ERROR_INIT_DEVICE', { deviceConfig: device })
+                const ner = ErrorManager.make('SLDR_ERROR_INIT_DEVICE', { deviceConfig: device })
                 ner.add(error as Error)
                 throw ner
             }
@@ -167,13 +167,13 @@ export default class ServiceLoader {
 
     /**
      * Wire one connection during `load()`, wrapping any failure in
-     * `CTR_ERROR_INIT_CONNECTION` (preserves the original init behavior).
+     * `SLDR_ERROR_INIT_CONNECTION` (preserves the original init behavior).
      */
     private initConnection(conn: string) {
         try {
             this.Container.addConnection(conn)
         } catch (error) {
-            const ner = ErrorManager.make('CTR_ERROR_INIT_CONNECTION', { connection: conn })
+            const ner = ErrorManager.make('SLDR_ERROR_INIT_CONNECTION', { connection: conn })
             if (error instanceof CoreError) ner.add(error)
             throw ner
         }
@@ -191,7 +191,7 @@ export default class ServiceLoader {
      */
     async addDevice(dconf: IStructureDevice): Promise<Device> {
         if (dconf.id in this.Container.devices || this.pending.has(dconf.id)) {
-            throw ErrorManager.make('CTR_DEVICE_DUPLICATE')
+            throw ErrorManager.make('CONT_DEVICE_DUPLICATE')
         }
         this.pending.add(dconf.id)
         try {
@@ -272,10 +272,10 @@ export default class ServiceLoader {
         const cs = await DM.get(dconf.type)
 
         if (dconf.id === undefined || !dconf.id || typeof dconf.id !== 'string' || !Utility.isDeviceName(dconf.id)) {
-            throw ErrorManager.make('CTR_INCORRECT_DEVICE_ID')
+            throw ErrorManager.make('SLDR_INCORRECT_DEVICE_ID')
         }
         // Device id is duplicated
-        if (dconf.id in this.Container.devices) throw ErrorManager.make('CTR_DEVICE_DUPLICATE')
+        if (dconf.id in this.Container.devices) throw ErrorManager.make('CONT_DEVICE_DUPLICATE')
 
         // Create device instance (not yet registered)
         const dev = new cs(dconf.id, dconf.type, this.Container) as Device
@@ -289,7 +289,7 @@ export default class ServiceLoader {
         } catch (error) {
             let message = ''
             if (error instanceof Error) message = error.toString()
-            const ner = ErrorManager.make('CTR_ERROR_PREPARE_OPTIONS', { message })
+            const ner = ErrorManager.make('SLDR_ERROR_PREPARE_OPTIONS', { message })
             if (error instanceof CoreError) ner.add(error)
             throw ner
         }

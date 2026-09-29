@@ -6,7 +6,7 @@
  * alongside the standard boot classes, and verifies the full lifecycle:
  *   - `run()` opens the database (boot class `onStartAsync()`)
  *   - the service (devices) runs while the database is up
- *   - `stop()` + `destroyAll()` close it (DB_CLOSED afterwards)
+ *   - `stop()` + `destroyAll()` close it (BDB_CLOSED afterwards)
  *   - data is durable across two process boots (WAL checkpoint on close)
  *   - an invalid database configuration fails the service start (fail-fast)
  *
@@ -114,8 +114,8 @@ describe('Service with a file-backed SQLite database', () => {
         await mp.stop()
         await mp.Bootstrap.destroyAll()
 
-        // the database is closed: every public call rejects with DB_CLOSED
-        await expect(db.get('SELECT 1')).rejects.toMatchObject({ vShort: 'DB_CLOSED' })
+        // the database is closed: every public call rejects with BDB_CLOSED
+        await expect(db.get('SELECT 1')).rejects.toMatchObject({ vShort: 'BDB_CLOSED' })
     })
 
     it('keeps data between two process boots (WAL is checkpointed on close)', async () => {
@@ -185,15 +185,15 @@ describe('Database faults at service start', () => {
         expect(err.problems.some((p: any) => p.fieldKey === 'readOnly')).toBe(true)
     })
 
-    it('fails the service when the database cannot be connected (DB_CONNECT_FAILED)', async () => {
+    it('fails the service when the database cannot be connected (BDB_CONNECT_FAILED)', async () => {
         // a path whose directory does not exist: the driver cannot open it
         const badFile = path.join(tmp, 'no-such-dir', 'svc.db')
         const mp = makeMP(COUNTER_SERVICE, 'DB', { file: badFile })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(hasCode(err, 'DB_CONNECT_FAILED')).toBe(true)
+        expect(hasCode(err, 'BDB_CONNECT_FAILED')).toBe(true)
 
-        const connErr = (err.vAddErrors || []).find((e: any) => hasCode(e, 'DB_CONNECT_FAILED')) || err
+        const connErr = (err.vAddErrors || []).find((e: any) => hasCode(e, 'BDB_CONNECT_FAILED')) || err
         expect(connErr.driverCode).toBe('ERR_SQLITE_ERROR')
         expect(String(connErr.message)).toContain('unable to open')
     })

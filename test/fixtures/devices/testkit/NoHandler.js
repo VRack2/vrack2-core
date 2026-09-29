@@ -1,7 +1,7 @@
 /*
  * Test fixture device: declares an input port `data` but does NOT
  * implement the `inputData` handler.
- * Used to verify CTR_INPUT_HANDLER_NF during ServiceLoader.load().
+ * Used to verify CONT_INPUT_HANDLER_NF during ServiceLoader.load().
  */
 import { Device, Port } from 'vrack2-core'
 

@@ -28,7 +28,7 @@ export default class MyDevice extends Device {
 | `ports.input` / `ports.output` | `registerDevice()` | Объекты портов; `push(data)` — на выходных. |
 | `storage` | `service.start.begin` / `device.add` | Персистентное состояние; сохраняется `save()`. |
  | `shares` | конструктор / `onRegister()` | Объект быстро-меняющихся данных (обычный объект); подкласс задаёт его обычным типизированным полем; устройство вызывает `render()` после изменения — событие `device.render`. |
-| `running` | только чтение (геттер) | Состояние работы устройства — выводится из статуса контейнера (`deviceStatus[id].state` через `Container.isRunning(id)`), самим устройством **не управляется**. `false` только у остановленного (`stopped`) или удалённого устройства: его порты отбрасывают `push`, а actions отклоняются ошибкой `CTR_DEVICE_STOPPED`. Не-запущенное (`registered`) устройство остановленным **не считается** — `running = true`, его порты активны, и старт-трафик (например, регистрация команд) проходит. |
+| `running` | только чтение (геттер) | Состояние работы устройства — выводится из статуса контейнера (`deviceStatus[id].state` через `Container.isRunning(id)`), самим устройством **не управляется**. `false` только у остановленного (`stopped`) или удалённого устройства: его порты отбрасывают `push`, а actions отклоняются ошибкой `CONT_DEVICE_STOPPED`. Не-запущенное (`registered`) устройство остановленным **не считается** — `running = true`, его порты активны, и старт-трафик (например, регистрация команд) проходит. |
 
 ## Жизненный цикл
 
@@ -36,7 +36,7 @@ export default class MyDevice extends Device {
 
 1. `new MyDevice(id, type, Container)` — конструктор.
 2. Копирование опций из конфига, вызов `prepareOptions()` — **подготовка опций до валидации** (производные значения, преобразования).
-3. `Validator.validate(this.checkOptions(), this.options)` — валидация опций; при неудаче — `VR_NOT_PASS` (обёрнут в `CTR_ERROR_PREPARE_OPTIONS` → `CTR_ERROR_INIT_DEVICE`).
+3. `Validator.validate(this.checkOptions(), this.options)` — валидация опций; при неудаче — `VR_NOT_PASS` (обёрнут в `SLDR_ERROR_PREPARE_OPTIONS` → `SLDR_ERROR_INIT_DEVICE`).
 4. `Container.registerDevice()`:
     - `onRegister()` — **входная точка инициализации**: порты ещё не созданы, shares доступны; здесь назначаются функции для динамических портов;
    - проверка actions: для каждой action должен существовать хендлер;
@@ -59,7 +59,7 @@ export default class MyDevice extends Device {
  | `onStartAsync()` | да | в `runStart()` / `startDevice()`, ступень 2, awaited |
  | `onStop()` | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
  | `onStopAsync()` | да | при остановке, awaited, после `onStop()` |
- | `onBeforeAction(action, data)` | нет | вызывается в `deviceAction()` **после** валидации аргументов, **перед** хендлером action; возвращение `false` отменяет action (`CTR_DEVICE_ACTION_VETOED`) |
+ | `onBeforeAction(action, data)` | нет | вызывается в `deviceAction()` **после** валидации аргументов, **перед** хендлером action; возвращение `false` отменяет action (`CONT_DEVICE_ACTION_VETOED`) |
  | `onDestroy()` | нет | при удалении устройства (после остановки, если оно работало) |
 
 Состояния: `CREATED → RUNNING → STOPPED → RUNNING …` (остановка обратима), а из `RUNNING` / `STOPPED` / `CREATED` — `DESTROYED` (удаление необратимо). Управление состоянием — только за контейнером.
@@ -140,7 +140,7 @@ getDB(id = 'DB'): BootDatabase
 - БД гарантированно запущена **до** `onStartAsync()` устройства (boot-классы завершают старт раньше устройств — [01-Architecture](01-Architecture.md)).
 - Закрыть/остановить БД из устройства нельзя: это ресурс уровня процесса, останавливается только `Bootstrap.destroyAll()`. Проверка живости — `ping()` (бросает = нежива).
 
-Публичный API: `query(sql, params?)` → строки · `get(sql, params?)` → первая строка или `undefined` · `execute(sql, params?)` → `{ affectedRows, insertId? }` · `transaction(fn)` — авто `COMMIT`, при ошибке в `fn` — `ROLLBACK` и `DB_TRANSACTION_FAILED` · `ping()`. Параметры только позиционные (`?`). Ошибки кодовые: [08-Errors](08-Errors.md).
+Публичный API: `query(sql, params?)` → строки · `get(sql, params?)` → первая строка или `undefined` · `execute(sql, params?)` → `{ affectedRows, insertId? }` · `transaction(fn)` — авто `COMMIT`, при ошибке в `fn` — `ROLLBACK` и `BDB_TRANSACTION_FAILED` · `ping()`. Параметры только позиционные (`?`). Ошибки кодовые: [08-Errors](08-Errors.md).
 
 ```js
 class Track extends Device {

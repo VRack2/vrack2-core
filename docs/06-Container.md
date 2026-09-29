@@ -42,10 +42,10 @@ constructor(id: string, bootstrap: Bootstrap)
 
 1. кладёт в `devices` и создаёт запись структуры;
 2. вызывает `dev.onRegister()` (порты ещё не созданы — здесь назначаются динамические хендлеры);
-3. регистрирует actions: для каждой action обязан существовать метод `actionXxx` (`CTR_DEVICE_ACTION_NF`), снимок правила попадает в структуру;
+3. регистрирует actions: для каждой action обязан существовать метод `actionXxx` (`CONT_DEVICE_ACTION_NF`), снимок правила попадает в структуру;
 4. `settings()` устройства → структура;
 5. регистрирует метрики: для каждой — `emit('device.metric.register', { device, data, trace })` (boot-класс `DeviceMetrics` создаёт метрику в `vrack-db`);
-6. создаёт входные порты: динамические раскрываются (`%d` → `1..count`, `CTR_INCORRECT_DYNAMIC_PN`), имя проверяется (`CTR_INCORRECT_PN`), **обязателен** хендлер `inputXxx` (`CTR_INPUT_HANDLER_NF`), хендлер биндится в `port.bind`;
+6. создаёт входные порты: динамические раскрываются (`%d` → `1..count`, `CONT_INCORRECT_DYNAMIC_PN`), имя проверяется (`CONT_INCORRECT_PN`), **обязателен** хендлер `inputXxx` (`CONT_INPUT_HANDLER_NF`), хендлер биндится в `port.bind`;
 7. создаёт выходные порты.
 
 ## Ступенчатый старт
@@ -65,11 +65,11 @@ emit 'service.ready.begin'
 emit 'service.ready'
 ```
 
-Падение `onStart()` → `CTR_DEVICE_PROCESS_EXCEPTION`; `onStartAsync()` → `CTR_DEVICE_PROCESS_PROMISE_EXCEPTION` (вложенная ошибка — в `vAddErrors`).
+Падение `onStart()` → `CONT_DEVICE_PROCESS_EXCEPTION`; `onStartAsync()` → `CONT_DEVICE_PROCESS_PROMISE_EXCEPTION` (вложенная ошибка — в `vAddErrors`).
 
 ### `startDevice(id)`
 
-Старт одного зарегистрированного устройства: `onStart()` + `await onStartAsync()` + `started.add(id)`. Повторный вызов ничего не делает. Используется для горячего добавления. Неизвестное устройство — `CTR_DEVICE_NF`.
+Старт одного зарегистрированного устройства: `onStart()` + `await onStartAsync()` + `started.add(id)`. Повторный вызов ничего не делает. Используется для горячего добавления. Неизвестное устройство — `CONT_DEVICE_NF`.
 
 ### `isStarted(id)`
 
@@ -86,11 +86,11 @@ emit 'service.ready'
 `stopDevice(id)`:
 
 ```
-if (!(id in devices)) throw CTR_DEVICE_NF
+if (!(id in devices)) throw CONT_DEVICE_NF
 if (!started.has(id)) return                      // уже остановлено — no-op (идемпотентно)
   → emit('device.stop', id)
-  → dev.onStop()                                  // падение → CTR_DEVICE_STOP_EXCEPTION (исходная ошибка в vAddErrors)
-  → await dev.onStopAsync()                       // падение → CTR_DEVICE_STOP_PROMISE_EXCEPTION
+  → dev.onStop()                                  // падение → CONT_DEVICE_STOP_EXCEPTION (исходная ошибка в vAddErrors)
+  → await dev.onStopAsync()                       // падение → CONT_DEVICE_STOP_PROMISE_EXCEPTION
   → started.delete(id); state = 'stopped'          // отсюда running = false
 ```
 
@@ -101,19 +101,19 @@ emit('service.stop.begin')
   → для каждого id в started, в ОБРАТНОМ порядке запуска: stopDevice(id)
      (падение одного не останавливает остальных — best-effort)
 emit('service.stop.end')
-→ если были падения: throw CTR_DEVICE_STOP_ALL_EXCEPTION (ошибки устройств — в vAddErrors)
+→ если были падения: throw CONT_DEVICE_STOP_ALL_EXCEPTION (ошибки устройств — в vAddErrors)
 ```
 
-Последствия остановки: входные порты устройства отбрасывают `push`-данные, `deviceAction()` отклоняется ошибкой `CTR_DEVICE_STOPPED`.
+Последствия остановки: входные порты устройства отбрасывают `push`-данные, `deviceAction()` отклоняется ошибкой `CONT_DEVICE_STOPPED`.
 
 ## Actions: `deviceAction(device, action, data)`
 
 ```
 deviceAction('Counter1', 'set.value', { value: 42 })
-  → проверка устройства (CTR_DEVICE_NF)
-  → проверка started (CTR_DEVICE_STOPPED)         // остановленное устройство не выполняет actions
-  → проверка action (CTR_DEVICE_ACTION_NF)
-  → проверка хендлера (CTR_DEVICE_ACTION_HANDLER_NF)
+  → проверка устройства (CONT_DEVICE_NF)
+  → проверка started (CONT_DEVICE_STOPPED)         // остановленное устройство не выполняет actions
+  → проверка action (CONT_DEVICE_ACTION_NF)
+  → проверка хендлера (CONT_DEVICE_ACTION_HANDLER_NF)
   → Validator.validate(action.requirements, data)   // fail-closed
   → await dev.actionSetValue(data)                  // результат возвращается вызывающему
 ```
@@ -150,12 +150,12 @@ Hot-соединение двух уже зарегистрированных п
 ```
 
 1. `checkConnectionCore(conn)` — парсинг и валидация:
-   - синтаксис `->`, ровно 2 части, по 2–3 акта на стороне (`CTR_CONNECTION_INCORRECT`);
-   - устройство на выходе существует (`CTR_CONNECTION_DEVICE_NF`);
-   - выходной порт существует (`CTR_CONNECTION_PORT_NF`);
-   - устройство на входе существует (`CTR_CONNECTION_DEVICE_NF`);
-   - входной порт существует (`CTR_CONNECTION_PORT_NF`);
-   - типы портов совпадают: `standard ↔ standard`, `return ↔ return` (`CTR_INCOMPATIBLE_PORTS`).
+   - синтаксис `->`, ровно 2 части, по 2–3 акта на стороне (`CONT_CONNECTION_INCORRECT`);
+   - устройство на выходе существует (`CONT_CONNECTION_DEVICE_NF`);
+   - выходной порт существует (`CONT_CONNECTION_PORT_NF`);
+   - устройство на входе существует (`CONT_CONNECTION_DEVICE_NF`);
+   - входной порт существует (`CONT_CONNECTION_PORT_NF`);
+   - типы портов совпадают: `standard ↔ standard`, `return ↔ return` (`CONT_INCOMPATIBLE_PORTS`).
 2. `emit('connection', cc)`;
 3. `makeConnection(cc)` — запись в `structure[].outputs/inputs[]` + `new DeviceConnect(outPort, inPort)`.
 
@@ -174,7 +174,7 @@ Hot-соединение двух уже зарегистрированных п
 Удаление **необратимо** (в отличие от `stopDevice()`): устройство разрушается. Метод асинхронный (возвращает `Promise`) — при удалении работающего устройства его сначала останавливают:
 
 ```
-if (!(id in devices)) throw CTR_DEVICE_NF
+if (!(id in devices)) throw CONT_DEVICE_NF
   → если started.has(id): await stopDevice(id)  // onStop() + await onStopAsync();
                                                  // падение хуков остановки → удаление прерывается (fail-closed),
                                                  // устройство остаётся в контейнере

@@ -48,7 +48,7 @@ export interface IBootListConfig {
  * - entry with `path` — adds or fully replaces the entry;
  * - entry without `path` — shallow-merges `options` over the lower-layer entry
  *   (higher-layer option values win); the id must exist in a lower layer,
- *   otherwise a `BS_BAD_BOOTLIST` error is thrown;
+ *   otherwise a `BTSP_BAD_BOOTLIST` error is thrown;
  * - `null` — removes the id from the result (even if a lower layer had it);
  * - first insertion order of the id is preserved.
  *
@@ -59,7 +59,7 @@ export interface IBootListConfig {
  */
 ErrorManager.registerMany('Bootstrap', [
     {
-        short: 'BS_BAD_BOOTLIST',
+        short: 'BTSP_BAD_BOOTLIST',
         description: 'Bad bootstrap list configuration (malformed entry, or an entry without path does not match any lower layer)',
         rules: {
             id: Rule.string().description('Class identify'),
@@ -78,10 +78,10 @@ export function mergeBootList(layers: Array<IBootListConfig | null | undefined>)
                 continue
             }
             if (typeof entry !== 'object') {
-                throw ErrorManager.make('BS_BAD_BOOTLIST', { id, entry })
+                throw ErrorManager.make('BTSP_BAD_BOOTLIST', { id, entry })
             }
             if (entry.options == null || typeof entry.options !== 'object') {
-                throw ErrorManager.make('BS_BAD_BOOTLIST', { id, entry })
+                throw ErrorManager.make('BTSP_BAD_BOOTLIST', { id, entry })
             }
             const existing = result[id]
             if (entry.path != null) {
@@ -91,7 +91,7 @@ export function mergeBootList(layers: Array<IBootListConfig | null | undefined>)
                 // Options-only override over a lower-layer entry
                 result[id] = { ...existing, options: { ...existing.options, ...entry.options } }
             } else {
-                throw ErrorManager.make('BS_BAD_BOOTLIST', { id, entry: { options: entry.options, reason: 'entry without path does not match any lower layer' } })
+                throw ErrorManager.make('BTSP_BAD_BOOTLIST', { id, entry: { options: entry.options, reason: 'entry without path does not match any lower layer' } })
             }
         }
     }
@@ -200,7 +200,7 @@ export default class Bootstrap {
         for (const cn in this.config) {
             const conf = this.config[cn]
             if (conf == null || typeof conf.path !== 'string') {
-                throw ErrorManager.make('BS_BAD_BOOTLIST', { id: cn, entry: conf })
+                throw ErrorManager.make('BTSP_BAD_BOOTLIST', { id: cn, entry: conf })
             }
             const ExClass = await ImportManager.importClass(conf.path)
             this.loaded[cn] = new ExClass(cn, ImportManager.importClassName(conf.path), Container, conf.options) 

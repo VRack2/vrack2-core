@@ -46,15 +46,15 @@ export default class ServiceLoader {
      *
      * This re-homes the previous `Container.init()`:
      * 1. `service.configure` event, then `fillConfFile()` (override device
-     *    options; failures wrapped in `CTR_CONF_EXTENDS_PROBLEM`).
+     *    options; failures wrapped in `SLDR_CONF_EXTENDS_PROBLEM`).
      * 2. `service.init.begin` / `service.init` events, then for each device:
      *    `device.register` event + `createDevice()` +
      *    `Container.registerDevice()` (failures wrapped in
-     *    `CTR_ERROR_INIT_DEVICE`).
+     *    `SLDR_ERROR_INIT_DEVICE`).
      * 3. `service.init.end` / `service.connect.begin` / `service.connect`
      *    events, then wire every device connection (`service.connection`
      *    event) and `service.connections` entry (failures wrapped in
-     *    `CTR_ERROR_INIT_CONNECTION`).
+     *    `SLDR_ERROR_INIT_CONNECTION`).
      * 4. `service.connect.end` event.
      * 5. **`service.loaded`** — the finalization signal. Listeners such as
      *    `StructureStorage` react to it by persisting the structure once.
@@ -64,7 +64,7 @@ export default class ServiceLoader {
     load(): Promise<void>;
     /**
      * Wire one connection during `load()`, wrapping any failure in
-     * `CTR_ERROR_INIT_CONNECTION` (preserves the original init behavior).
+     * `SLDR_ERROR_INIT_CONNECTION` (preserves the original init behavior).
      */
     private initConnection;
     /**

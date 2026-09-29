@@ -41,7 +41,7 @@ inputs() {
 }
 ```
 
-Требования: в имени — `%d`; `count` — количество портов. Неверное имя — `CTR_INCORRECT_DYNAMIC_PN`; неверное имя порта в целом — `CTR_INCORRECT_PN`.
+Требования: в имени — `%d`; `count` — количество портов. Неверное имя — `CONT_INCORRECT_DYNAMIC_PN`; неверное имя порта в целом — `CONT_INCORRECT_PN`.
 
 ### Рантайм
 
@@ -67,9 +67,9 @@ inputs() {
 
 Правила:
 
-- устройства и порты должны существовать — иначе `CTR_CONNECTION_DEVICE_NF` / `CTR_CONNECTION_PORT_NF`;
-- **типы портов должны совпадать**: `standard ↔ standard`, `return ↔ return` — иначе `CTR_INCOMPATIBLE_PORTS`;
-- неверный формат — `CTR_CONNECTION_INCORRECT`;
+- устройства и порты должны существовать — иначе `CONT_CONNECTION_DEVICE_NF` / `CONT_CONNECTION_PORT_NF`;
+- **типы портов должны совпадать**: `standard ↔ standard`, `return ↔ return` — иначе `CONT_INCOMPATIBLE_PORTS`;
+- неверный формат — `CONT_CONNECTION_INCORRECT`;
 - у выходного порта может быть несколько соединений (fan-out).
 
 Объявление:
@@ -110,8 +110,8 @@ actionSetValue(data) {
 | `description(text)` | Описание action. |
 
 - Метод action принимает **ровно один объект**.
-- Для каждой action обязателен хендлер: action `test.action` → метод `actionTestAction`. При регистрации отсутствие проверяется (`CTR_DEVICE_ACTION_NF` / `CTR_DEVICE_ACTION_HANDLER_NF`).
-- Вызов: `Container.deviceAction(device, 'action.name', data)` — устройство должно работать (`running`), иначе `CTR_DEVICE_STOPPED`; далее валидирует `requirements`, эмитит `device.action.before` и вызывает хук `onBeforeAction()` (возврат `false` → `CTR_DEVICE_ACTION_VETOED`), после чего — хендлер; результат возвращается вызывающему.
+- Для каждой action обязателен хендлер: action `test.action` → метод `actionTestAction`. При регистрации отсутствие проверяется (`CONT_DEVICE_ACTION_NF` / `CONT_DEVICE_ACTION_HANDLER_NF`).
+- Вызов: `Container.deviceAction(device, 'action.name', data)` — устройство должно работать (`running`), иначе `CONT_DEVICE_STOPPED`; далее валидирует `requirements`, эмитит `device.action.before` и вызывает хук `onBeforeAction()` (возврат `false` → `CONT_DEVICE_ACTION_VETOED`), после чего — хендлер; результат возвращается вызывающему.
 - `onBeforeAction(action, data)` — хук, объявленный в `Device`, вызывается ядром в `deviceAction()` после валидации аргументов, перед хендлером action. Возвращает `true` (разрешить) или `false` (отменить action).
 
 ## Метрики

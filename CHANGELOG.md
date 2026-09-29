@@ -4,7 +4,13 @@
 
 ### Major
 
-- **Breaking**: `beforeAction()` переименован в `onBeforeAction()` и **подключён** к `Container.deviceAction()`: хук вызывается после валидации аргументов, до хендлера, с событием `action.before`; если вернуть `false` — действие отклоняется ошибкой `CTR_DEVICE_ACTION_VETOED` (fail-closed). Базовая реализация — `return true` (нет-то).
+- **Breaking**: `beforeAction()` переименован в `onBeforeAction()` и **подключён** к `Container.deviceAction()`: хук вызывается после валидации аргументов, до хендлера, с событием `action.before`; если вернуть `false` — действие отклоняется ошибкой `CONT_DEVICE_ACTION_VETOED` (fail-closed). Базовая реализация — `return true` (нет-то).
+- **Breaking**: имена кодов ошибок разнесены по модулям — общий префикс заменён на префикс модуля-владельца кода:
+  - `DB_SERVICE_FILE` / `DB_SERVICE_FILE_NOT_FOUND` / `DB_SERVICE_INVALID` / `DB_SERVICE_LOAD_ERROR` → `DBL_*` (ServiceLoader); `DB_DEVICE_NOT_READY` остаётся `DB_*` (MainProcess);
+  - `BS_SERVICE` / `BS_SERVICE_NOT_FOUND` / `BS_SERVICE_INVALID` → `BSL_*` (ServiceLoader); `BS_NO_DATABASE` остаётся `BS_*` (MainProcess);
+  - `CTR_*` → `CONT_*` (Container), кроме пяти кодов ServiceLoader → `SLDR_*`: `SLDR_CONF_EXTENDS_PROBLEM`, `SLDR_ERROR_INIT_DEVICE`, `SLDR_ERROR_INIT_CONNECTION`, `SLDR_ERROR_PREPARE_OPTIONS`, `SLDR_INCORRECT_DEVICE_ID`; `CTR_DEVICE_DUPLICATE` → `CONT_DEVICE_DUPLICATE` (владелец — Container).
+
+  Старые коды как алиасы **не** введены — `ErrorManager.isCode()` и документы принимают только новые. Полная таблица — [08-Errors](docs/08-Errors.md).
 - **Запланировано к удалению в 2.0.0** (на текущий момент алиасы **ещё присутствуют** в коде, помечены `@deprecated`; single source of truth — [docs/11-API.md](docs/11-API.md)):
   - `StandartPort` / `Port.standart()` → использовать `StandardPort` / `Port.standard()`;
   - `Rule.require()` → использовать `Rule.required()`;
@@ -48,26 +54,26 @@
 
 ### Minor
 
-- База данных для сервиса: новый boot-класс `BootDatabase` (машина состояний `pending → ready → closed`, гварды публичных методов, переупаковка ошибок драйвера в кодовые `DB_*`, вся логика транзакций `acquire()` → `BEGIN` → `fn(tx)` → `COMMIT`/`ROLLBACK` → `release()`) и два адаптера из коробки: `BootDatabaseSqlite` (SQLite на встроенном модуле `node:sqlite` — ноль внешних зависимостей; требует Node ≥ 22.5 в момент подключения, на старых рантаймах fail-fast `DB_CONNECT_FAILED`) и `BootDatabaseMemory` (`file = ':memory:'`, данные живут до конца процесса). БД объявляется в секции `bootstrap` сервиса — общий ресурс всех устройств, один экземпляр на id; адаптер реализует только контрактные методы `connect/disconnect/_query/_execute/acquire/release`.
+- База данных для сервиса: новый boot-класс `BootDatabase` (машина состояний `pending → ready → closed`, гварды публичных методов, переупаковка ошибок драйвера в кодовые `BDB_*`, вся логика транзакций `acquire()` → `BEGIN` → `fn(tx)` → `COMMIT`/`ROLLBACK` → `release()`) и два адаптера из коробки: `BootDatabaseSqlite` (SQLite на встроенном модуле `node:sqlite` — ноль внешних зависимостей; требует Node ≥ 22.5 в момент подключения, на старых рантаймах fail-fast `BDB_CONNECT_FAILED`) и `BootDatabaseMemory` (`file = ':memory:'`, данные живут до конца процесса). БД объявляется в секции `bootstrap` сервиса — общий ресурс всех устройств, один экземпляр на id; адаптер реализует только контрактные методы `connect/disconnect/_query/_execute/acquire/release`.
 - Новый публичный API: `Device.getDB(id = 'DB')` — доступ к базе из device-кода (типируется по интерфейсу `BootDatabase`; не объявлена в bootstrap → `BTSP_CLASS_ID_NOT_FOUND`). Экспортируются из `vrack2-core`: `BootDatabase`, `IExecResult`, `BootDatabaseSqlite`, `BootDatabaseMemory`.
 - Опции `BootDatabaseSqlite`: `file` (обязательная), `wal` (по умолчанию `true`; не действует на in-memory и read-only), `readOnly` (по умолчанию `false`).
-- Новые коды ошибок (модуль `BootDatabase`): `DB_NOT_READY`, `DB_CLOSED`, `DB_CONNECT_FAILED`, `DB_QUERY_FAILED` (несёт `message`/`driverCode`, но не SQL и не параметры), `DBS_BUSY`, `DB_TX_LOCKED`, `DB_TRANSACTION_FAILED` — таблица в [08-Errors](docs/08-Errors.md).
-- Документация: 07-Bootstrap — раздел «BootDatabase / BootDatabaseSqlite / BootDatabaseMemory» (опции, публичный API, поведение); 03-Device — раздел «База данных (`getDB()`)» с примером; 08-Errors — коды `DB*`.
+- Новые коды ошибок (модуль `BootDatabase`): `BDB_NOT_READY`, `BDB_CLOSED`, `BDB_CONNECT_FAILED`, `BDB_QUERY_FAILED` (несёт `message`/`driverCode`, но не SQL и не параметры), `BDB_BUSY`, `BDB_TX_LOCKED`, `BDB_TRANSACTION_FAILED` — таблица в [08-Errors](docs/08-Errors.md).
+- Документация: 07-Bootstrap — раздел «BootDatabase / BootDatabaseSqlite / BootDatabaseMemory» (опции, публичный API, поведение); 03-Device — раздел «База данных (`getDB()`)» с примером; 08-Errors — коды `BDB_*`.
 
 ### Tests
 
 - `test/unit/boot-database.test.ts` — контракт адаптеров: машина состояний, гварды, транзакции (COMMIT/ROLLBACK, вложенность), переупаковка ошибок (скелет драйвера).
-- `test/unit/boot-database-sqlite.test.ts` — `BootDatabaseSqlite` / `BootDatabaseMemory`: подключение и fail-fast (`DB_CONNECT_FAILED`), живучесть данных после `terminate()`, WAL (вкл/выкл), read-only, обёртка ошибок драйвера без утечки SQL, транзакции (commit / атомарный rollback / `DBS_BUSY`), изоляция in-memory инстансов.
-- `test/integration/boot-database.test.ts` — реальный `MainProcess` с БД в bootstrap: старт/остановка (после — `DB_CLOSED`), живучесть данных между двумя запусками процесса, fail-fast при невалидных опциях (`VR_NOT_PASS`) и неудачном подключении (`DB_CONNECT_FAILED`, `driverCode = ERR_SQLITE_ERROR`), доступ устройства через `getDB()` (запрос в `processPromise()`, транзакция в action).
+- `test/unit/boot-database-sqlite.test.ts` — `BootDatabaseSqlite` / `BootDatabaseMemory`: подключение и fail-fast (`BDB_CONNECT_FAILED`), живучесть данных после `terminate()`, WAL (вкл/выкл), read-only, обёртка ошибок драйвера без утечки SQL, транзакции (commit / атомарный rollback / `BDB_BUSY`), изоляция in-memory инстансов.
+- `test/integration/boot-database.test.ts` — реальный `MainProcess` с БД в bootstrap: старт/остановка (после — `BDB_CLOSED`), живучесть данных между двумя запусками процесса, fail-fast при невалидных опциях (`VR_NOT_PASS`) и неудачном подключении (`BDB_CONNECT_FAILED`, `driverCode = ERR_SQLITE_ERROR`), доступ устройства через `getDB()` (запрос в `processPromise()`, транзакция в action).
 - Фикстура: `test/fixtures/devices/testkit/DbReader.js` (+ запись в `list.json`).
 
 ## 2026.09.21
 
 ### Minor
 
-- Слоевая конфигурация boot-классов: `service.json` (поле `bootstrap`) и конф-файл (секция `bootstrap`) могут объявлять/перекрывать boot-классы поверх ядерных дефолтов. Приоритет снизу вверх: `MainProcess.DEFAULT_BOOTLIST` → `service.bootstrap` → `bootstrap` конф-файла → аргумент конструктора. Семантика записи на id: запись с `path` — добавляет/полностью заменяет; запись без `path` — поштучно перекрывает `options` уже объявленного id (иначе `BS_BAD_BOOTLIST`); `null` — удаляет id.
+- Слоевая конфигурация boot-классов: `service.json` (поле `bootstrap`) и конф-файл (секция `bootstrap`) могут объявлять/перекрывать boot-классы поверх ядерных дефолтов. Приоритет снизу вверх: `MainProcess.DEFAULT_BOOTLIST` → `service.bootstrap` → `bootstrap` конф-файла → аргумент конструктора. Семантика записи на id: запись с `path` — добавляет/полностью заменяет; запись без `path` — поштучно перекрывает `options` уже объявленного id (иначе `BTSP_BAD_BOOTLIST`); `null` — удаляет id.
 - Новый публичный API: `mergeBootList(layers)` (чистая функция слоёвого merge; nullish-слои пропускаются, входы не мутируются), типы `IBootListConfig` / `IBootstrapEntry`, `IMainProcessOptions` — экспортированы из `vrack2-core`.
-- Новый код ошибки `BS_BAD_BOOTLIST` (модуль Bootstrap): некорректная запись boot-листа (нет `options`) или запись без `path`, не совпадающая ни с одним id нижних слоёв.
+- Новый код ошибки `BTSP_BAD_BOOTLIST` (модуль Bootstrap): некорректная запись boot-листа (нет `options`) или запись без `path`, не совпадающая ни с одним id нижних слоёв.
 - `IServiceStructure` получил опциональное поле `bootstrap?: IBootListConfig`; конструктор `MainProcess` мержит четыре слоя при создании, секция конф-файла читается на конструировании (до создания boot-инстансов).
 
 ### Tests
@@ -125,7 +131,7 @@
 
 - Реверсивная остановка устройств: `Container.stopDevice(id)` / `Container.stopAll()`, хуки устройства `Device.stop()` / `Device.stopPromise()`. Остановка обратима: повторный запуск — `Container.startDevice()` (повторно выполняются `process()` + `processPromise()`, снова включаются порты и actions).
 - Убран `Device.works`: его заменило `Device.running` — состояние работы, которым **управляет контейнер**: `true` с конструктора (как у `works`), `false` после `stopDevice()` / `stopAll()` / `removeDevice()`, снова `true` при `startDevice()` (до `process()`).
-- Остановленное устройство (`running = false`) не принимает данные портов (`push` отбрасывается), а его actions отклоняются ошибкой `CTR_DEVICE_STOPPED`. Не-запущенное (или ещё запускающееся) устройство остановленным **не считается** — его порты активны.
+- Остановленное устройство (`running = false`) не принимает данные портов (`push` отбрасывается), а его actions отклоняются ошибкой `CONT_DEVICE_STOPPED`. Не-запущенное (или ещё запускающееся) устройство остановленным **не считается** — его порты активны.
 - `Container.removeDevice()` и `ServiceLoader.removeDevice()` теперь асинхронные (возвращают `Promise`): работающее устройство сначала останавливается (`stop()` + `stopPromise()`), и только потом вызывается `beforeTerminate()`. Падение хуков остановки прерывает удаление (fail-closed) — устройство остаётся в контейнере.
 - Добавлен `MainProcess.terminate()` — graceful-завершение сервиса: останавливает все работающие устройства (через `Container.stopAll()`). Идемпотентен; процесс не завершается — это решение хост-кода; структура и хранилища сохраняются.
 
@@ -135,7 +141,7 @@
 
 ### Patch
 
-- Новые коды ошибок: `CTR_DEVICE_STOP_EXCEPTION`, `CTR_DEVICE_STOP_PROMISE_EXCEPTION`, `CTR_DEVICE_STOP_ALL_EXCEPTION`, `CTR_DEVICE_STOPPED`.
+- Новые коды ошибок: `CONT_DEVICE_STOP_EXCEPTION`, `CONT_DEVICE_STOP_PROMISE_EXCEPTION`, `CONT_DEVICE_STOP_ALL_EXCEPTION`, `CONT_DEVICE_STOPPED`.
 - Новые события контейнера: `stop` (id устройства), `beforeStop` / `afterStop` (начало/конец `stopAll()`).
 - `MainProcess.run()` теперь полностью идемпотентен: `Bootstrap.loadBootList()` защищён повторными вызовами — при повторном `run()` boot-классы не пересоздаются и их обработчики событий не подписываются повторно.
 - Нормализована обработка ошибок в `DeviceFileStorage`: ошибки чтения/записи хранения идут через `BootClass.error()` (событие `system.error`) — как в `StructureStorage`.

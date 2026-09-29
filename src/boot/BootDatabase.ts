@@ -10,21 +10,21 @@ import Rule from '../validator/Rule'
 
 ErrorManager.registerMany('BootDatabase', [
     {
-        short: 'DB_NOT_READY',
+        short: 'BDB_NOT_READY',
         description: 'A call was made before the database finished starting (before onStartAsync() resolved)',
         rules: {
             boot: Rule.string().required().description('Boot class id')
         }
     },
     {
-        short: 'DB_CLOSED',
+        short: 'BDB_CLOSED',
         description: 'A call was made after the database was terminated',
         rules: {
             boot: Rule.string().required().description('Boot class id')
         }
     },
     {
-        short: 'DB_CONNECT_FAILED',
+        short: 'BDB_CONNECT_FAILED',
         description: 'The database could not be connected at service start (fail-fast: the service does not start)',
         rules: {
             message: Rule.string().required().description('Driver error message'),
@@ -33,7 +33,7 @@ ErrorManager.registerMany('BootDatabase', [
         }
     },
     {
-        short: 'DB_QUERY_FAILED',
+        short: 'BDB_QUERY_FAILED',
         description: 'A database query failed (the driver error, re-wrapped; SQL text and params are not carried — they are sensitive)',
         rules: {
             message: Rule.string().required().description('Driver error message'),
@@ -42,21 +42,21 @@ ErrorManager.registerMany('BootDatabase', [
         }
     },
     {
-        short: 'DBS_BUSY',
+        short: 'BDB_BUSY',
         description: 'A second transaction was attempted on a database with a single connection (e.g. SQLite)',
         rules: {
             boot: Rule.string().required().description('Boot class id')
         }
     },
     {
-        short: 'DB_TX_LOCKED',
+        short: 'BDB_TX_LOCKED',
         description: 'A nested transaction() call from within an open transaction is not allowed',
         rules: {
             boot: Rule.string().required().description('Boot class id')
         }
     },
     {
-        short: 'DB_TRANSACTION_FAILED',
+        short: 'BDB_TRANSACTION_FAILED',
         description: 'A transaction could not be committed (error in the callback or in COMMIT; the rollback was performed)',
         rules: {
             message: Rule.string().required().description('The failure reason'),
@@ -90,9 +90,9 @@ export interface IExecResult {
  * and is terminated with the process (never by a device).
  *
  * The lifecycle is a 3-state machine:
- *  - `pending` — not started; all public calls reject with `DB_NOT_READY`
+ *  - `pending` — not started; all public calls reject with `BDB_NOT_READY`
  *  - `ready` — connected; all public calls work
- *  - `closed` — stopped; all public calls reject with `DB_CLOSED`
+ *  - `closed` — stopped; all public calls reject with `BDB_CLOSED`
  *
  * A database adapter (a concrete subclass) implements exactly 6 protected
  * methods: `connect`, `disconnect`, `_query`, `_execute`, `acquire`,
@@ -147,7 +147,7 @@ export default abstract class BootDatabase extends BootClass {
     /**
      * Take a connection (from the pool, or the single handle) for a
      * transaction. One transaction may be in progress at a time:
-     * a concurrent `acquire()` must reject (`DBS_BUSY`).
+     * a concurrent `acquire()` must reject (`BDB_BUSY`).
      */
     protected abstract acquire(): Promise<unknown>
 
@@ -162,7 +162,7 @@ export default abstract class BootDatabase extends BootClass {
 
     /**
      * Start the database: `connect()` and go to `ready`.
-     * On failure the class goes to `closed` and throws `DB_CONNECT_FAILED`
+     * On failure the class goes to `closed` and throws `BDB_CONNECT_FAILED`
      * so the service does not start (fail-fast).
      */
     async onStartAsync(): Promise<void> {
@@ -172,7 +172,7 @@ export default abstract class BootDatabase extends BootClass {
             this._state = 'closed'
             const extra: { [key: string]: any } = { message: e?.message, boot: this.id }
             if (e?.code !== undefined) extra.driverCode = e.code
-            const err = ErrorManager.make('DB_CONNECT_FAILED', extra)
+            const err = ErrorManager.make('BDB_CONNECT_FAILED', extra)
             err.vAddErrors.push(e)
             throw err
         }
@@ -209,8 +209,8 @@ export default abstract class BootDatabase extends BootClass {
 
     /**
      * Execute a SQL query; returns all rows.
-     * Rejects with `DB_NOT_READY` / `DB_CLOSED` depending on the lifecycle
-     * state, and with `DB_QUERY_FAILED` (with the driver's `message` and,
+     * Rejects with `BDB_NOT_READY` / `BDB_CLOSED` depending on the lifecycle
+     * state, and with `BDB_QUERY_FAILED` (with the driver's `message` and,
      * where present, its code — never the SQL or its params) on driver error.
      *
      * @param sql SQL text
@@ -264,8 +264,8 @@ export default abstract class BootDatabase extends BootClass {
      * The callback receives a transaction context where every
      * `query`/`get`/`execute` call is routed through the transaction's
      * connection; a nested `transaction()` from inside it is not allowed
-     * (`DB_TX_LOCKED`). On any failure the transaction is rolled back and
-     * `DB_TRANSACTION_FAILED` is thrown; the connection is released either
+     * (`BDB_TX_LOCKED`). On any failure the transaction is rolled back and
+     * `BDB_TRANSACTION_FAILED` is thrown; the connection is released either
      * way.
      *
      * @param fn Callback executed within the transaction
@@ -279,9 +279,9 @@ export default abstract class BootDatabase extends BootClass {
                 conn = await this.acquire()
                 acquired = true
             } catch (e: any) {
-                // An adapter may already report a coded error (e.g. DBS_BUSY)
+                // An adapter may already report a coded error (e.g. BDB_BUSY)
                 if (ErrorManager.isError(e)) throw e
-                const err = ErrorManager.make('DB_TRANSACTION_FAILED', { message: e?.message, boot: this.id })
+                const err = ErrorManager.make('BDB_TRANSACTION_FAILED', { message: e?.message, boot: this.id })
                 err.vAddErrors.push(e)
                 throw err
             }
@@ -298,7 +298,7 @@ export default abstract class BootDatabase extends BootClass {
                 } catch (rb: any) {
                     rbError = rb
                 }
-                const err = ErrorManager.make('DB_TRANSACTION_FAILED', { message: e?.message, boot: this.id })
+                const err = ErrorManager.make('BDB_TRANSACTION_FAILED', { message: e?.message, boot: this.id })
                 err.vAddErrors.push(e)
                 if (rbError !== null) err.vAddErrors.push(rbError)
                 throw err
@@ -328,15 +328,15 @@ export default abstract class BootDatabase extends BootClass {
 
     /**
      * Lifecycle guard of the public methods:
-     * rejects with `DB_NOT_READY` before start, with `DB_CLOSED` after stop
+     * rejects with `BDB_NOT_READY` before start, with `BDB_CLOSED` after stop
      */
     protected guard(): void {
-        if (this._state === 'pending') throw ErrorManager.make('DB_NOT_READY', { boot: this.id })
-        if (this._state === 'closed') throw ErrorManager.make('DB_CLOSED', { boot: this.id })
+        if (this._state === 'pending') throw ErrorManager.make('BDB_NOT_READY', { boot: this.id })
+        if (this._state === 'closed') throw ErrorManager.make('BDB_CLOSED', { boot: this.id })
     }
 
     /**
-     * Re-wrap a driver error into a coded `DB_QUERY_FAILED` error.
+     * Re-wrap a driver error into a coded `BDB_QUERY_FAILED` error.
      *
      * By the design decision the error carries the driver's `message` and,
      * where present, its code (`driverCode`) — but never the SQL text or
@@ -347,7 +347,7 @@ export default abstract class BootDatabase extends BootClass {
         if (ErrorManager.isError(e)) return e
         const extra: { [key: string]: any } = { message: e?.message, boot: this.id }
         if (e?.code !== undefined) extra.driverCode = e.code
-        const err = ErrorManager.make('DB_QUERY_FAILED', extra)
+        const err = ErrorManager.make('BDB_QUERY_FAILED', extra)
         err.vAddErrors.push(e)
         return err
     }
@@ -356,7 +356,7 @@ export default abstract class BootDatabase extends BootClass {
      * The transaction context: a wrapper over this class where all
      * `query`/`get`/`execute` calls are routed through the given
      * connection. `transaction()` from inside is not allowed
-     * (`DB_TX_LOCKED`); every other member passes through unchanged
+     * (`BDB_TX_LOCKED`); every other member passes through unchanged
      * (functions stay bound to the class, never to the connection).
      */
     protected bind(conn: unknown): BootDatabase {
@@ -370,7 +370,7 @@ export default abstract class BootDatabase extends BootClass {
                     }
                 }
                 if (prop === 'execute') return (sql: string, params?: any[]) => target._execute(sql, params, conn)
-                if (prop === 'transaction') return () => { throw ErrorManager.make('DB_TX_LOCKED', { boot: target.id }) }
+                if (prop === 'transaction') return () => { throw ErrorManager.make('BDB_TX_LOCKED', { boot: target.id }) }
                 const value = Reflect.get(target, prop, receiver)
                 return typeof value === 'function' ? value.bind(target) : value
             }

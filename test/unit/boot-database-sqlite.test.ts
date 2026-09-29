@@ -5,7 +5,7 @@
  * The base-class semantics (lifecycle, guards, error wrapping, transactions)
  * are covered by boot-database.test.ts with a fake adapter; here the real
  * driver is exercised: file databases, :memory:, WAL, read-only, real
- * transactions and the single-connection (DBS_BUSY) contract.
+ * transactions and the single-connection (BDB_BUSY) contract.
  */
 import { describe, it, expect, afterEach } from 'vitest'
 import { ErrorManager, BootDatabaseSqlite, BootDatabaseMemory } from 'vrack2-core'
@@ -102,7 +102,7 @@ describe('BootDatabaseSqlite', () => {
         await db3.onDestroy()
     })
 
-    it('opens read-only when requested: SELECT works, INSERT fails with a coded DB_QUERY_FAILED', async () => {
+    it('opens read-only when requested: SELECT works, INSERT fails with a coded BDB_QUERY_FAILED', async () => {
         const file = tmpFile('ro.db')
         const rw = make(BootDatabaseSqlite, { file })
         await start(rw)
@@ -114,7 +114,7 @@ describe('BootDatabaseSqlite', () => {
         await start(ro)
         expect(await ro.get('SELECT name FROM users WHERE id = 1')).toEqual({ name: 'alice' })
         await expect(ro.execute('INSERT INTO users (name) VALUES (?)', ['bob'])).rejects.toMatchObject({
-            vShort: 'DB_QUERY_FAILED',
+            vShort: 'BDB_QUERY_FAILED',
         })
         await expect(ro.query('SELECT 1')).resolves.toEqual([
             // "SELECT 1" returns a row { 1: 1 } in node:sqlite — the shape is driver-specific, the key check is that it resolved
@@ -123,7 +123,7 @@ describe('BootDatabaseSqlite', () => {
         await ro.onDestroy()
     })
 
-    it('a bad path fails the start with DB_CONNECT_FAILED and a driver code', async () => {
+    it('a bad path fails the start with BDB_CONNECT_FAILED and a driver code', async () => {
         const file = tmpFile('blocked.db')
         fs.writeFileSync(file, 'not a database') // a file where the directory would be
         const db = make(BootDatabaseSqlite, { file: path.join(file, 'inner.db') })
@@ -133,12 +133,12 @@ describe('BootDatabaseSqlite', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_CONNECT_FAILED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'BDB_CONNECT_FAILED')).toBe(true)
         expect(typeof err.driverCode).toBe('string')
         expect(db.ready).toBe(false)
     })
 
-    it('driver errors (no such table) are wrapped into DB_QUERY_FAILED without exposing the SQL', async () => {
+    it('driver errors (no such table) are wrapped into BDB_QUERY_FAILED without exposing the SQL', async () => {
         const file = tmpFile('err.db')
         const db = make(BootDatabaseSqlite, { file })
         await start(db)
@@ -148,7 +148,7 @@ describe('BootDatabaseSqlite', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_QUERY_FAILED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'BDB_QUERY_FAILED')).toBe(true)
         expect(typeof err.driverCode).toBe('string')
         expect(JSON.stringify(err)).not.toContain('table_that_does_not_exist')
         await db.onDestroy()
@@ -186,7 +186,7 @@ describe('BootDatabaseSqlite', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_TRANSACTION_FAILED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'BDB_TRANSACTION_FAILED')).toBe(true)
         expect(await db.query('SELECT COUNT(1) AS total FROM users')).toEqual([{ total: 0 }]) // rolled back
         // the connection is free for the next transaction
         await db.transaction(async (tx: any) => {
@@ -195,7 +195,7 @@ describe('BootDatabaseSqlite', () => {
         await db.onDestroy()
     })
 
-    it('a second concurrent transaction on the single connection is DBS_BUSY and the database stays usable afterwards', async () => {
+    it('a second concurrent transaction on the single connection is BDB_BUSY and the database stays usable afterwards', async () => {
         const file = tmpFile('busy.db')
         const db: any = make(BootDatabaseSqlite, { file })
         await start(db)
@@ -208,7 +208,7 @@ describe('BootDatabaseSqlite', () => {
         } catch (e) {
             err = e
         }
-        expect(err.vShort).toBe('DBS_BUSY')
+        expect(err.vShort).toBe('BDB_BUSY')
         expect(err.boot).toBe('DB')
 
         await (db as any).release(null)
@@ -253,7 +253,7 @@ describe('BootDatabaseMemory', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'DB_QUERY_FAILED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'BDB_QUERY_FAILED')).toBe(true)
 
         await a.onDestroy()
         await b.onDestroy()

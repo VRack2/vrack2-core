@@ -12,7 +12,7 @@
 | Поле | Значение |
 |---|---|
 | `vError` | `true` — признак VRack-ошибки. |
-| `vShort` | Единственный канонический идентификатор ошибки (читаемый код, например `CTR_DEVICE_NF`) — им пользуются `isCode()` и документы. |
+| `vShort` | Единственный канонический идентификатор ошибки (читаемый код, например `CONT_DEVICE_NF`) — им пользуются `isCode()` и документы. |
 | `name` | Модуль-владелец (например, `Container`). |
 | `message` | Описание, понятное человеку. |
 | `vAdd` | Список дополнительных полей. |
@@ -68,47 +68,47 @@
 | `VR_ERROR_OBJECT_FIELDS` | Ошибка валидации полей объекта. |
 | `VR_IS_NOT_FUNCTION` | Значение не функция. |
 
-### Container (`CTR_*`)
+### Container (`CONT_*`)
 
 | Код | Описание |
 |---|---|
-| `CTR_DEVICE_DUPLICATE` | Дубликат id устройства. |
-| `CTR_DEVICE_NF` | Устройство не найдено в контейнере. |
-| `CTR_DEVICE_ACTION_NF` | Action на устройстве не найдена. |
-| `CTR_DEVICE_ACTION_HANDLER_NF` | Хендлер action не найден. |
- | `CTR_DEVICE_PROCESS_EXCEPTION` | `onStart()` устройства выбросил исключение (вложено в `vAddErrors`). |
- | `CTR_DEVICE_PROCESS_PROMISE_EXCEPTION` | `onStartAsync()` устройства выбросил исключение. |
- | `CTR_DEVICE_STOP_EXCEPTION` | `onStop()` устройства выбросил исключение (вложено в `vAddErrors`). |
- | `CTR_DEVICE_STOP_PROMISE_EXCEPTION` | `onStopAsync()` устройства выбросил исключение (вложено в `vAddErrors`). |
-| `CTR_DEVICE_STOP_ALL_EXCEPTION` | В `stopAll()` не удалось остановить одно или более устройств (ошибки устройств — в `vAddErrors`). |
- | `CTR_DEVICE_STOPPED` | Action вызвана на остановленном (не running) устройстве. |
- | `CTR_DEVICE_ACTION_VETOED` | Action отменена хуком `onBeforeAction()` устройства (возврат `false`). |
- | `CTR_DEVICE_PORT_NF` | Порт на устройстве не найден. |
-| `CTR_INPUT_HANDLER_NF` | Хендлер порта входа не найден. |
-| `CTR_INCORRECT_PN` | Неверное имя порта. |
-| `CTR_INCORRECT_DYNAMIC_PN` | Неверное имя динамического порта (нет `%d`). |
-| `CTR_CONNECTION_INCORRECT` | Неверный формат соединения. |
-| `CTR_CONNECTION_DEVICE_NF` | Устройство соединения не найдено. |
-| `CTR_CONNECTION_PORT_NF` | Порт соединения не найден. |
-| `CTR_INCOMPATIBLE_PORTS` | Несовместимые типы портов. |
-| `CTR_INCORRECT_BOOTSTRAP` | DeviceManager не указан корректно. |
-| `CTR_IGNORE_SERVICE_AUTORELOAD` | Ошибка, игнорирующая флаг перезапуска сервиса. |
+| `CONT_DEVICE_DUPLICATE` | Дубликат id устройства. |
+| `CONT_DEVICE_NF` | Устройство не найдено в контейнере. |
+| `CONT_DEVICE_ACTION_NF` | Action на устройстве не найдена. |
+| `CONT_DEVICE_ACTION_HANDLER_NF` | Хендлер action не найден. |
+ | `CONT_DEVICE_PROCESS_EXCEPTION` | `onStart()` устройства выбросил исключение (вложено в `vAddErrors`). |
+ | `CONT_DEVICE_PROCESS_PROMISE_EXCEPTION` | `onStartAsync()` устройства выбросил исключение. |
+ | `CONT_DEVICE_STOP_EXCEPTION` | `onStop()` устройства выбросил исключение (вложено в `vAddErrors`). |
+ | `CONT_DEVICE_STOP_PROMISE_EXCEPTION` | `onStopAsync()` устройства выбросил исключение (вложено в `vAddErrors`). |
+| `CONT_DEVICE_STOP_ALL_EXCEPTION` | В `stopAll()` не удалось остановить одно или более устройств (ошибки устройств — в `vAddErrors`). |
+ | `CONT_DEVICE_STOPPED` | Action вызвана на остановленном (не running) устройстве. |
+ | `CONT_DEVICE_ACTION_VETOED` | Action отменена хуком `onBeforeAction()` устройства (возврат `false`). |
+ | `CONT_DEVICE_PORT_NF` | Порт на устройстве не найден. |
+| `CONT_INPUT_HANDLER_NF` | Хендлер порта входа не найден. |
+| `CONT_INCORRECT_PN` | Неверное имя порта. |
+| `CONT_INCORRECT_DYNAMIC_PN` | Неверное имя динамического порта (нет `%d`). |
+| `CONT_CONNECTION_INCORRECT` | Неверный формат соединения. |
+| `CONT_CONNECTION_DEVICE_NF` | Устройство соединения не найдено. |
+| `CONT_CONNECTION_PORT_NF` | Порт соединения не найден. |
+| `CONT_INCOMPATIBLE_PORTS` | Несовместимые типы портов. |
+| `CONT_INCORRECT_BOOTSTRAP` | DeviceManager не указан корректно. |
+| `CONT_IGNORE_SERVICE_AUTORELOAD` | Ошибка, игнорирующая флаг перезапуска сервиса. |
 
-### ServiceLoader (`CTR_*`, префикс общий)
+### ServiceLoader (`SLDR_*`)
 
 | Код | Описание |
 |---|---|
-| `CTR_CONF_EXTENDS_PROBLEM` | Ошибка расширения конфига сервиса (`confFile`). |
-| `CTR_ERROR_INIT_DEVICE` | Ошибка инициализации устройства. |
-| `CTR_ERROR_INIT_CONNECTION` | Ошибка инициализации соединения. |
-| `CTR_ERROR_PREPARE_OPTIONS` | Ошибка подготовки опций устройства. |
-| `CTR_INCORRECT_DEVICE_ID` | Неверный id устройства. |
+| `SLDR_CONF_EXTENDS_PROBLEM` | Ошибка расширения конфига сервиса (`confFile`). |
+| `SLDR_ERROR_INIT_DEVICE` | Ошибка инициализации устройства. |
+| `SLDR_ERROR_INIT_CONNECTION` | Ошибка инициализации соединения. |
+| `SLDR_ERROR_PREPARE_OPTIONS` | Ошибка подготовки опций устройства. |
+| `SLDR_INCORRECT_DEVICE_ID` | Неверный id устройства. |
 
 ### Bootstrap (`BTSP_*`, `BS_*`)
 
 | Код | Описание |
 |---|---|
-| `BS_BAD_BOOTLIST` | Неверный состав списка boot-классов: некорректная запись (нет `options`) или запись без `path`, которая не совпадает ни с одним id нижних слоёв при слоевом merge (`mergeBootList`). |
+| `BTSP_BAD_BOOTLIST` | Неверный состав списка boot-классов: некорректная запись (нет `options`) или запись без `path`, которая не совпадает ни с одним id нижних слоёв при слоевом merge (`mergeBootList`). |
 | `BTSP_CLASS_ID_NOT_FOUND` | Id boot-класса не найден. |
 | `BTSP_INSTANCE_OF_INCORRECT` | Boot-класс не является экземпляром `BootClass`. |
 | `BTSP_TERMINATE_FAILED` | Не удалось остановить boot-класс (`Bootstrap.destroyAll()`). |
@@ -129,17 +129,17 @@
 |---|---|
 | `SS_STRUCT_NOT_FOUND` | Структура по id не найдена. |
 
-### BootDatabase (`DB*`)
+### BootDatabase (`BDB_*`)
 
 | Код | Описание |
 |---|---|
- | `DB_NOT_READY` | Вызов публичного метода до завершения старта БД (до `onStartAsync()`). |
-| `DB_CLOSED` | Вызов публичного метода после остановки БД (`terminate()`). |
-| `DB_CONNECT_FAILED` | Не удалось подключиться к БД при старте. Сервис не стартует (fail-fast, повторные попытки — за супервайзером). |
-| `DB_QUERY_FAILED` | Ошибка запроса: ошибка драйвера, переупакованная. Несёт `message` и код драйвера (`driverCode`), но не текст SQL и не параметры (сенситивность). |
-| `DBS_BUSY` | Попытка второй транзакции при единственном соединении (например, SQLite). |
-| `DB_TX_LOCKED` | Вложенный вызов `transaction()` изнутри открытой транзакции не допускается. |
-| `DB_TRANSACTION_FAILED` | Транзакция не завершена commit'ом (ошибка в колбэке или в COMMIT; rollback выполнен). |
+ | `BDB_NOT_READY` | Вызов публичного метода до завершения старта БД (до `onStartAsync()`). |
+| `BDB_CLOSED` | Вызов публичного метода после остановки БД (`terminate()`). |
+| `BDB_CONNECT_FAILED` | Не удалось подключиться к БД при старте. Сервис не стартует (fail-fast, повторные попытки — за супервайзером). |
+| `BDB_QUERY_FAILED` | Ошибка запроса: ошибка драйвера, переупакованная. Несёт `message` и код драйвера (`driverCode`), но не текст SQL и не параметры (сенситивность). |
+| `BDB_BUSY` | Попытка второй транзакции при единственном соединении (например, SQLite). |
+| `BDB_TX_LOCKED` | Вложенный вызов `transaction()` изнутри открытой транзакции не допускается. |
+| `BDB_TRANSACTION_FAILED` | Транзакция не завершена commit'ом (ошибка в колбэке или в COMMIT; rollback выполнен). |
 
 ### ImportManager (`IM_*`)
 
@@ -157,7 +157,7 @@
 import { ErrorManager } from 'vrack2-core'
 
 ErrorManager.isError(err)
-ErrorManager.isCode(err, 'CTR_DEVICE_NF')
+ErrorManager.isCode(err, 'CONT_DEVICE_NF')
 err.vShort === 'VR_NOT_PASS'
 err.problems?.[0].type  // 'VR_ERROR_REQUIRED'
 ```

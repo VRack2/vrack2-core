@@ -235,7 +235,7 @@ describe('Layered boot-list config', () => {
         expect(() => mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)).toThrow()
     })
 
-    it('service file bootstrap: options-only override for an unknown id throws BS_BAD_BOOTLIST', () => {
+    it('service file bootstrap: options-only override for an unknown id throws BTSP_BAD_BOOTLIST', () => {
         const service: IServiceStructure = {
             devices: [], connections: [],
             bootstrap: {
@@ -329,7 +329,7 @@ describe('Container: device initialization', () => {
         expect(structure['Counter1'].actions).toHaveProperty('set.value')
     })
 
-    it('rejects a duplicated device id (CTR_DEVICE_DUPLICATE)', async () => {
+    it('rejects a duplicated device id (CONT_DEVICE_DUPLICATE)', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'Counter1', type: 'testkit.Counter', options: {} },
@@ -339,29 +339,29 @@ describe('Container: device initialization', () => {
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_DEVICE')).toBe(true)
-        expect(hasCode(err, 'CTR_DEVICE_DUPLICATE')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_DEVICE')).toBe(true)
+        expect(hasCode(err, 'CONT_DEVICE_DUPLICATE')).toBe(true)
     })
 
-    it('rejects an incorrect device id (CTR_INCORRECT_DEVICE_ID)', async () => {
+    it('rejects an incorrect device id (SLDR_INCORRECT_DEVICE_ID)', async () => {
         const mp = makeMP({
             devices: [{ id: 'bad id!', type: 'testkit.Counter', options: {} }],
             connections: [],
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_DEVICE')).toBe(true)
-        expect(hasCode(err, 'CTR_INCORRECT_DEVICE_ID')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_DEVICE')).toBe(true)
+        expect(hasCode(err, 'SLDR_INCORRECT_DEVICE_ID')).toBe(true)
     })
 
-    it('validates device options (VR_NOT_PASS inside CTR_ERROR_INIT_DEVICE)', async () => {
+    it('validates device options (VR_NOT_PASS inside SLDR_ERROR_INIT_DEVICE)', async () => {
         const mp = makeMP({
             devices: [{ id: 'Counter1', type: 'testkit.Counter', options: { scale: 'abc' } }],
             connections: [],
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_DEVICE')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_DEVICE')).toBe(true)
         expect(hasCode(err, 'VR_NOT_PASS')).toBe(true)
     })
 
@@ -372,19 +372,19 @@ describe('Container: device initialization', () => {
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_DEVICE')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_DEVICE')).toBe(true)
         expect(hasCode(err, 'DM_DEVICE_NOT_FOUND')).toBe(true)
     })
 
-    it('rejects a device without an input handler (CTR_INPUT_HANDLER_NF)', async () => {
+    it('rejects a device without an input handler (CONT_INPUT_HANDLER_NF)', async () => {
         const mp = makeMP({
             devices: [{ id: 'NoHandler1', type: 'testkit.NoHandler', options: {} }],
             connections: [],
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_DEVICE')).toBe(true)
-        expect(hasCode(err, 'CTR_INPUT_HANDLER_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_DEVICE')).toBe(true)
+        expect(hasCode(err, 'CONT_INPUT_HANDLER_NF')).toBe(true)
     })
 })
 
@@ -416,7 +416,7 @@ describe('Container: connections', () => {
         expect(structure['Lamp1'].inputs['on']).toEqual([{ device: 'Counter1', port: 'result' }])
     })
 
-    it('rejects incompatible port types (CTR_INCOMPATIBLE_PORTS)', async () => {
+    it('rejects incompatible port types (CONT_INCOMPATIBLE_PORTS)', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'ReturnSrc1', type: 'testkit.ReturnSrc', options: {} },
@@ -426,22 +426,22 @@ describe('Container: connections', () => {
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_CONNECTION')).toBe(true)
-        expect(hasCode(err, 'CTR_INCOMPATIBLE_PORTS')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_CONNECTION')).toBe(true)
+        expect(hasCode(err, 'CONT_INCOMPATIBLE_PORTS')).toBe(true)
     })
 
-    it('rejects a connection to an unknown device (CTR_CONNECTION_DEVICE_NF)', async () => {
+    it('rejects a connection to an unknown device (CONT_CONNECTION_DEVICE_NF)', async () => {
         const mp = makeMP({
             devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
             connections: ['Counter1.result -> Ghost.data'],
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_CONNECTION')).toBe(true)
-        expect(hasCode(err, 'CTR_CONNECTION_DEVICE_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_CONNECTION')).toBe(true)
+        expect(hasCode(err, 'CONT_CONNECTION_DEVICE_NF')).toBe(true)
     })
 
-    it('rejects a connection to an unknown port (CTR_CONNECTION_PORT_NF)', async () => {
+    it('rejects a connection to an unknown port (CONT_CONNECTION_PORT_NF)', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'Counter1', type: 'testkit.Counter', options: {} },
@@ -451,11 +451,11 @@ describe('Container: connections', () => {
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_CONNECTION')).toBe(true)
-        expect(hasCode(err, 'CTR_CONNECTION_PORT_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_CONNECTION')).toBe(true)
+        expect(hasCode(err, 'CONT_CONNECTION_PORT_NF')).toBe(true)
     })
 
-    it('rejects a malformed connection string (CTR_CONNECTION_INCORRECT)', async () => {
+    it('rejects a malformed connection string (CONT_CONNECTION_INCORRECT)', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'Counter1', type: 'testkit.Counter', options: {} },
@@ -465,8 +465,8 @@ describe('Container: connections', () => {
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_CONNECTION')).toBe(true)
-        expect(hasCode(err, 'CTR_CONNECTION_INCORRECT')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_CONNECTION')).toBe(true)
+        expect(hasCode(err, 'CONT_CONNECTION_INCORRECT')).toBe(true)
     })
 })
 
@@ -532,7 +532,7 @@ describe('Counter: input, actions, output, metric, storage', () => {
         expect(err.problems.find((p: any) => p.fieldKey === 'value')).toBeDefined()
     })
 
-    it('throws CTR_DEVICE_ACTION_NF for an unknown action', async () => {
+    it('throws CONT_DEVICE_ACTION_NF for an unknown action', async () => {
         const mp = makeMP({
             devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
             connections: [],
@@ -546,7 +546,7 @@ describe('Counter: input, actions, output, metric, storage', () => {
             err = e
         }
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_ACTION_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_ACTION_NF')).toBe(true)
     })
 
     it('lets onBeforeAction() veto an action and emits device.action.before', async () => {
@@ -577,7 +577,7 @@ describe('Counter: input, actions, output, metric, storage', () => {
         } catch (e) {
             err = e
         }
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_ACTION_VETOED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_ACTION_VETOED')).toBe(true)
         expect(c.count).toBe(10) // unchanged — the handler never ran
     })
 
@@ -680,7 +680,7 @@ describe('Lamp: input, output, metric', () => {
         })
         const err = await runOrError(mp)
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_ERROR_INIT_DEVICE')).toBe(true)
+        expect(ErrorManager.isCode(err, 'SLDR_ERROR_INIT_DEVICE')).toBe(true)
         expect(hasCode(err, 'VR_NOT_PASS')).toBe(true)
     })
 
@@ -794,7 +794,7 @@ describe('MainProcess.stop()', () => {
         expect(t1.order.filter((o: string) => o === 'onStop')).toHaveLength(1)
     })
 
-    it('propagates stop failures: CTR_DEVICE_STOP_ALL_EXCEPTION, other devices still stopped', async () => {
+    it('propagates stop failures: CONT_DEVICE_STOP_ALL_EXCEPTION, other devices still stopped', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'Bad', type: 'testkit.StopFail', options: {} },
@@ -812,8 +812,8 @@ describe('MainProcess.stop()', () => {
         }
 
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_STOP_ALL_EXCEPTION')).toBe(true)
-        expect(hasCode(err, 'CTR_DEVICE_STOP_EXCEPTION')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_STOP_ALL_EXCEPTION')).toBe(true)
+        expect(hasCode(err, 'CONT_DEVICE_STOP_EXCEPTION')).toBe(true)
         // best-effort: the healthy device was stopped despite the failure
         const good: any = mp.Container.devices['Good']
         expect(good.onStopCount).toBe(1)

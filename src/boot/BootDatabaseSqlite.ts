@@ -12,7 +12,7 @@ import Rule from '../validator/Rule'
  * SQLite adapter for `BootDatabase`, backed by the built-in `node:sqlite`
  * module (no external npm driver). Requires Node.js ≥ 22.5 (the module is
  * built-in there); on older runtimes `connect()` fails with
- * `DB_CONNECT_FAILED` and the service does not start — the same fail-fast
+ * `BDB_CONNECT_FAILED` and the service does not start — the same fail-fast
  * contract as every other database.
  *
  * `node:sqlite` is synchronous, so the driver calls complete before the
@@ -26,7 +26,7 @@ import Rule from '../validator/Rule'
  *    (single connection: at most one, enforced by the base class)
  *  - WAL (default on) makes concurrent readers from other processes safe;
  *    only **one writer per file at a time** (the driver reports `SQLITE_BUSY`
- *    — surfaced as `DB_QUERY_FAILED` with `driverCode`)
+ *    — surfaced as `BDB_QUERY_FAILED` with `driverCode`)
  *
  * @extends BootDatabase
  */
@@ -60,7 +60,7 @@ export default class BootDatabaseSqlite extends BootDatabase {
     /**
      * Open the database file and apply the journal mode.
      * Requires Node.js ≥ 22.5: on older runtimes the dynamic import fails
-     * and the base class reports `DB_CONNECT_FAILED` (fail-fast).
+     * and the base class reports `BDB_CONNECT_FAILED` (fail-fast).
      */
     protected async connect(): Promise<void> {
         let driver: typeof import('node:sqlite')
@@ -115,10 +115,10 @@ export default class BootDatabaseSqlite extends BootDatabase {
     /**
      * Take the single connection for a transaction.
      * There is exactly one `node:sqlite` handle in the process: a second
-     * `acquire()` while a transaction is open is `DBS_BUSY` (never a pool).
+     * `acquire()` while a transaction is open is `BDB_BUSY` (never a pool).
      */
     protected async acquire(): Promise<unknown> {
-        if (this._txOpen) throw ErrorManager.make('DBS_BUSY', { boot: this.id })
+        if (this._txOpen) throw ErrorManager.make('BDB_BUSY', { boot: this.id })
         this._txOpen = true
         return this._handle
     }
@@ -139,7 +139,7 @@ export default class BootDatabaseSqlite extends BootDatabase {
         let stmt = this._statements.get(sql)
         if (stmt === undefined) {
             stmt = this._handle?.prepare(sql)
-            if (stmt === undefined) throw new Error('The database is not connected')
+            if (stmt === undefined) throw ErrorManager.make('BDB_NOT_READY', { boot: this.id })
             this._statements.set(sql, stmt)
         }
         return stmt

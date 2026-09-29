@@ -14,15 +14,6 @@ import CoreError from "../errors/CoreError";
 import BasicMetric from "../metrics/BasicMetric";
 import ImportManager from "../ImportManager";
 
-export enum EDeviceMessageTypes {
-    terminal = "terminal",
-    info = "info",
-    error = "error",
-    event = "event",
-    action = "action",
-    alert = "alert",
-}
-
 interface IDeviceSettings {
     /**
      * List of broadcast channels 
@@ -66,7 +57,7 @@ export default class Device {
      * (removed devices — fail-closed, they accept no port data).
      *
      * A stopped device also gets its actions rejected with the
-     * CTR_DEVICE_STOPPED error (the Container checks its `started` set).
+     * CONT_DEVICE_STOPPED error (the Container checks its `started` set).
      */
     get running(): boolean {
         return this.Container.isRunning(this.id)
@@ -191,7 +182,7 @@ export default class Device {
     /**
      * Hook: run before every device action — after argument validation, before
      * the action handler. Override to veto the action: return `false` and the
-     * action is rejected with `CTR_DEVICE_ACTION_VETOED`.
+     * action is rejected with `CONT_DEVICE_ACTION_VETOED`.
      *
      * The Container emits `device.action.before` right before calling this
      * (event data: action name, trace: action arguments).

@@ -23,9 +23,9 @@ export interface IExecResult {
  * and is terminated with the process (never by a device).
  *
  * The lifecycle is a 3-state machine:
- *  - `pending` — not started; all public calls reject with `DB_NOT_READY`
+ *  - `pending` — not started; all public calls reject with `BDB_NOT_READY`
  *  - `ready` — connected; all public calls work
- *  - `closed` — stopped; all public calls reject with `DB_CLOSED`
+ *  - `closed` — stopped; all public calls reject with `BDB_CLOSED`
  *
  * A database adapter (a concrete subclass) implements exactly 6 protected
  * methods: `connect`, `disconnect`, `_query`, `_execute`, `acquire`,
@@ -72,7 +72,7 @@ export default abstract class BootDatabase extends BootClass {
     /**
      * Take a connection (from the pool, or the single handle) for a
      * transaction. One transaction may be in progress at a time:
-     * a concurrent `acquire()` must reject (`DBS_BUSY`).
+     * a concurrent `acquire()` must reject (`BDB_BUSY`).
      */
     protected abstract acquire(): Promise<unknown>;
     /**
@@ -83,7 +83,7 @@ export default abstract class BootDatabase extends BootClass {
     protected abstract release(conn: unknown): Promise<void>;
     /**
      * Start the database: `connect()` and go to `ready`.
-     * On failure the class goes to `closed` and throws `DB_CONNECT_FAILED`
+     * On failure the class goes to `closed` and throws `BDB_CONNECT_FAILED`
      * so the service does not start (fail-fast).
      */
     onStartAsync(): Promise<void>;
@@ -102,8 +102,8 @@ export default abstract class BootDatabase extends BootClass {
     get ready(): boolean;
     /**
      * Execute a SQL query; returns all rows.
-     * Rejects with `DB_NOT_READY` / `DB_CLOSED` depending on the lifecycle
-     * state, and with `DB_QUERY_FAILED` (with the driver's `message` and,
+     * Rejects with `BDB_NOT_READY` / `BDB_CLOSED` depending on the lifecycle
+     * state, and with `BDB_QUERY_FAILED` (with the driver's `message` and,
      * where present, its code — never the SQL or its params) on driver error.
      *
      * @param sql SQL text
@@ -132,8 +132,8 @@ export default abstract class BootDatabase extends BootClass {
      * The callback receives a transaction context where every
      * `query`/`get`/`execute` call is routed through the transaction's
      * connection; a nested `transaction()` from inside it is not allowed
-     * (`DB_TX_LOCKED`). On any failure the transaction is rolled back and
-     * `DB_TRANSACTION_FAILED` is thrown; the connection is released either
+     * (`BDB_TX_LOCKED`). On any failure the transaction is rolled back and
+     * `BDB_TRANSACTION_FAILED` is thrown; the connection is released either
      * way.
      *
      * @param fn Callback executed within the transaction
@@ -149,11 +149,11 @@ export default abstract class BootDatabase extends BootClass {
     ping(): Promise<void>;
     /**
      * Lifecycle guard of the public methods:
-     * rejects with `DB_NOT_READY` before start, with `DB_CLOSED` after stop
+     * rejects with `BDB_NOT_READY` before start, with `BDB_CLOSED` after stop
      */
     protected guard(): void;
     /**
-     * Re-wrap a driver error into a coded `DB_QUERY_FAILED` error.
+     * Re-wrap a driver error into a coded `BDB_QUERY_FAILED` error.
      *
      * By the design decision the error carries the driver's `message` and,
      * where present, its code (`driverCode`) — but never the SQL text or
@@ -165,7 +165,7 @@ export default abstract class BootDatabase extends BootClass {
      * The transaction context: a wrapper over this class where all
      * `query`/`get`/`execute` calls are routed through the given
      * connection. `transaction()` from inside is not allowed
-     * (`DB_TX_LOCKED`); every other member passes through unchanged
+     * (`BDB_TX_LOCKED`); every other member passes through unchanged
      * (functions stay bound to the class, never to the connection).
      */
     protected bind(conn: unknown): BootDatabase;

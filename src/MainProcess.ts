@@ -143,7 +143,7 @@ export default class MainProcess  {
      * 
      * Idempotent: if no device is running, this is a no-op.
      * If one or more devices failed to stop, throws
-     * `CTR_DEVICE_STOP_ALL_EXCEPTION` with the device errors attached
+     * `CONT_DEVICE_STOP_ALL_EXCEPTION` with the device errors attached
      * (`vAddErrors`).
      */
     async stop (){

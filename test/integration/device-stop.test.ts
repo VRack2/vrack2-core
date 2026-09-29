@@ -6,18 +6,18 @@
  *
  *  - `Container.stopDevice(id)`: calls `onStop()`, then `await onStopAsync()`,
  *    then marks the device stopped (`running = false`, `isStarted() = false`)
- *  - `stopDevice()` is idempotent; unknown id -> CTR_DEVICE_NF
+ *  - `stopDevice()` is idempotent; unknown id -> CONT_DEVICE_NF
  *  - stopped device: input ports drop pushed data, actions are rejected
- *    with CTR_DEVICE_STOPPED
+ *    with CONT_DEVICE_STOPPED
  *  - a device that is NOT started is NOT stopped: its ports stay active
  *    (a push made inside `onStart()` reaches the connected receiver —
  *    the service-side command registration flow)
  *  - restart: `startDevice()` after `stopDevice()` re-runs
  *    `onStart()` + `onStartAsync()` and re-enables ports & actions
  *  - `Container.stopAll()`: stops everything in reverse start order,
- *    best-effort, aggregates failures into CTR_DEVICE_STOP_ALL_EXCEPTION
- *  - `onStop()` failure -> CTR_DEVICE_STOP_EXCEPTION
- *  - `onStopAsync()` failure -> CTR_DEVICE_STOP_PROMISE_EXCEPTION
+ *    best-effort, aggregates failures into CONT_DEVICE_STOP_ALL_EXCEPTION
+ *  - `onStop()` failure -> CONT_DEVICE_STOP_EXCEPTION
+ *  - `onStopAsync()` failure -> CONT_DEVICE_STOP_PROMISE_EXCEPTION
  *  - `onStopAsync()` is really awaited before the device is stopped
  *  - `removeDevice()` on a running device stops it first
  *    (`onStop()` -> `onStopAsync()` -> `onDestroy()`)
@@ -188,14 +188,14 @@ describe('Container.stopDevice()', () => {
         expect(c.isStarted('T1')).toBe(false)
     })
 
-    it('unknown id -> CTR_DEVICE_NF', async () => {
+    it('unknown id -> CONT_DEVICE_NF', async () => {
         const c = makeContainer()
         const err = await catchError(() => c.stopDevice('Nope'))
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_NF')).toBe(true)
     })
 
-    it('onStop() failure -> CTR_DEVICE_STOP_EXCEPTION, onStopAsync() is not called, device stays started', async () => {
+    it('onStop() failure -> CONT_DEVICE_STOP_EXCEPTION, onStopAsync() is not called, device stays started', async () => {
         const c = makeContainer()
         const dev = new StopFailSync('F1', c)
         c.registerDevice(dev)
@@ -204,14 +204,14 @@ describe('Container.stopDevice()', () => {
         const err = await catchError(() => c.stopDevice('F1'))
 
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_STOP_EXCEPTION')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_STOP_EXCEPTION')).toBe(true)
         expect(err.vAddErrors[0].message).toBe('stop-boom')
         expect(dev.promiseCalled).toBe(false)
         // stop did not complete: the device is still "running" and can be stopped again
         expect(c.isStarted('F1')).toBe(true)
     })
 
-    it('onStopAsync() failure -> CTR_DEVICE_STOP_PROMISE_EXCEPTION, device stays started', async () => {
+    it('onStopAsync() failure -> CONT_DEVICE_STOP_PROMISE_EXCEPTION, device stays started', async () => {
         const c = makeContainer()
         const dev = new StopFailPromise('F1', c)
         c.registerDevice(dev)
@@ -220,7 +220,7 @@ describe('Container.stopDevice()', () => {
         const err = await catchError(() => c.stopDevice('F1'))
 
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_STOP_PROMISE_EXCEPTION')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_STOP_PROMISE_EXCEPTION')).toBe(true)
         expect(err.vAddErrors[0].message).toBe('stop-promise-boom')
         expect(dev.onStopCalled).toBe(true)
         expect(c.isStarted('F1')).toBe(true)
@@ -283,7 +283,7 @@ describe('stopped device behavior', () => {
         expect(recv.count).toBe(42) // the push from inside onStart() was delivered
     })
 
-    it('actions are rejected with CTR_DEVICE_STOPPED while stopped, work again after restart', async () => {
+    it('actions are rejected with CONT_DEVICE_STOPPED while stopped, work again after restart', async () => {
         const c = makeContainer()
         const dev = new TTracker('T1', c)
         c.registerDevice(dev)
@@ -295,7 +295,7 @@ describe('stopped device behavior', () => {
 
         const err = await catchError(() => c.deviceAction('T1', 'ping', {}))
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_STOPPED')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_STOPPED')).toBe(true)
 
         await c.startDevice('T1')
         expect(await c.deviceAction('T1', 'ping', {})).toBe('pong')
@@ -382,9 +382,9 @@ describe('Container.stopAll()', () => {
         expect(c.isStarted('Bad')).toBe(true)
 
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_STOP_ALL_EXCEPTION')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_STOP_ALL_EXCEPTION')).toBe(true)
         expect(err.vAddErrors).toHaveLength(1)
-        expect(err.vAddErrors[0].vShort).toBe('CTR_DEVICE_STOP_PROMISE_EXCEPTION')
+        expect(err.vAddErrors[0].vShort).toBe('CONT_DEVICE_STOP_PROMISE_EXCEPTION')
     })
 })
 

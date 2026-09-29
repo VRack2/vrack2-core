@@ -23,11 +23,11 @@ import IDeviceStatus from "./service/IDeviceStatus";
 
 ErrorManager.registerMany('Container', [
     {
-        short: 'CTR_DEVICE_DUPLICATE',
+        short: 'CONT_DEVICE_DUPLICATE',
         description: 'Device id is duplicated'
     },
     {
-        short: 'CTR_DEVICE_ACTION_NF',
+        short: 'CONT_DEVICE_ACTION_NF',
         description: 'Action on device not found',
         rules: {
             device: Rule.string().description('Device ID'),
@@ -36,12 +36,12 @@ ErrorManager.registerMany('Container', [
         }
     },
     {
-        short: 'CTR_DEVICE_NF',
+        short: 'CONT_DEVICE_NF',
         description: 'Device in container NOT found',
         rules: { device: Rule.string().description('Device ID') }
     },
     {
-        short: 'CTR_DEVICE_ACTION_HANDLER_NF',
+        short: 'CONT_DEVICE_ACTION_HANDLER_NF',
         description: 'Device handler action not found',
         rules: {
             device: Rule.string().description('Device ID'),
@@ -49,31 +49,31 @@ ErrorManager.registerMany('Container', [
         }
     },
     {
-        short: 'CTR_DEVICE_PROCESS_EXCEPTION',
+        short: 'CONT_DEVICE_PROCESS_EXCEPTION',
         description: 'During process execution - the device threw an exception',
         rules: { device: Rule.string().description('Device ID') }
     },
     {
-        short: 'CTR_DEVICE_PROCESS_PROMISE_EXCEPTION',
+        short: 'CONT_DEVICE_PROCESS_PROMISE_EXCEPTION',
         description: 'During onStartAsync execution - the device threw an exception',
         rules: { device: Rule.string().description('Device ID') }
     },
     {
-        short: 'CTR_DEVICE_STOP_EXCEPTION',
+        short: 'CONT_DEVICE_STOP_EXCEPTION',
         description: 'During stop execution - the device threw an exception',
         rules: { device: Rule.string().description('Device ID') }
     },
     {
-        short: 'CTR_DEVICE_STOP_PROMISE_EXCEPTION',
+        short: 'CONT_DEVICE_STOP_PROMISE_EXCEPTION',
         description: 'During onStopAsync execution - the device threw an exception',
         rules: { device: Rule.string().description('Device ID') }
     },
     {
-        short: 'CTR_DEVICE_STOP_ALL_EXCEPTION',
+        short: 'CONT_DEVICE_STOP_ALL_EXCEPTION',
         description: 'During stopAll execution - one or more devices failed to stop'
     },
     {
-        short: 'CTR_DEVICE_STOPPED',
+        short: 'CONT_DEVICE_STOPPED',
         description: 'Device is not running - the action is rejected',
         rules: {
             device: Rule.string().description('Device ID'),
@@ -81,7 +81,7 @@ ErrorManager.registerMany('Container', [
         }
     },
     {
-        short: 'CTR_DEVICE_ACTION_VETOED',
+        short: 'CONT_DEVICE_ACTION_VETOED',
         description: 'Device vetoed the action in its onBeforeAction() hook',
         rules: {
             device: Rule.string().description('Device ID'),
@@ -95,17 +95,17 @@ ErrorManager.registerMany('Container', [
 
 ErrorManager.registerMany('Container', [
     {
-        short: 'CTR_INCORRECT_DYNAMIC_PN',
+        short: 'CONT_INCORRECT_DYNAMIC_PN',
         description: 'Incorrect dynamic port name',
         rules: { port: Rule.string().description('Incorrect port name') }
     },
     {
-        short: 'CTR_INCORRECT_PN',
+        short: 'CONT_INCORRECT_PN',
         description: 'Incorrect port name',
         rules: { port: Rule.string().description('Incorrect port name') }
     },
     {
-        short: 'CTR_INPUT_HANDLER_NF',
+        short: 'CONT_INPUT_HANDLER_NF',
         description: 'Port input handler not found',
         rules: {
             port: Rule.string().description('Port name for handler'),
@@ -113,7 +113,7 @@ ErrorManager.registerMany('Container', [
         }
     },
     {
-        short: 'CTR_DEVICE_PORT_NF',
+        short: 'CONT_DEVICE_PORT_NF',
         description: 'Port on device not found',
         rules: { port: Rule.string().description('Port name') }
     },
@@ -123,7 +123,7 @@ ErrorManager.registerMany('Container', [
 
 ErrorManager.registerMany('Container', [
     {
-        short: 'CTR_CONNECTION_INCORRECT',
+        short: 'CONT_CONNECTION_INCORRECT',
         description: 'Incorrect connection format',
         rules: {
             connection: Rule.string().description('Connection string'),
@@ -131,7 +131,7 @@ ErrorManager.registerMany('Container', [
         }
     },
     {
-        short: 'CTR_CONNECTION_DEVICE_NF',
+        short: 'CONT_CONNECTION_DEVICE_NF',
         description: 'Connection device not found',
         rules: {
             connection: Rule.string().description('Connection string'),
@@ -139,7 +139,7 @@ ErrorManager.registerMany('Container', [
         }
     },
     {
-        short: 'CTR_CONNECTION_PORT_NF',
+        short: 'CONT_CONNECTION_PORT_NF',
         description: 'Connection port not found',
         rules: {
             connection: Rule.string().description('Connection string'),
@@ -147,16 +147,16 @@ ErrorManager.registerMany('Container', [
         }
     },
     {
-        short: 'CTR_INCOMPATIBLE_PORTS',
+        short: 'CONT_INCOMPATIBLE_PORTS',
         description: 'Incompatible ports',
         rules: { connection: Rule.string().description('Connection string') }
     },
     {
-        short: 'CTR_INCORRECT_BOOTSTRAP',
+        short: 'CONT_INCORRECT_BOOTSTRAP',
         description: 'The required DeviceManager class is not specified correctly'
     },
     {
-        short: 'CTR_IGNORE_SERVICE_AUTORELOAD',
+        short: 'CONT_IGNORE_SERVICE_AUTORELOAD',
         description: 'Error that ignores service restart flag'
     },
 ])
@@ -337,7 +337,7 @@ export default class Container extends EventEmitter {
                 this.emit('device.start', key)
                 this.devices[key].onStart()
             } catch (error) {
-                throw ErrorManager.make('CTR_DEVICE_PROCESS_EXCEPTION', { device: key }).add(error as Error)
+                throw ErrorManager.make('CONT_DEVICE_PROCESS_EXCEPTION', { device: key }).add(error as Error)
             }
         }
         this.emit('service.start.end')
@@ -348,7 +348,7 @@ export default class Container extends EventEmitter {
                 this.emit('device.startAsync', key)
                 await this.devices[key].onStartAsync()
             } catch (error) {
-                throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: key }).add(error as Error)
+                throw ErrorManager.make('CONT_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: key }).add(error as Error)
             }
             this.started.add(key)
             const st = this.deviceStatus[key]
@@ -370,19 +370,19 @@ export default class Container extends EventEmitter {
      * @param id Device ID
     */
     async startDevice(id: string): Promise<void> {
-        if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
+        if (!(id in this.devices)) throw ErrorManager.make('CONT_DEVICE_NF', { device: id })
         if (this.started.has(id)) return
         try {
             this.emit('device.start', id)
             this.devices[id].onStart()
         } catch (error) {
-            throw ErrorManager.make('CTR_DEVICE_PROCESS_EXCEPTION', { device: id }).add(error as Error)
+            throw ErrorManager.make('CONT_DEVICE_PROCESS_EXCEPTION', { device: id }).add(error as Error)
         }
         try {
             this.emit('device.startAsync', id)
             await this.devices[id].onStartAsync()
         } catch (error) {
-            throw ErrorManager.make('CTR_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: id }).add(error as Error)
+            throw ErrorManager.make('CONT_DEVICE_PROCESS_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
         this.started.add(id)
         const st = this.deviceStatus[id]
@@ -400,19 +400,19 @@ export default class Container extends EventEmitter {
      * @param id Device ID
      */
     async stopDevice(id: string): Promise<void> {
-        if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
+        if (!(id in this.devices)) throw ErrorManager.make('CONT_DEVICE_NF', { device: id })
         if (!this.started.has(id)) return
         const dev = this.devices[id]
         try {
             this.emit('device.stop', id)
             dev.onStop()
         } catch (error) {
-            throw ErrorManager.make('CTR_DEVICE_STOP_EXCEPTION', { device: id }).add(error as Error)
+            throw ErrorManager.make('CONT_DEVICE_STOP_EXCEPTION', { device: id }).add(error as Error)
         }
         try {
             await dev.onStopAsync()
         } catch (error) {
-            throw ErrorManager.make('CTR_DEVICE_STOP_PROMISE_EXCEPTION', { device: id }).add(error as Error)
+            throw ErrorManager.make('CONT_DEVICE_STOP_PROMISE_EXCEPTION', { device: id }).add(error as Error)
         }
         this.started.delete(id)
         const st = this.deviceStatus[id]
@@ -425,7 +425,7 @@ export default class Container extends EventEmitter {
      *
      * Best-effort: every running device is stopped even if some of them fail;
      * if nothing is running this is a no-op.
-     * If one or more devices failed, throws CTR_DEVICE_STOP_ALL_EXCEPTION
+     * If one or more devices failed, throws CONT_DEVICE_STOP_ALL_EXCEPTION
      * with each device error attached (`vAddErrors`).
      *
      * Stopped devices can be started again with `startDevice()`.
@@ -443,7 +443,7 @@ export default class Container extends EventEmitter {
         }
         this.emit('service.stop.end')
         if (errors.length > 0) {
-            let ner = ErrorManager.make('CTR_DEVICE_STOP_ALL_EXCEPTION')
+            let ner = ErrorManager.make('CONT_DEVICE_STOP_ALL_EXCEPTION')
             for (const error of errors) ner = ner.add(error)
             throw ner
         }
@@ -481,19 +481,19 @@ export default class Container extends EventEmitter {
      * @param data Data for action
     */
     async deviceAction(device: string, action: string, data: any) {
-        if (!this.deviceActions[device]) throw ErrorManager.make('CTR_DEVICE_NF', { device })
-        if (!this.started.has(device)) throw ErrorManager.make('CTR_DEVICE_STOPPED', { device, action })
+        if (!this.deviceActions[device]) throw ErrorManager.make('CONT_DEVICE_NF', { device })
+        if (!this.started.has(device)) throw ErrorManager.make('CONT_DEVICE_STOPPED', { device, action })
         const deviceClass = this.devices[device]
         const deviceActions = this.deviceActions[device]
         const method = ImportManager.camelize('action.' + action)
-        if (!deviceActions[action]) throw ErrorManager.make('CTR_DEVICE_ACTION_NF', { device, action, method })
-        if (!deviceClass[method as keyof Device]) throw ErrorManager.make('CTR_DEVICE_ACTION_HANDLER_NF', { device, action })
+        if (!deviceActions[action]) throw ErrorManager.make('CONT_DEVICE_ACTION_NF', { device, action, method })
+        if (!deviceClass[method as keyof Device]) throw ErrorManager.make('CONT_DEVICE_ACTION_HANDLER_NF', { device, action })
         const actionExport = deviceActions[action].exportRaw()
         Validator.validate(actionExport.requirements, data)
         // Before-action hook: notify, then let the device veto the action.
         this.emit('device.action.before', { device, data: action, trace: data })
         if (deviceClass.onBeforeAction(action, data) === false) {
-            throw ErrorManager.make('CTR_DEVICE_ACTION_VETOED', { device, action })
+            throw ErrorManager.make('CONT_DEVICE_ACTION_VETOED', { device, action })
         }
         return await deviceClass[method as keyof Device](data)
     }
@@ -539,7 +539,7 @@ export default class Container extends EventEmitter {
         this.deviceActions[dev.id] = dev.actions()
         for (const action in this.deviceActions[dev.id]) {
             const method = ImportManager.camelize('action.' + action)
-            if (!(method in dev)) throw ErrorManager.make('CTR_DEVICE_ACTION_NF', { action, method })
+            if (!(method in dev)) throw ErrorManager.make('CONT_DEVICE_ACTION_NF', { action, method })
             // add structure device action
             this.structure[dev.id].actions[action] = this.deviceActions[dev.id][action].export()
         }
@@ -612,11 +612,11 @@ export default class Container extends EventEmitter {
 
     /**
      * Check device input handler 
-     * Make CTR_INPUT_HANDLER_NF error if not exists
+     * Make CONT_INPUT_HANDLER_NF error if not exists
      * @see registerDevice make inputPorts
     */
     protected checkInputHandler(port: string, handler: string, device: Device) {
-        if (!(handler in device)) throw ErrorManager.make('CTR_INPUT_HANDLER_NF', { port, handler })
+        if (!(handler in device)) throw ErrorManager.make('CONT_INPUT_HANDLER_NF', { port, handler })
     }
 
 
@@ -629,13 +629,13 @@ export default class Container extends EventEmitter {
     */
     protected checkConnectionCore(conn: string) {
         const cc = this.toConnection(conn)
-        if (!(cc.outputDevice in this.devices)) throw ErrorManager.make('CTR_CONNECTION_DEVICE_NF', { connection: conn, device: cc.outputDevice })
-        if (!(cc.outputPort in this.devices[cc.outputDevice].ports.output)) throw ErrorManager.make('CTR_CONNECTION_PORT_NF', { connection: conn, port: cc.outputPort })
+        if (!(cc.outputDevice in this.devices)) throw ErrorManager.make('CONT_CONNECTION_DEVICE_NF', { connection: conn, device: cc.outputDevice })
+        if (!(cc.outputPort in this.devices[cc.outputDevice].ports.output)) throw ErrorManager.make('CONT_CONNECTION_PORT_NF', { connection: conn, port: cc.outputPort })
 
-        if (!(cc.inputDevice in this.devices)) throw ErrorManager.make('CTR_CONNECTION_DEVICE_NF', { connection: conn, device: cc.inputDevice })
-        if (!(cc.inputPort in this.devices[cc.inputDevice].ports.input)) throw ErrorManager.make('CTR_CONNECTION_PORT_NF', { connection: conn, port: cc.inputPort })
+        if (!(cc.inputDevice in this.devices)) throw ErrorManager.make('CONT_CONNECTION_DEVICE_NF', { connection: conn, device: cc.inputDevice })
+        if (!(cc.inputPort in this.devices[cc.inputDevice].ports.input)) throw ErrorManager.make('CONT_CONNECTION_PORT_NF', { connection: conn, port: cc.inputPort })
 
-        if (this.devices[cc.inputDevice].ports.input[cc.inputPort].type !== this.devices[cc.outputDevice].ports.output[cc.outputPort].type) throw ErrorManager.make('CTR_INCOMPATIBLE_PORTS', { connection: conn })
+        if (this.devices[cc.inputDevice].ports.input[cc.inputPort].type !== this.devices[cc.outputDevice].ports.output[cc.outputPort].type) throw ErrorManager.make('CONT_INCOMPATIBLE_PORTS', { connection: conn })
         return cc
     }
 
@@ -721,7 +721,7 @@ export default class Container extends EventEmitter {
      * @param id Device ID
     */
     async removeDevice(id: string): Promise<void> {
-        if (!(id in this.devices)) throw ErrorManager.make('CTR_DEVICE_NF', { device: id })
+        if (!(id in this.devices)) throw ErrorManager.make('CONT_DEVICE_NF', { device: id })
         const dev = this.devices[id]
 
         // 1. Stop the device first, if it is running
@@ -877,13 +877,13 @@ export default class Container extends EventEmitter {
     */
     private toConnection(con: string) {
         const act = con.split('->')
-        if (act.length !== 2) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have -> between device" })
+        if (act.length !== 2) throw ErrorManager.make('CONT_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have -> between device" })
 
         const outputDeviceActs = act[0].split('.')
         const inputDeviceActs = act[1].split('.')
 
-        if (outputDeviceActs.length > 3 || inputDeviceActs.length > 3) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have more 3 acts on side" })
-        if (outputDeviceActs.length < 2 || inputDeviceActs.length < 2) throw ErrorManager.make('CTR_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have less 2 acts on side" })
+        if (outputDeviceActs.length > 3 || inputDeviceActs.length > 3) throw ErrorManager.make('CONT_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have more 3 acts on side" })
+        if (outputDeviceActs.length < 2 || inputDeviceActs.length < 2) throw ErrorManager.make('CONT_CONNECTION_INCORRECT', { connection: con, error: "Syntax connection error, syntax have less 2 acts on side" })
 
         let outputDevice = outputDeviceActs.shift()?.trim()
         const outputPort = outputDeviceActs.join('.').trim()
@@ -910,7 +910,7 @@ export default class Container extends EventEmitter {
      * @param port Port name
     */
     protected checkPortName(port: string) {
-        if (!port.match(/[a-zA-Z0-9.]/)) throw ErrorManager.make('CTR_INCORRECT_PN', { port })
+        if (!port.match(/[a-zA-Z0-9.]/)) throw ErrorManager.make('CONT_INCORRECT_PN', { port })
     }
 
     /**
@@ -926,7 +926,7 @@ export default class Container extends EventEmitter {
             return result
         }
 
-        if (!name.match(/%d/)) throw ErrorManager.make('CTR_INCORRECT_DYNAMIC_PN', { port: name })
+        if (!name.match(/%d/)) throw ErrorManager.make('CONT_INCORRECT_DYNAMIC_PN', { port: name })
 
         for (let i = 1; i <= iPort.count; i++) {
             const nIPort = Object.assign({}, iPort)

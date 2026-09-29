@@ -4,7 +4,7 @@
  * Semantics (per-id, higher layer wins):
  *  - entry with `path` — adds or fully replaces;
  *  - entry without `path` — shallow-merges options over a lower-layer entry
- *    (must match an existing id, else BS_BAD_BOOTLIST);
+ *    (must match an existing id, else BTSP_BAD_BOOTLIST);
  *  - `null` — removes the id;
  *  - first insertion order preserved;
  *  - nullish layers are skipped;
@@ -56,7 +56,7 @@ describe('mergeBootList', () => {
         expect(out.A).toEqual({ path: 'low.a', options: { x: 1, y: 20, z: 3, k: 'keep' } })
     })
 
-    it('entry without path that matches no lower layer throws BS_BAD_BOOTLIST', () => {
+    it('entry without path that matches no lower layer throws BTSP_BAD_BOOTLIST', () => {
         const low: IBootListConfig = { A: { path: 'low.a', options: {} } }
         const high: IBootListConfig = { ORPHAN: { options: { v: 1 } } as IBootListConfig['ORPHAN'] }
         expect(() => mergeBootList([low, high])).toThrowError(CoreError)
@@ -64,11 +64,11 @@ describe('mergeBootList', () => {
             mergeBootList([low, high])
             expect.unreachable('should have thrown')
         } catch (e: any) {
-            expect(ErrorManager.isCode(e, 'BS_BAD_BOOTLIST')).toBe(true)
+            expect(ErrorManager.isCode(e, 'BTSP_BAD_BOOTLIST')).toBe(true)
         }
     })
 
-    it('entry with null (missing options) in a layer throws BS_BAD_BOOTLIST', () => {
+    it('entry with null (missing options) in a layer throws BTSP_BAD_BOOTLIST', () => {
         const low: IBootListConfig = { A: { path: 'low.a', options: {} } }
         const high: IBootListConfig = { A: { options: null as any } }
         expect(() => mergeBootList([low, high])).toThrowError(CoreError)

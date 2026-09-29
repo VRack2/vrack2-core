@@ -202,7 +202,7 @@ export default class Container extends EventEmitter {
      *
      * Best-effort: every running device is stopped even if some of them fail;
      * if nothing is running this is a no-op.
-     * If one or more devices failed, throws CTR_DEVICE_STOP_ALL_EXCEPTION
+     * If one or more devices failed, throws CONT_DEVICE_STOP_ALL_EXCEPTION
      * with each device error attached (`vAddErrors`).
      *
      * Stopped devices can be started again with `startDevice()`.
@@ -253,7 +253,7 @@ export default class Container extends EventEmitter {
     registerDevice(dev: Device): Device;
     /**
      * Check device input handler
-     * Make CTR_INPUT_HANDLER_NF error if not exists
+     * Make CONT_INPUT_HANDLER_NF error if not exists
      * @see registerDevice make inputPorts
     */
     protected checkInputHandler(port: string, handler: string, device: Device): void;

@@ -47,7 +47,6 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `DeviceManager` | Boot-класс (обязателен): реестр устройств, резолв `vendor.Class`. | 2.0.0 | — |
 | `DeviceMetrics` | Boot-класс: хранилище метрик через `vrack-db`. | 2.0.0 | — |
 | `DevicePort` | Рантайм-класс порта (push, соединения, одноразовые слушатели). | 2.0.0 | — |
-| `EDeviceMessageTypes` | Перечисление типов сообщений устройства (input/output/action/metric/…). | 2.0.0 | — |
 | `ErrorManager` | Синглтон-реестр кодовых ошибок (`register`/`registerMany`/`make`/`isCode`). | 2.0.0 | — |
 | `ImportManager` | Утилита: импорт классов по `vendor.Class`, `camelize` и др. | 2.0.0 | — |
 | `MainProcess` | Точка входа; оркеструет Bootstrap → ServiceLoader → Container. | 2.0.0 | — |
@@ -62,6 +61,7 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `StructureStorage` | Boot-класс: персистентность структуры сервиса. | 2.0.0 | — |
 | `SubruleNames` | Константа имён подправил валидации (для `Rule`/`Validator`). | 2.0.0 | — |
 | `UniversalWorker` | Утилита: абстракция воркера (thread/process). | 2.0.0 | — |
+| `Utility` | Утилита: `isDeviceName()` (проверка id устройства), `prettyFormat()` (человекочитаемый формат значений). | 2.0.0 | — |
 | `Validator` | Запуск валидации `Rule` по данным (`Validator.validate`). | 2.0.0 | — |
 | `mergeBootList` | Чистая функция слоёвого merge конфигов boot-классов. | 2026.09.21 | — |
 

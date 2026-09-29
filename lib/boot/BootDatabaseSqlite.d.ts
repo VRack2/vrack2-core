@@ -4,7 +4,7 @@ import BootDatabase, { IExecResult } from './BootDatabase';
  * SQLite adapter for `BootDatabase`, backed by the built-in `node:sqlite`
  * module (no external npm driver). Requires Node.js ≥ 22.5 (the module is
  * built-in there); on older runtimes `connect()` fails with
- * `DB_CONNECT_FAILED` and the service does not start — the same fail-fast
+ * `BDB_CONNECT_FAILED` and the service does not start — the same fail-fast
  * contract as every other database.
  *
  * `node:sqlite` is synchronous, so the driver calls complete before the
@@ -18,7 +18,7 @@ import BootDatabase, { IExecResult } from './BootDatabase';
  *    (single connection: at most one, enforced by the base class)
  *  - WAL (default on) makes concurrent readers from other processes safe;
  *    only **one writer per file at a time** (the driver reports `SQLITE_BUSY`
- *    — surfaced as `DB_QUERY_FAILED` with `driverCode`)
+ *    — surfaced as `BDB_QUERY_FAILED` with `driverCode`)
  *
  * @extends BootDatabase
  */
@@ -45,7 +45,7 @@ export default class BootDatabaseSqlite extends BootDatabase {
     /**
      * Open the database file and apply the journal mode.
      * Requires Node.js ≥ 22.5: on older runtimes the dynamic import fails
-     * and the base class reports `DB_CONNECT_FAILED` (fail-fast).
+     * and the base class reports `BDB_CONNECT_FAILED` (fail-fast).
      */
     protected connect(): Promise<void>;
     /**
@@ -58,7 +58,7 @@ export default class BootDatabaseSqlite extends BootDatabase {
     /**
      * Take the single connection for a transaction.
      * There is exactly one `node:sqlite` handle in the process: a second
-     * `acquire()` while a transaction is open is `DBS_BUSY` (never a pool).
+     * `acquire()` while a transaction is open is `BDB_BUSY` (never a pool).
      */
     protected acquire(): Promise<unknown>;
     /**

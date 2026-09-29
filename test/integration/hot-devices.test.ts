@@ -85,13 +85,13 @@ describe('checkDevice()', () => {
         expect(mp.Container.hasDevice('BadLamp')).toBe(false)
     })
 
-    it('duplicate id -> valid:false CTR_DEVICE_DUPLICATE', async () => {
+    it('duplicate id -> valid:false CONT_DEVICE_DUPLICATE', async () => {
         const mp = makeMP({ devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }], connections: [] })
         await mp.run()
 
         const res = await mp.Loader.checkDevice({ id: 'Counter1', type: 'testkit.Lamp', options: {} })
         expect(res.valid).toBe(false)
-        expect(res.error!.code).toBe('CTR_DEVICE_DUPLICATE')
+        expect(res.error!.code).toBe('CONT_DEVICE_DUPLICATE')
     })
 
 describe('checkConnection()', () => {
@@ -117,7 +117,7 @@ describe('checkConnection()', () => {
         expect((mp.Container.devices['Lamp1'] as any).ports.input.on.connections.length).toBe(0)
     })
 
-    it('unknown device -> valid:false CTR_CONNECTION_DEVICE_NF, no connection', async () => {
+    it('unknown device -> valid:false CONT_CONNECTION_DEVICE_NF, no connection', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'Counter1', type: 'testkit.Counter', options: {} },
@@ -129,11 +129,11 @@ describe('checkConnection()', () => {
 
         const res = mp.Loader.checkConnection('Counter1.result -> Missing.on')
         expect(res.valid).toBe(false)
-        expect(res.error!.code).toBe('CTR_CONNECTION_DEVICE_NF')
+        expect(res.error!.code).toBe('CONT_CONNECTION_DEVICE_NF')
         expect((mp.Container.devices['Lamp1'] as any).ports.input.on.connections.length).toBe(0)
     })
 
-    it('incompatible ports -> valid:false CTR_INCOMPATIBLE_PORTS', async () => {
+    it('incompatible ports -> valid:false CONT_INCOMPATIBLE_PORTS', async () => {
         const mp = makeMP({
             devices: [
                 { id: 'ReturnSrc1', type: 'testkit.ReturnSrc', options: {} },
@@ -145,7 +145,7 @@ describe('checkConnection()', () => {
 
         const res = mp.Loader.checkConnection('ReturnSrc1.res -> Lamp1.on')
         expect(res.valid).toBe(false)
-        expect(res.error!.code).toBe('CTR_INCOMPATIBLE_PORTS')
+        expect(res.error!.code).toBe('CONT_INCOMPATIBLE_PORTS')
     })
 })
 
@@ -188,7 +188,7 @@ describe('addDevice() / startDevice()', () => {
             await mp.Loader.addDevice({ id: 'Lamp1', type: 'testkit.Lamp', options: {} })
         } catch (e) { err = e }
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_DUPLICATE')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_DUPLICATE')).toBe(true)
     })
 
     it('startDevice is idempotent (process runs only once)', async () => {
@@ -211,14 +211,14 @@ describe('addDevice() / startDevice()', () => {
         expect(mp.Container.isStarted('Tracker2')).toBe(true)
     })
 
-    it('startDevice on unknown device throws CTR_DEVICE_NF', async () => {
+    it('startDevice on unknown device throws CONT_DEVICE_NF', async () => {
         const mp = makeMP({ devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }], connections: [] })
         await mp.run()
 
         let err: any
         try { await mp.Container.startDevice('Nope') } catch (e) { err = e }
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_NF')).toBe(true)
     })
 })
 
@@ -253,14 +253,14 @@ describe('addConnection()', () => {
         expect(lamp.state.brightness).toBe(200)
     })
 
-    it('addConnection to a missing device throws CTR_CONNECTION_DEVICE_NF', async () => {
+    it('addConnection to a missing device throws CONT_CONNECTION_DEVICE_NF', async () => {
         const mp = makeMP({ devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }], connections: [] })
         await mp.run()
 
         let err: any
         try { mp.Loader.addConnection('Counter1.result -> Ghost.on') } catch (e) { err = e }
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_CONNECTION_DEVICE_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_CONNECTION_DEVICE_NF')).toBe(true)
     })
 })
 
@@ -313,13 +313,13 @@ describe('removeDevice()', () => {
         expect((mp.Container as any).deviceMetrics['Lamp1']).toBeUndefined()
     })
 
-    it('removeDevice on unknown id throws CTR_DEVICE_NF', async () => {
+    it('removeDevice on unknown id throws CONT_DEVICE_NF', async () => {
         const mp = makeMP({ devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }], connections: [] })
         await mp.run()
         let err: any
         try { await mp.Loader.removeDevice('Nope') } catch (e) { err = e }
         expect(err).toBeDefined()
-        expect(ErrorManager.isCode(err, 'CTR_DEVICE_NF')).toBe(true)
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_NF')).toBe(true)
     })
 })
 
