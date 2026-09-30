@@ -29,7 +29,7 @@ Validator.validate(rules, { scale: 'x' }) // throw VR_NOT_PASS
 
 | Метод | Значение |
 |---|---|
-| `required()` | Поле обязательно. Старый алиас `require()` — deprecated (вскоре будет удалён). |
+| `required()` | Поле обязательно. |
 | `default(value)` | Значение по умолчанию: если ключ отсутствует (`undefined`), записывается в объект. |
 | `description(text)` | Описание поля. |
 | `example(value)` | Пример допустимого значения. |

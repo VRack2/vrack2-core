@@ -156,7 +156,7 @@ Hot-соединение двух уже зарегистрированных п
    - устройство на входе существует (`CONT_CONNECTION_DEVICE_NF`);
    - входной порт существует (`CONT_CONNECTION_PORT_NF`);
    - типы портов совпадают: `standard ↔ standard`, `return ↔ return` (`CONT_INCOMPATIBLE_PORTS`).
-2. `emit('connection', cc)`;
+2. `emit('service.connection', cc)`;
 3. `makeConnection(cc)` — запись в `structure[].outputs/inputs[]` + `new DeviceConnect(outPort, inPort)`.
 
 ### `checkConnection(conn)`
@@ -241,3 +241,4 @@ if (!(id in devices)) throw CONT_DEVICE_NF
 - Порты, actions, метрики — [04-Ports-Actions-Metrics](04-Ports-Actions-Metrics.md)
 - Boot-классы — [07-Bootstrap](07-Bootstrap.md)
 - Ошибки — [08-Errors](08-Errors.md)
+- Публичный API — [11-API](11-API.md) (полный список экспортов, включая `Container`, и статус депрекации)

@@ -63,7 +63,7 @@ export default class Lamp extends Device {
     outputs() { return { status: Port.standard() } }
     metrics() { return { brightness: Metric.inS().retentions('1s:6h') } }
 
-    process() { this.state = { on: false, brightness: 0 } }
+    onStart() { this.state = { on: false, brightness: 0 } }
 
     inputOn(data) {
         const on = typeof data === 'number' ? data > 0 : data === true
@@ -192,3 +192,4 @@ w.on('exit', () => console.log('worker exited'))
 - Устройство — [03-Device](03-Device.md)
 - Boot-классы — [07-Bootstrap](07-Bootstrap.md)
 - Ошибки — [08-Errors](08-Errors.md)
+- Публичный API — [11-API](11-API.md) (полный список экспортов `vrack2-core`)

@@ -169,3 +169,4 @@ err.problems?.[0].type  // 'VR_ERROR_REQUIRED'
 - Валидатор — [05-Validator](05-Validator.md)
 - Контейнер — [06-Container](06-Container.md)
 - Boot-классы — [07-Bootstrap](07-Bootstrap.md)
+- Публичный API — [11-API](11-API.md) (статус депрекации экспортов — единый источник правды)

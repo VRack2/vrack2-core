@@ -75,7 +75,7 @@ inputs() {
 Объявление:
 
 - в `service.json` — `connections` или `devices[].connections` ([02-AppStructure](02-AppStructure.md));
-- в рантайме — `Container.addConnection(conn)` (событие `connection`, обновление структуры, создание ссылки `DeviceConnect`).
+- в рантайме — `Container.addConnection(conn)` (событие `service.connection`, обновление структуры, создание ссылки `DeviceConnect`).
 
 Только проверка: `Container.checkConnection(conn)` → `ICheckResult` ([06-Container](06-Container.md)).
 

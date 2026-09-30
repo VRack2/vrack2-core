@@ -71,8 +71,8 @@ Boot-классы владеют ресурсами уровня процесс�
 
 - Вызывается один раз на процесс; повторный вызов — no-op (лatch, симметрия `loadAttempted`-флага `loadBootList()`).
 - Порядок — **обратный** порядку загрузки (симметрия `Container.stopAll()`): сначала высвобождаются поздние boot-классы, общие ресурсы (например, БД) нижних классов живут, пока зависящие от них завершаются.
-- Сбой `terminate()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
-- `terminate()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `DeviceMetrics.getDeviceMetrics()`), а `terminate()` используется только самим `Bootstrap`.
+- Сбой `onDestroy()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
+- `onDestroy()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `DeviceMetrics.read()` / `DeviceMetrics.has()`), а `onDestroy()` используется только самим `Bootstrap`.
 
 ## Пять стандартных boot-классов
 
@@ -89,7 +89,7 @@ Boot-классы владеют ресурсами уровня процесс�
 
 Методы: `getVendorList()`, `getVendorDeviceList(vendor)`, `getDeviceInfo(vendor, device)`, `get(device)` (возвращает класс устройства).
 
-При `process()` — `updateDeviceList()`: для каждого вендора читает `list.json` (массив или объект); ошибки (`DM_LIST_NOT_FOUND`, `DM_LIST_INCORRECT`, `DM_DEVICE_NOT_FOUND`) собираются в `vendor.errors`, группа сохраняется.
+При `onStart()` — `updateDeviceList()`: для каждого вендора читает `list.json` (массив или объект); ошибки (`DM_LIST_NOT_FOUND`, `DM_LIST_INCORRECT`, `DM_DEVICE_NOT_FOUND`) собираются в `vendor.errors`, группа сохраняется.
 
 ### `DeviceFileStorage`
 

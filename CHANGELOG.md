@@ -11,30 +11,14 @@
   - `CTR_*` → `CONT_*` (Container), кроме пяти кодов ServiceLoader → `SLDR_*`: `SLDR_CONF_EXTENDS_PROBLEM`, `SLDR_ERROR_INIT_DEVICE`, `SLDR_ERROR_INIT_CONNECTION`, `SLDR_ERROR_PREPARE_OPTIONS`, `SLDR_INCORRECT_DEVICE_ID`; `CTR_DEVICE_DUPLICATE` → `CONT_DEVICE_DUPLICATE` (владелец — Container).
 
   Старые коды как алиасы **не** введены — `ErrorManager.isCode()` и документы принимают только новые. Полная таблица — [08-Errors](docs/08-Errors.md).
-- **Запланировано к удалению в 2.0.0** (на текущий момент алиасы **ещё присутствуют** в коде, помечены `@deprecated`; single source of truth — [docs/11-API.md](docs/11-API.md)):
-  - `StandartPort` / `Port.standart()` → использовать `StandardPort` / `Port.standard()`;
-  - `Rule.require()` → использовать `Rule.required()`;
-  - lifecycle-хуки `Device`: `preProcess()` / `process()` / `processPromise()` / `stop()` / `stopPromise()` / `beforeTerminate()` → `onRegister()` / `onStart()` / `onStartAsync()` / `onStop()` / `onStopAsync()` / `onDestroy()`;
-  - lifecycle-хуки `BootClass`: `process()` / `processPromise()` / `terminate()` → `onStart()` / `onStartAsync()` / `onDestroy()`;
-  - `beforeAction()` → `onBeforeAction()`.
 
 ### Minor
 
-- **Миграция boot-классов завершена**: ядро-обвязка (в т.ч. `DeviceFileStorage`) использует только канонические `on*` имена (`process()` / `processPromise()` в boot-классах убраны); `test/unit/lifecycle-hooks.test.ts` переписан на канонические имена (back-compat-кейсы убраны); депрекейшн-заметки удалены из доков (01, 03, 04, 07). Оставшиеся `@deprecated` алиасы живут только в базовых классах `Device` / `BootClass` (для back-compat пользовательских подклассов) и удаляются в 2.0.0 — см. «Запланировано к удалению в 2.0.0».
+- **Миграция boot-классов завершена**: ядро-обвязка (в т.ч. `DeviceFileStorage`) использует только канонические `on*` имена (`process()` / `processPromise()` в boot-классах убраны); `test/unit/lifecycle-hooks.test.ts` переписан на канонические имена (back-compat-кейсы убраны); депрекейшн-заметки удалены из доков (01, 03, 04, 07).
 - Новый документ [docs/11-API.md](docs/11-API.md) — таблица публичного API (`src/index.ts`) со столбцами `name / purpose / since / deprecated` — **single source of truth** по депрекациям. Строгий smoke-тест `test/smoke.test.ts` фиксирует точный набор value-экспортов (несовпадение с таблицей — падение).
 - `docs/01-Architecture.md`: добавлены mermaid-диаграммы — последовательность запуска (sequence) и состояния устройства (state diagram).
 - JSDoc публичных классов (`Device`, `BootClass`, `Container`, `MainProcess`, `ServiceLoader`, `Bootstrap`) приведён к единому шаблону: описание / `@returns` / `@example`.
 - `MainProcess`: добавлен class-level JSDoc и JSDoc у `run()` / `check()` (у `stop()` уже был).
-
-## 2026.09.28
-
-### Minor
-
-- Новые канонические имена lifecycle-хуков `Device`: `onRegister()` (устар. `preProcess()`), `onStart()` (устар. `process()`), `onStartAsync()` (устар. `processPromise()`), `onStop()` (устар. `stop()`), `onStopAsync()` (устар. `stopPromise()`), `onDestroy()` (устар. `beforeTerminate()`); и `BootClass`: `onStart()` (устар. `process()`), `onStartAsync()` (устар. `processPromise()`), `onDestroy()` (устар. `terminate()`).
-- Старые имена помечены `@deprecated` и в переходный период **по-прежнему вызываются ядром** (рядом с новыми) — переопределять можно любой из пары **без** `super`; в следующей мажорной версии вызовы старых будут удалены. Базовые реализации всех хуков — пустые no-op, поэтому переход — чистое переименование метода.
-- Ядро и все boot-классы (`DeviceFileStorage`, `DeviceManager`, `DeviceMetrics`, `StructureStorage`, `BootDatabase` и адаптеры) в переходный период вызывают **и новые, и старые** хуки; `MainProcess`/`ServiceLoader` синхронизированы с новой схемой.
-- Документация: 01-Architecture (каноническая последовательность + API контейнера), 03-Device (жизненный цикл, таблица методов, заметка о депрекейшн), 07-Bootstrap (API `BootClass`, лоадер). Дополнительно синхронизированы имена событий в 02-AppStructure, 04-Ports-Actions-Metrics, 06-Container, 10-Standalone: устаревшие `serviceLoaded` / `beforeProcess` / `beforeProcessPromise` / `device.register.metric` / `beforeLoaded`·`loaded` / `beforeStop`·`afterStop` заменены на актуальные `service.loaded` / `service.start.begin` / `service.startAsync.begin` / `device.metric.register` / `service.ready.begin`·`service.ready` / `service.stop.begin`·`service.stop.end`.
-- Тесты: `test/unit/lifecycle-hooks.test.ts` — новые имена вызываются на своей фазе; старые имена продолжают работать; при переопределении обоих — оба выполняются (порядок: новый → старый), `super` не требуется. Существующие тесты и фикстуры (`device-stop`, `boot-database`, `hot-devices`, `service`, `boot-database-sqlite`, `device-shares`; фикстуры `Tracker`, `StopFail`, `DbReader`, `Lamp`, `SharesField`, `Counter`, `fixtures/boot/index.js`) переписаны на новые имена хуков.
 
 ## 2026.09.27
 
@@ -146,7 +130,6 @@
 - `MainProcess.run()` теперь полностью идемпотентен: `Bootstrap.loadBootList()` защищён повторными вызовами — при повторном `run()` boot-классы не пересоздаются и их обработчики событий не подписываются повторно.
 - Нормализована обработка ошибок в `DeviceFileStorage`: ошибки чтения/записи хранения идут через `BootClass.error()` (событие `system.error`) — как в `StructureStorage`.
 - Добавлен тест-страж синхронности кодов ошибок `src/` ↔ `docs/08-Errors.md` (в обе стороны): `test/unit/error-docs.test.ts`.
-- Миграция всех внутренних вызовов с депрекейтед `Rule.require()` на `Rule.required()` (код boot-классов, jsdoc-примеры, тесты, фикстуры, доки).
 
 ## 2026.09.11
 
