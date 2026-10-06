@@ -15,6 +15,7 @@ import {
     ErrorManager,
     DeviceManager,
     DeviceMetrics,
+    Device,
     IMainProcessOptions,
     IServiceStructure,
 } from 'vrack2-core'
@@ -128,6 +129,21 @@ describe('Bootstrap & boot classes', () => {
         const err = await runOrError(mp)
         expect(err).toBeDefined()
         expect(ErrorManager.isCode(err, 'BTSP_INSTANCE_OF_INCORRECT')).toBe(true)
+    })
+
+    it('loads a boot class from a local file path (relative) — a Device as boot class', async () => {
+        // The `path` field may be a **local file** (not just a package path),
+        // and the resolved class may be a **Device** (not only a BootClass).
+        const mp = makeMP(EMPTY_SERVICE, {
+            MyLamp: { path: 'test/fixtures/devices/testkit/Lamp.js', options: {} },
+        })
+        await mp.run()
+
+        const Lamp = (await import('../fixtures/devices/testkit/Lamp.js')).default
+        const bc = mp.Bootstrap.getBootClass('MyLamp', Lamp)
+        expect(bc).toBeInstanceOf(Device)
+        expect(bc.type).toBe('Lamp')
+        expect(bc.options.maxBrightness).toBe(200)   // Lamp's default option
     })
 
     it('getBootClass(): returns the instance, throws on bad id / wrong class', async () => {

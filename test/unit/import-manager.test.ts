@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { ImportManager, Container, ErrorManager } from 'vrack2-core'
+import { ImportManager, Container, ErrorManager, Device } from 'vrack2-core'
 
 describe('ImportManager: vrack-style import strings', () => {
     it('camelize() converts dotted names to camelCase', () => {
@@ -88,5 +88,47 @@ describe('ImportManager: json and files', () => {
 
     it('systemPath() returns the process working directory', () => {
         expect(ImportManager.systemPath()).toBe(process.cwd())
+    })
+})
+
+describe('ImportManager: universal import (file or package)', () => {
+    it('importClassUniversal() resolves a package path (same as importClass)', async () => {
+        const cls = await ImportManager.importClassUniversal('vrack2-core.Container')
+        expect(cls).toBe(Container)
+    })
+
+    it('importClassUniversal() resolves a local file by relative path', async () => {
+        const cls = await ImportManager.importClassUniversal('test/fixtures/devices/testkit/Lamp.js')
+        expect(typeof cls).toBe('function')
+        expect(cls.prototype).toBeInstanceOf(Device)
+    })
+
+    it('importClassUniversal() resolves a local file by absolute path', async () => {
+        const abs = path.resolve(process.cwd(), 'test/fixtures/devices/testkit/Lamp.js')
+        const cls = await ImportManager.importClassUniversal(abs)
+        expect(typeof cls).toBe('function')
+        expect(cls.prototype).toBeInstanceOf(Device)
+    })
+
+    it('importClassUniversal() throws IM_FILE_NOT_FOUND for a missing local file', async () => {
+        let err: any
+        try {
+            await ImportManager.importClassUniversal('no-such-file-xyz.js')
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeDefined()
+        expect(ErrorManager.isCode(err, 'IM_FILE_NOT_FOUND')).toBe(true)
+    })
+
+    it('importClassUniversal() throws IM_CLASS_VENDOR_ERROR for an unknown package vendor', async () => {
+        let err: any
+        try {
+            await ImportManager.importClassUniversal('no-such-vendor-xyz.Foo')
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeDefined()
+        expect(ErrorManager.isCode(err, 'IM_CLASS_VENDOR_ERROR')).toBe(true)
     })
 })

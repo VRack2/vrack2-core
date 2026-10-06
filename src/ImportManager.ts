@@ -12,6 +12,11 @@ ErrorManager.registerMany('ImportManager', [
         rules: { filePath: Rule.string().description('Path to file') }
     },
     {
+        short: 'IM_IMPORT_FAILED',
+        description: 'Cannot import the referenced class (file path or package path)',
+        rules: { ref: Rule.string().description('Reference string (file path or package path)') }
+    },
+    {
         short: 'IM_JSON_INCORRECT',
         description: 'Import file json incorrect',
         rules: {
@@ -79,6 +84,70 @@ export default class ImportManager {
             if (ret === undefined) throw ErrorManager.make('IM_CLASS_ACT_ERROR', { path: cs })
         }
         return ret
+    }
+
+    /**
+     * Universal class resolution.
+     *
+     * Automatically detects what `ref` is and returns the exported class:
+     *
+     * 1. a **local file** (absolute path, or a path relative to the system dir,
+     *    or any path containing a `/` / known file extension) → the file is
+     *    imported and its `default` export is returned;
+     * 2. a **package path** `vendor.Class` (dotted, no path separator) →
+     *    resolved with `importClass()` (named-export walk);
+     * 3. a **bare package** → imported and its `default` export is returned.
+     *
+     * This lets the same string field name a boot class (or device) either by
+     * a local file (`./boot/MyRegistry.js`) or by package
+     * (`vrack2-core.DeviceManager`) — the correct one is picked automatically.
+     *
+     * @example ImportManager.importClassUniversal('./boot/MyRegistry.js')
+     * @example ImportManager.importClassUniversal('vrack2-core.DeviceManager')
+     *
+     * @param ref Local file path (absolute / relative) or VRack2-style package path.
+     */
+    static async importClassUniversal(ref: string) {
+        // 1) Local file (absolute, or relative to the system dir).
+        if (ImportManager.looksLikeFilePath(ref)) {
+            return ImportManager.importFileClass(ref)
+        }
+        // 2) Package path `vendor.Class` (named-export walk).
+        if (ref.includes('.')) {
+            return ImportManager.importClass(ref)
+        }
+        // 3) Bare package (default export).
+        const mod = await ImportManager.tryImport(ref)
+        if (mod) return mod.default ?? mod
+        throw ErrorManager.make('IM_IMPORT_FAILED', { ref })
+    }
+
+    /**
+     * Import a local file (absolute, or relative to the system dir) and return
+     * its class — the `default` export (CJS `module.exports` lands there too).
+     *
+     * @throws CoreError[IM_FILE_NOT_FOUND] if the file cannot be imported.
+     */
+    protected static async importFileClass(ref: string) {
+        const abs = path.isAbsolute(ref) ? ref : path.resolve(ImportManager.systemPath(), ref)
+        const mod = await ImportManager.tryImport(abs)
+        if (!mod) throw ErrorManager.make('IM_FILE_NOT_FOUND', { filePath: abs })
+        return mod.default ?? mod
+    }
+
+    /**
+     * Heuristic: is `ref` a local file path (as opposed to a `vendor.Class`
+     * package path)?
+     *
+     * True for absolute paths, `./` / `../` relatives, anything containing a
+     * path separator (except `@scope/...` packages), or a known module
+     * extension (`.js` / `.mjs` / `.cjs` / `.ts` / `.json` / `.node`).
+     */
+    protected static looksLikeFilePath(ref: string) {
+        if (ref.startsWith('@')) return false
+        if (path.isAbsolute(ref) || ref.startsWith('./') || ref.startsWith('../')) return true
+        if (ref.includes('/')) return true
+        return /\.(m?c?js|json|node|ts)$/i.test(ref)
     }
 
     /**

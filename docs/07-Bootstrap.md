@@ -11,6 +11,8 @@ Boot-класс — служебный модуль, работающий **вм
 
 В отличие от устройства boot-класс не является частью сервиса: у него нет портов, соединений и структуры. Он живёт вне контейнера, поэтому его можно заменить своей реализацией, не трогая устройства. Пример: `DeviceManager` — нужен для запуска сервиса, но заменяемый и настраиваемый.
 
+> **Примечание:** в списке boot-классов разрешён и `Device` (устройство) — его опции валидируются лоадером тем же валидатором, что и у `BootClass`. А ссылка (`path`) указывает не только на пакет, но и на **файл** — см. ниже, `Bootstrap` лоадер.
+
 Каждый boot-класс создаётся один раз на контейнер (внутри `Bootstrap`) и общается с контейнером через события (`on` / `emit`).
 
 ## `BootClass` API
@@ -47,11 +49,22 @@ await bootstrap.destroyAll()   // graceful-остановка ВСЕХ boot-кл
 
 `loadBootList(Container)`:
 
+`path` в записи — **универсальная ссылка** на класс: это либо VRack-путь пакета
+(`'vrack2-core.DeviceManager'`), либо **путь к файлу** (абсолютный или относительный
+от рабочей директории, `'./boot/MyRegistry.js'`). Тип определяется автоматически
+(`ImportManager.importClassUniversal()`). Разрешённый класс может наследовать и
+`BootClass`, и `Device` (устройство тоже допустимо в роли boot-класса — его опции
+валидируются в лоадере тем же валидатором, что и у `BootClass`).
+
 ```
 для каждого класса из config:
-  ExClass = await ImportManager.importClass(path)
-  loaded[id] = new ExClass(id, importClassName(path), Container, options)
-  if (!(loaded[id] instanceof BootClass)) throw BTSP_INSTANCE_OF_INCORRECT
+  ExClass = await ImportManager.importClassUniversal(path)
+  inst = new ExClass(id, ExClass.name, Container, options)
+  if (!(inst instanceof BootClass || inst instanceof Device)) throw BTSP_INSTANCE_OF_INCORRECT
+  if (inst instanceof Device)
+      inst.options = options
+      Validator.validate(inst.checkOptions(), inst.options)   // дефолты + required
+  loaded[id] = inst
 
 для каждого загруженного: onStart()
 для каждого загруженного: await onStartAsync()

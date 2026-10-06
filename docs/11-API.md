@@ -48,7 +48,7 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `DeviceMetrics` | Boot-класс: хранилище метрик через `vrack-db`. | 2.0.0 | — |
 | `DevicePort` | Рантайм-класс порта (push, соединения, одноразовые слушатели). | 2.0.0 | — |
 | `ErrorManager` | Синглтон-реестр кодовых ошибок (`register`/`registerMany`/`make`/`isCode`). | 2.0.0 | — |
-| `ImportManager` | Утилита: импорт классов по `vendor.Class`, `camelize` и др. | 2.0.0 | — |
+| `ImportManager` | Утилита: импорт классов по `vendor.Class`, `camelize`, и универсальный `importClassUniversal()` (файл по пути **или** пакет, детекция автоматически), и др. | 2.0.0 | — |
 | `MainProcess` | Точка входа; оркеструет Bootstrap → ServiceLoader → Container. | 2.0.0 | — |
 | `Metric` | Базовый класс метрик устройства. | 2.0.0 | — |
 | `Port` | Статический фабричный класс портов (`Port.standard()`, `Port.return()`). | 2.0.0 | — |

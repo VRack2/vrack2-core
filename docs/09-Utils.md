@@ -21,6 +21,7 @@
 | Метод | Значение |
 |---|---|
 | `importClass('vendor.Class')` | Динамический импорт класса по пути `vendor.Class`. Ошибки: `IM_CLASS_PATH_ERROR`, `IM_CLASS_VENDOR_ERROR`, `IM_CLASS_ACT_ERROR`. |
+| `importClassUniversal(ref)` | **Универсальный** импорт класса: автоматически определяет тип `ref` и возвращает класс. (1) путь к **файлу** (абсолютный, `./`/`../`, с `/` или расширением `.js`/`.ts`/`.mjs`/`.cjs`/`.json`/`.node`) → импорт файла, возврат `default`-экспорта; (2) `vendor.Class` (пакет по точкам) → как `importClass`; (3) голый пакет → импорт + `default`-экспорт. Используется `Bootstrap.loadBootList()`. Ошибки: `IM_FILE_NOT_FOUND`, `IM_IMPORT_FAILED` (а для пакета — коды `importClass`). |
 | `importPath(raPath)` | Импорт по абсолютному/относительному пути. |
 | `importJSON(filePath)` | Чтение и парсинг JSON-файла; `IM_FILE_NOT_FOUND`, `IM_JSON_INCORRECT`. |
 | `importClassName('myvendor.Counter')` | Имя класса: `Counter`. |

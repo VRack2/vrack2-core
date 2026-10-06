@@ -8,6 +8,8 @@ import BootClass from './boot/BootClass';
 import Container from './Container';
 import ImportManager from './ImportManager';
 import ErrorManager from './errors/ErrorManager';
+import Device from './service/Device';
+import Validator from './validator/Validator';
 
 
 /**
@@ -19,7 +21,17 @@ import ErrorManager from './errors/ErrorManager';
  * not match any lower-layer id is a configuration error.
  */
 export interface IBootstrapEntry {
-    /** VRack-style bootclass path. Optional — options-only override */
+    /**
+     * Boot-class reference. Optional — options-only override.
+     *
+     * May be **either**:
+     * - a VRack-style **package path** — `'vrack2-core.DeviceManager'`, or
+     * - a **local file path** (absolute, or relative to the working dir) —
+     *   `'./boot/MyRegistry.js'`.
+     *
+     * The type is detected automatically (`ImportManager.importClassUniversal`).
+     * The resolved class may extend `BootClass` **or** `Device`.
+     */
     path?: string,
     /** Options for this bootclass */
     options: { [key: string]: any },
@@ -29,9 +41,13 @@ export interface IBootstrapEntry {
  * Defines a list of bootstrap classes to load
  *
  * {
- *   'ClassID': { 
- *      path: 'importclass.path', 
- *      options: {} 
+ *   'ClassID': {
+ *      path: 'vrack2-core.DeviceManager',  // package path ...
+ *      options: {}
+ *    },
+ *   'MyRegistry': {
+ *      path: './boot/MyRegistry.js',       // ... or a local file
+ *      options: {}
  *    }
  * }
  *
@@ -151,7 +167,7 @@ export default class Bootstrap {
      * { UniqueID: ClassInstance }
      * ```
     */
-    protected loaded: { [key: string]: BootClass } = {}
+    protected loaded: { [key: string]: BootClass | Device } = {}
 
     /**
      * List of downloadable classes and their settings
@@ -202,11 +218,19 @@ export default class Bootstrap {
             if (conf == null || typeof conf.path !== 'string') {
                 throw ErrorManager.make('BTSP_BAD_BOOTLIST', { id: cn, entry: conf })
             }
-            const ExClass = await ImportManager.importClass(conf.path)
-            this.loaded[cn] = new ExClass(cn, ImportManager.importClassName(conf.path), Container, conf.options) 
-        if (!(this.loaded[cn] instanceof BootClass)) {
-            throw ErrorManager.make('BTSP_INSTANCE_OF_INCORRECT', { id: cn })
-        }
+            const ExClass = await ImportManager.importClassUniversal(conf.path)
+            const inst = new ExClass(cn, ExClass.name, Container, conf.options)
+            if (!(inst instanceof BootClass || inst instanceof Device)) {
+                throw ErrorManager.make('BTSP_INSTANCE_OF_INCORRECT', { id: cn })
+            }
+            // A Device used as a boot class does not validate/fill its options in
+            // the constructor (the Container does that for in-container devices),
+            // so give it the same option handling as a BootClass.
+            if (inst instanceof Device) {
+                inst.options = conf.options
+                Validator.validate(inst.checkOptions(), inst.options)
+            }
+            this.loaded[cn] = inst
         }
         for (const bc in this.loaded) {
             this.loaded[bc].onStart()

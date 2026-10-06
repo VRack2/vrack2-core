@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026.10.06
+
+### Minor
+
+- **Универсальный импорт классов**: новый публичный метод `ImportManager.importClassUniversal(ref)` — автоматически определяет тип ссылки и возвращает класс. (1) путь к **файлу** (абсолютный, `./`/`../`, с `/` или расширением `.js`/`.mjs`/`.cjs`/`.ts`/`.json`/`.node`) → импорт файла + `default`-экспорт; (2) `vendor.Class` (пакет по точкам) → как `importClass`; (3) голый пакет → импорт + `default`. Экспортируется из `vrack2-core` (метод существующего экспорта `ImportManager` — набор value-экспортов не меняется, smoke-тест проходит).
+- **Boot-классы по файлу и устройство в роли boot-класса**: поле `path` в `IBootstrapEntry` теперь принимает **и пакет, и путь к файлу** (`Bootstrap.loadBootList()` использует `importClassUniversal`). Разрешённый класс может наследовать не только `BootClass`, но и `Device`; для `Device` лоадер сам валидирует опции и заполняет дефолты (`Validator.validate`), чего раньше не было. Побочный эффект: `type` теперь берётся из имени класса (`ExClass.name`), а не из последнего сегмента пути.
+- Новый код ошибки `IM_IMPORT_FAILED` (модуль `ImportManager`): не удалось импортировать класс по файлу или по пакету — таблица в [08-Errors](docs/08-Errors.md).
+- Документация: 07-Bootstrap (универсальная `path`, Device допустим, обновлён псевдокод `loadBootList`), 08-Errors (`IM_IMPORT_FAILED`), 09-Utils (метод `importClassUniversal`), 11-API (описание `ImportManager`).
+
+### Tests
+
+- `test/unit/import-manager.test.ts`: +5 тестов `importClassUniversal` — пакетный путь (равен `importClass`), файл по относительному/абсолютному пути, отсутствующий файл (`IM_FILE_NOT_FOUND`), неизвестный вендор (`IM_CLASS_VENDOR_ERROR`).
+- `test/integration/service.test.ts`: +1 — «boot-класс из локального файла (относительный путь) — Device в роли boot-класса»: `Lamp` загружается по `test/fixtures/devices/testkit/Lamp.js`, `instanceof Device`, дефолтная опция `maxBrightness: 200`.
+
 ## 2026.09.29
 
 ### Major
