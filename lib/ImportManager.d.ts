@@ -16,6 +16,44 @@ export default class ImportManager {
     */
     static importClass(cs: string): Promise<any>;
     /**
+     * Universal class resolution.
+     *
+     * Automatically detects what `ref` is and returns the exported class:
+     *
+     * 1. a **local file** (absolute path, or a path relative to the system dir,
+     *    or any path containing a `/` / known file extension) → the file is
+     *    imported and its `default` export is returned;
+     * 2. a **package path** `vendor.Class` (dotted, no path separator) →
+     *    resolved with `importClass()` (named-export walk);
+     * 3. a **bare package** → imported and its `default` export is returned.
+     *
+     * This lets the same string field name a boot class (or device) either by
+     * a local file (`./boot/MyRegistry.js`) or by package
+     * (`vrack2-core.DeviceManager`) — the correct one is picked automatically.
+     *
+     * @example ImportManager.importClassUniversal('./boot/MyRegistry.js')
+     * @example ImportManager.importClassUniversal('vrack2-core.DeviceManager')
+     *
+     * @param ref Local file path (absolute / relative) or VRack2-style package path.
+     */
+    static importClassUniversal(ref: string): Promise<any>;
+    /**
+     * Import a local file (absolute, or relative to the system dir) and return
+     * its class — the `default` export (CJS `module.exports` lands there too).
+     *
+     * @throws CoreError[IM_FILE_NOT_FOUND] if the file cannot be imported.
+     */
+    protected static importFileClass(ref: string): Promise<any>;
+    /**
+     * Heuristic: is `ref` a local file path (as opposed to a `vendor.Class`
+     * package path)?
+     *
+     * True for absolute paths, `./` / `../` relatives, anything containing a
+     * path separator (except `@scope/...` packages), or a known module
+     * extension (`.js` / `.mjs` / `.cjs` / `.ts` / `.json` / `.node`).
+     */
+    protected static looksLikeFilePath(ref: string): boolean;
+    /**
      * Attempts to open a file and use its contents as json
      *
      * Returns the result of parsing json

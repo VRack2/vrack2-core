@@ -1,5 +1,6 @@
 import BootClass from './boot/BootClass';
 import Container from './Container';
+import Device from './service/Device';
 /**
  * One boot-class entry in a boot list config.
  *
@@ -9,7 +10,17 @@ import Container from './Container';
  * not match any lower-layer id is a configuration error.
  */
 export interface IBootstrapEntry {
-    /** VRack-style bootclass path. Optional — options-only override */
+    /**
+     * Boot-class reference. Optional — options-only override.
+     *
+     * May be **either**:
+     * - a VRack-style **package path** — `'vrack2-core.DeviceManager'`, or
+     * - a **local file path** (absolute, or relative to the working dir) —
+     *   `'./boot/MyRegistry.js'`.
+     *
+     * The type is detected automatically (`ImportManager.importClassUniversal`).
+     * The resolved class may extend `BootClass` **or** `Device`.
+     */
     path?: string;
     /** Options for this bootclass */
     options: {
@@ -21,7 +32,11 @@ export interface IBootstrapEntry {
  *
  * {
  *   'ClassID': {
- *      path: 'importclass.path',
+ *      path: 'vrack2-core.DeviceManager',  // package path ...
+ *      options: {}
+ *    },
+ *   'MyRegistry': {
+ *      path: './boot/MyRegistry.js',       // ... or a local file
  *      options: {}
  *    }
  * }
@@ -66,7 +81,7 @@ export default class Bootstrap {
      * ```
     */
     protected loaded: {
-        [key: string]: BootClass;
+        [key: string]: BootClass | Device;
     };
     /**
      * List of downloadable classes and their settings
