@@ -19,7 +19,7 @@ export default class Counter extends Device {
 
     metrics() {
         return {
-            count: Metric.inS().retentions('1s:6h').description('Current counter value'),
+            count: Metric.inS().retentions('1s:6h').modify('max').description('Current counter value'),
         }
     }
 
@@ -58,7 +58,7 @@ export default class Counter extends Device {
         this.shares.count = this.count
         this.render()
         this.save()
-        this.metric('count', this.count, 'max')
+        this.metric('count', this.count)
         this.ports.output.result.push(this.count)
     }
 

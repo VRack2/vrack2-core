@@ -30,7 +30,8 @@ export { default as BootClass } from './boot/BootClass'
 export { default as DeviceFileStorage } from './boot/DeviceFileStorage'
 export { default as DeviceManager } from './boot/DeviceManager';
 export { default as StructureStorage } from './boot/StructureStorage';
-export { default as DeviceMetrics } from './boot/DeviceMetrics';
+export { default as JournalDbMetrics } from './boot/JournalDbMetrics';
+export { default as VrackDbMetrics } from './boot/VrackDbMetrics';
 export { default as BootDatabase, IExecResult } from './boot/BootDatabase'
 export { default as BootDatabaseSqlite } from './boot/BootDatabaseSqlite'
 export { default as BootDatabaseMemory } from './boot/BootDatabaseMemory'

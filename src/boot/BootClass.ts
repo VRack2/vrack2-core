@@ -23,7 +23,7 @@ import Validator from '../validator/Validator';
  *      DeviceManager: { path: 'vrack2-core.DeviceManager', options: { storageDir: './storage' }},
  *      DeviceStorage: { path: 'vrack2-core.DeviceFileStorage', options: {} },
  *      StructureStorage: { path: 'vrack2-core.StructureStorage', options: {} },
- *      DeviceMetrics: { path: 'vrack2-core.DeviceMetrics', options: {} }
+  *      DeviceMetrics: { path: 'vrack2-core.JournalDbMetrics', options: {} }
  * ```
  * Where:
  * ```

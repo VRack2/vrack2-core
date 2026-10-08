@@ -42,8 +42,15 @@ export default class BasicMetric {
     */
     additional(add: any): this;
     /**
+     * Sets the aggregation function applied when the metric is rolled up
+     * (one of `min | max | sum | avg | count`). Default is `avg`.
+     *
+     * @param modify `min` | `max` | `sum` | `avg` | `count`
+     */
+    modify(modify: string): this;
+    /**
      * Returns the internal metric settings object. Used inside Container
      * @private
-    */
+     */
     export(): IMetricSettings;
 }

@@ -41,11 +41,11 @@ describe('vrack2-core smoke', () => {
             'Action', 'BasicAction', 'BasicMetric', 'BasicPort', 'BasicType',
             'BootClass', 'BootDatabase', 'BootDatabaseMemory', 'BootDatabaseSqlite',
             'Bootstrap', 'Container', 'CoreError', 'Device', 'DeviceConnect',
-            'DeviceFileStorage', 'DeviceManager', 'DeviceMetrics', 'DevicePort',
-            'ErrorManager', 'ImportManager', 'MainProcess',
+            'DeviceFileStorage', 'DeviceManager', 'DevicePort',
+            'ErrorManager', 'ImportManager', 'JournalDbMetrics', 'MainProcess',
             'Metric', 'Port', 'ReactiveRef', 'ReturnPort', 'Rule', 'ServiceLoader',
             'StandardPort', 'StorageTypes', 'StructureStorage', 'SubruleNames',
-            'UniversalWorker', 'Utility', 'Validator', 'mergeBootList',
+            'UniversalWorker', 'Utility', 'Validator', 'VrackDbMetrics', 'mergeBootList',
         ]
         // Type-only re-exports (interfaces) are compile-time: in the ESM/vite
         // runtime they surface as `undefined`-valued keys, in the CommonJS build

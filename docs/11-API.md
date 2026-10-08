@@ -31,7 +31,7 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 |---|---|---|---|
 | `Action` | Базовый класс action устройства (декларативное описание). | 2.0.0 | — |
 | `BasicAction` | Стандартная реализация `Action` (`.name()`, `.requirements()`, `.returns()`, `.description()`). | 2.0.0 | — |
-| `BasicMetric` | Стандартная реализация `Metric` (`.name()`, `.in()`, `.description()`). | 2.0.0 | — |
+| `BasicMetric` | Стандартная реализация `Metric` (`.name()`, `.in()`, `.retentions()`, `.modify()`, `.description()`). | 2.0.0 | — |
 | `BasicPort` | Базовый класс портов устройства. | 2.0.0 | — |
 | `BasicType` | Базовый валидационный тип — блок `Rule` (`.required()`, `.min()`, …). | 2.0.0 | — |
 | `BootClass` | Базовый класс boot-классов (lifecycle `onStart()` / `onStartAsync()` / `onDestroy()`). | 2.0.0 | — |
@@ -45,10 +45,10 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `DeviceConnect` | Внутренний класс-связка выходного и входного порта. | 2.0.0 | — |
 | `DeviceFileStorage` | Boot-класс (обязателен): персистентность состояния/метрик устройства на диск. | 2.0.0 | — |
 | `DeviceManager` | Boot-класс (обязателен): реестр устройств, резолв `vendor.Class`. | 2.0.0 | — |
-| `DeviceMetrics` | Boot-класс: хранилище метрик через `vrack-db`. | 2.0.0 | — |
 | `DevicePort` | Рантайм-класс порта (push, соединения, одноразовые слушатели). | 2.0.0 | — |
 | `ErrorManager` | Синглтон-реестр кодовых ошибок (`register`/`registerMany`/`make`/`isCode`). | 2.0.0 | — |
 | `ImportManager` | Утилита: импорт классов по `vendor.Class`, `camelize`, и универсальный `importClassUniversal()` (файл по пути **или** пакет, детекция автоматически), и др. | 2.0.0 | — |
+| `JournalDbMetrics` | Boot-класс: хранилище метрик через `vrack2-journal-db` — **по умолчанию** (id `DeviceMetrics`). | 2026.10.07 | — |
 | `MainProcess` | Точка входа; оркеструет Bootstrap → ServiceLoader → Container. | 2.0.0 | — |
 | `Metric` | Базовый класс метрик устройства. | 2.0.0 | — |
 | `Port` | Статический фабричный класс портов (`Port.standard()`, `Port.return()`). | 2.0.0 | — |
@@ -63,6 +63,7 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `UniversalWorker` | Утилита: абстракция воркера (thread/process). | 2.0.0 | — |
 | `Utility` | Утилита: `isDeviceName()` (проверка id устройства), `prettyFormat()` (человекочитаемый формат значений). | 2.0.0 | — |
 | `Validator` | Запуск валидации `Rule` по данным (`Validator.validate`). | 2.0.0 | — |
+| `VrackDbMetrics` | Boot-класс: хранилище метрик через `vrack-db` (обратная совместимость; id `DeviceMetrics`). | 2026.10.07 | — |
 | `mergeBootList` | Чистая функция слоёвого merge конфигов boot-классов. | 2026.09.21 | — |
 
 ## Связанные документы

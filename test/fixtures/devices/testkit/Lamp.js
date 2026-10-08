@@ -29,7 +29,7 @@ export default class Lamp extends Device {
 
     metrics() {
         return {
-            brightness: Metric.inS().retentions('1s:6h').description('Current brightness'),
+            brightness: Metric.inS().retentions('1s:6h').modify('avg').description('Current brightness'),
         }
     }
 
@@ -43,7 +43,7 @@ export default class Lamp extends Device {
         this.state.brightness = on ? this.options.maxBrightness : 0
         this.shares = { on: this.state.on, brightness: this.state.brightness }
         this.render()
-        this.metric('brightness', this.state.brightness, 'last')
+        this.metric('brightness', this.state.brightness)
         this.ports.output.status.push(this.shares)
     }
 }

@@ -110,7 +110,7 @@ async function run() {
         bootstrap: {
             DeviceManager:     { path: 'vrack2-core.DeviceManager',    options: { dir: './devices' } },
             DeviceFileStorage: { path: 'vrack2-core.DeviceFileStorage',options: { storageDir: './storage' } },
-            DeviceMetrics:     { path: 'vrack2-core.DeviceMetrics',    options: {} },
+            DeviceMetrics:     { path: 'vrack2-core.JournalDbMetrics', options: {} },
             StructureStorage:  { path: 'vrack2-core.StructureStorage', options: { structureDir: './structure' } },
         },
     })

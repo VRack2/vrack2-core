@@ -116,7 +116,10 @@ actionSetValue(data) {
 
 ## Метрики
 
-Метрика — числовой временной ряд устройства, хранится в `vrack-db` (boot-класс `DeviceMetrics`).
+Метрика — числовой временной ряд устройства. По умолчанию хранится в `vrack2-journal-db`
+(boot-класс `JournalDbMetrics`); как опциональная возможность сохранена старая реализация
+на `vrack-db` (boot-класс `VrackDbMetrics`) — переключение делается в `service.json`
+(ключ `bootstrap.DeviceMetrics`, см. [07-Bootstrap](07-Bootstrap.md)).
 
 ### Объявление
 
@@ -125,6 +128,7 @@ metrics() {
     return {
         count: Metric.inS()
             .retentions('1s:6h')
+            .modify('max')          // агрегация при чтении/агрегации
             .description('Current counter value'),
     }
 }
@@ -132,19 +136,22 @@ metrics() {
 
 | Метод | Значение |
 |---|---|
-| `Metric.inS()` / `inMs()` / `inUs()` | Минимальная единица времени: секунда / миллисекунда / микросекунда. |
+| `Metric.inS()` / `inMs()` | Минимальная единица времени: секунда / миллисекунда. |
 | `retentions('5s:10m, 1m:2h, ...')` | Политика хранения: с какой точностью и как долго хранятся данные. Формат Graphite-стиля; по умолчанию `5s:10m, 1m:2h, 15m:1d, 1h:1w, 6h:1mon, 1d:1y`. |
 | `timeStorage(StorageTypes.X)` | Тип хранения времени (по умолчанию `Uint64`). |
 | `valueStorage(StorageTypes.X)` | Тип хранения значения (по умолчанию `Float`). |
+| `modify('min'\|'max'\|'sum'\|'avg'\|'count')` | Агрегационная функция метрики (по умолчанию `avg`). Определяется **в объявлении** метрики, а не при каждой записи. |
 | `description(text)` | Описание. |
 | `additional(obj)` | Произвольные дополнительные данные. |
 
 ### Как работает
 
-- При `registerDevice()` каждая метрика регистрируется: событие `device.metric.register` → `DeviceMetrics` создаёт её в `vrack-db` (путь — `device.metricname`, нижний регистр).
-- Запись: `device.metric(path, value, modify)` → событие `device.metric` → `DB.write`. `modify`: `last` (по умолчанию), `first`, `max`, `min`, `avg`, `sum`. Запись незарегистрированной метрики игнорируется.
-- Чтение: `DeviceMetrics.read(device, name, period, precision, func?)` — `period` вида `'now-6h:now'`, `precision` — `'15m'` или количество точек.
-- Проверка существования: `DeviceMetrics.has(device, name)`.
+- При `registerDevice()` каждая метрика регистрируется: событие `device.metric.register` → boot-класс метрик создаёт её в базе (путь — `device.metricname`, нижний регистр).
+- Запись: `device.metric(path, value)` → событие `device.metric` → запись в базу. Агрегация (`modify`) задаётся в объявлении метрики, а не при записи. Запись незарегистрированной метрики игнорируется.
+- Чтение: `JournalDbMetrics.read(device, name, period)` — `period` вида `'now-6h:now'`, возвращает `{ relevant, start, end, rows }` (`rows` — `{ ts, value }`).
+- Агрегация: `JournalDbMetrics.aggregate(device, name, period)` — значение по функции `modify` метрики; `JournalDbMetrics.percentile(device, name, period, p)`.
+- Проверка существования: `JournalDbMetrics.has(device, name)`.
+- Старая реализация `VrackDbMetrics` (на `vrack-db`) сохраняет прежний API: `read(device, name, period, precision, func?)` и `modify` `last | first | max | min | avg | sum`.
 
 ## Связанные документы
 

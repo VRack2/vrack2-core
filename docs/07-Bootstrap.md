@@ -43,7 +43,7 @@ interface IBootListConfig {
 
 new Bootstrap(config)
 await bootstrap.loadBootList(Container)
-bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
 await bootstrap.destroyAll()   // graceful-остановка ВСЕХ boot-классов
 ```
 
@@ -85,11 +85,11 @@ Boot-классы владеют ресурсами уровня процесс�
 - Вызывается один раз на процесс; повторный вызов — no-op (лatch, симметрия `loadAttempted`-флага `loadBootList()`).
 - Порядок — **обратный** порядку загрузки (симметрия `Container.stopAll()`): сначала высвобождаются поздние boot-классы, общие ресурсы (например, БД) нижних классов живут, пока зависящие от них завершаются.
 - Сбой `onDestroy()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
-- `onDestroy()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `DeviceMetrics.read()` / `DeviceMetrics.has()`), а `onDestroy()` используется только самим `Bootstrap`.
+- `onDestroy()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `JournalDbMetrics.read()` / `JournalDbMetrics.has()`), а `onDestroy()` используется только самим `Bootstrap`.
 
 ## Пять стандартных boot-классов
 
-> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные четыре — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик в `vrack-db`, без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`). Каждый можно заменить своей реализацией.
+> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные четыре — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик (по умолчанию в `vrack2-journal-db`), без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`). Каждый можно заменить своей реализацией.
 
 ### `DeviceManager`
 
@@ -122,14 +122,20 @@ Boot-классы владеют ресурсами уровня процесс�
 
 ### `DeviceMetrics`
 
-Хранит метрики устройств в базе `vrack-db`.
+Хранит метрики устройств в базе. Две реализации — переключаются в `service.json` (ключ `bootstrap.DeviceMetrics`):
+
+| Класс | Бэкенд | Когда использовать |
+|---|---|---|
+| `JournalDbMetrics` | `vrack2-journal-db` | **по умолчанию**; новые сервисы |
+| `VrackDbMetrics` | `vrack-db` | обратная совместимость со старыми сервисами |
 
 События:
 
-- `device.metric.register` → `DB.metric({ name, retentions, tStorage, vStorage, CInterval })`;
-- `device.metric` → `DB.write(path, value, 0, modify)`.
+- `device.metric.register` → создаёт метрику в базе (путь — `device.metricname`, нижний регистр);
+- `device.metric` → пишет значение (агрегация `modify` берётся из объявления метрики).
 
-Путь метрики — `device.metricname` (нижний регистр). Методы: `has(device, name)`, `read(device, name, period, precision, func?)`.
+Методы `JournalDbMetrics`: `has(device, name)`, `read(device, name, period)`, `aggregate(device, name, period)`, `percentile(device, name, period, p)`.
+Методы `VrackDbMetrics` (старый API): `has(device, name)`, `read(device, name, period, precision, func?)`.
 
 ### `StructureStorage`
 
@@ -188,7 +194,7 @@ await db.ping()             // SELECT 1; бросает, если БД недо�
 const bootstrapConfig = {
     DeviceManager:    { path: 'vrack2-core.DeviceManager',    options: { systemDir: process.cwd(), dir: './devices' } },
     DeviceFileStorage:{ path: 'vrack2-core.DeviceFileStorage',options: { storageDir: './storage' } },
-    DeviceMetrics:    { path: 'vrack2-core.DeviceMetrics',    options: {} },
+    DeviceMetrics:    { path: 'vrack2-core.JournalDbMetrics', options: {} },
     StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: './structure' } },
 }
 ```

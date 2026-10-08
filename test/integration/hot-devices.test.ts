@@ -22,7 +22,7 @@ import fs from 'fs'
 import {
     MainProcess,
     ErrorManager,
-    DeviceMetrics,
+    JournalDbMetrics,
     IMainProcessOptions,
     IServiceStructure,
 } from 'vrack2-core'
@@ -47,7 +47,7 @@ function makeMP(service: IServiceStructure, extraBoot: IMainProcessOptions['boot
             DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: FIXTURES, dir: 'devices' } },
             DeviceStorage: { path: 'vrack2-core.DeviceFileStorage', options: { storageDir: path.join(tmp, 'storage') } },
             StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: path.join(tmp, 'structure') } },
-            DeviceMetrics: { path: 'vrack2-core.DeviceMetrics', options: {} },
+            DeviceMetrics: { path: 'vrack2-core.JournalDbMetrics', options: { path: path.join(tmp, 'journals') } },
             ...extraBoot,
         },
     })
@@ -367,9 +367,9 @@ describe('hot integration flow', () => {
         expect(pong).toBe('pong')
 
         // 8. Metric of the hot device is registered & written
-        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
         expect(dm.has('LampX', 'brightness')).toBe(true)
-        const res = dm.read('LampX', 'brightness', 'now-1m:now', 100, 'last')
+        const res = dm.read('LampX', 'brightness', 'now-1m:now')
         expect(res.rows.some((r: any) => r.value === 150)).toBe(true)
 
         // 9. Storage persists on save

@@ -315,14 +315,16 @@ export default class Device {
     save() { return this.makeEvent('device.save', 'storage', this.storage, []) }
 
     /**
-     * Write metric value
-     * 
+     * Write metric value (raw append at the current time).
+     *
+     * The aggregation function is set on the metric itself via
+     * `BasicMetric.modify()`; it is no longer chosen per write.
+     *
      * @param path Registered metric path
      * @param value value record
-     * @param modify Write modify 'last' | 'first' | 'max' | 'min' | 'avg' | 'sum'
-    */
-    metric(path: string, value: number, modify: 'last' | 'first' | 'max' | 'min' | 'avg' | 'sum' = 'last') {
-        return this.makeEvent('device.metric', path, { value, modify }, [])
+     */
+    metric(path: string, value: number) {
+        return this.makeEvent('device.metric', path, { value }, [])
     }
 
     /**

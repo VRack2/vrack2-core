@@ -23,6 +23,12 @@ export default interface IMetricSettings {
      * StorageTypes type like a StorageTypes.Uint64 (default)
     */
     tType: StorageTypes;
+    /**
+     * Aggregation function applied when rolling the metric up
+     * (one of `min | max | sum | avg | count`). Defaults to `avg` in the
+     * journal-db engine and to `last` in the legacy vrack-db engine.
+     */
+    modify?: string;
     /** Metric Description */
     description?: string;
     /**

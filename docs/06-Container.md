@@ -44,7 +44,7 @@ constructor(id: string, bootstrap: Bootstrap)
 2. вызывает `dev.onRegister()` (порты ещё не созданы — здесь назначаются динамические хендлеры);
 3. регистрирует actions: для каждой action обязан существовать метод `actionXxx` (`CONT_DEVICE_ACTION_NF`), снимок правила попадает в структуру;
 4. `settings()` устройства → структура;
-5. регистрирует метрики: для каждой — `emit('device.metric.register', { device, data, trace })` (boot-класс `DeviceMetrics` создаёт метрику в `vrack-db`);
+5. регистрирует метрики: для каждой — `emit('device.metric.register', { device, data, trace })` (boot-класс метрик — по умолчанию `JournalDbMetrics` на `vrack2-journal-db` — создаёт метрику в базе);
 6. создаёт входные порты: динамические раскрываются (`%d` → `1..count`, `CONT_INCORRECT_DYNAMIC_PN`), имя проверяется (`CONT_INCORRECT_PN`), **обязателен** хендлер `inputXxx` (`CONT_INPUT_HANDLER_NF`), хендлер биндится в `port.bind`;
 7. создаёт выходные порты.
 

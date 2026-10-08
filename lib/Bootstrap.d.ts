@@ -123,7 +123,7 @@ export default class Bootstrap {
      *
      * @example
      * ```ts
-     * this.Container.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics) as DeviceMetrics
+      * this.Container.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics) as JournalDbMetrics
      * ```
      *
      * @param id class identifier that was specified in the list

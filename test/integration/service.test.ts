@@ -14,7 +14,7 @@ import {
     MainProcess,
     ErrorManager,
     DeviceManager,
-    DeviceMetrics,
+    JournalDbMetrics,
     Device,
     IMainProcessOptions,
     IServiceStructure,
@@ -46,7 +46,7 @@ function makeMP(service: IServiceStructure, extraBoot: IMainProcessOptions['boot
             DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: FIXTURES, dir: 'devices' } },
             DeviceStorage: { path: 'vrack2-core.DeviceFileStorage', options: { storageDir: path.join(tmp, 'storage') } },
             StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: path.join(tmp, 'structure') } },
-            DeviceMetrics: { path: 'vrack2-core.DeviceMetrics', options: {} },
+            DeviceMetrics: { path: 'vrack2-core.JournalDbMetrics', options: { path: path.join(tmp, 'journals') } },
             ...extraBoot,
         },
     })
@@ -164,7 +164,7 @@ describe('Bootstrap & boot classes', () => {
 
         err = undefined
         try {
-            mp.Bootstrap.getBootClass('DeviceManager', DeviceMetrics)
+            mp.Bootstrap.getBootClass('DeviceManager', JournalDbMetrics)
         } catch (e) {
             err = e
         }
@@ -232,10 +232,10 @@ describe('Layered boot-list config', () => {
         }
         const mp = makeMPBare(service)
         await mp.run()
-        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
         expect(bc.options.marker).toBe('svc')
         // path stays the core default
-        expect(mp.options.bootstrap.DeviceMetrics!.path).toBe('vrack2-core.DeviceMetrics')
+        expect(mp.options.bootstrap.DeviceMetrics!.path).toBe('vrack2-core.JournalDbMetrics')
     })
 
     it('service file bootstrap: null removes a core default', async () => {
@@ -248,7 +248,7 @@ describe('Layered boot-list config', () => {
         const mp = makeMPBare(service)
         await mp.run()
         expect(mp.options.bootstrap.DeviceMetrics).toBeUndefined()
-        expect(() => mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)).toThrow()
+        expect(() => mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)).toThrow()
     })
 
     it('service file bootstrap: options-only override for an unknown id throws BTSP_BAD_BOOTLIST', () => {
@@ -292,7 +292,7 @@ describe('Layered boot-list config', () => {
         }
         const mp = makeMPBare(service, undefined, confPath)
         await mp.run()
-        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
         expect(bc.options.marker).toBe('conf')
     })
 
@@ -624,14 +624,14 @@ describe('Counter: input, actions, output, metric, storage', () => {
         })
         await mp.run()
 
-        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
         expect(dm.has('Counter1', 'count')).toBe(true)
         expect(dm.has('Counter1', 'missing')).toBe(false)
 
         const c: any = mp.Container.devices['Counter1']
         c.ports.input.data.push(5)
 
-        const res = dm.read('Counter1', 'count', 'now-1m:now', 100, 'last')
+        const res = dm.read('Counter1', 'count', 'now-1m:now')
         expect(res.relevant).toBe(true)
         expect(res.rows.length).toBeGreaterThanOrEqual(1)
         expect(res.rows.some((r: any) => r.value === 5)).toBe(true)
@@ -652,6 +652,10 @@ describe('Counter: input, actions, output, metric, storage', () => {
         const fp = path.join(tmp, 'storage', 'itest', 'Counter1.json')
         expect(fs.existsSync(fp)).toBe(true)
         expect(JSON.parse(fs.readFileSync(fp, 'utf-8'))).toEqual({ count: 9 })
+
+        // release the first process (closes the journal-db store and its locks)
+        try { await mp1.stop() } catch { /* ignore */ }
+        try { await mp1.Bootstrap.destroyAll() } catch { /* ignore */ }
 
         // second process: same storage dir, counter must start from 9
         const mp2 = makeMP(service)
@@ -707,13 +711,13 @@ describe('Lamp: input, output, metric', () => {
         })
         await mp.run()
 
-        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', DeviceMetrics)
+        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
         const l: any = mp.Container.devices['Lamp1']
 
         l.ports.input.on.push(1)
         expect(dm.has('Lamp1', 'brightness')).toBe(true)
 
-        const res = dm.read('Lamp1', 'brightness', 'now-1m:now', 100, 'last')
+        const res = dm.read('Lamp1', 'brightness', 'now-1m:now')
         expect(res.relevant).toBe(true)
         expect(res.rows.some((r: any) => r.value === 200)).toBe(true)
     })

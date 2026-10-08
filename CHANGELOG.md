@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026.10.07
+
+### Major
+
+- **Метрики переведены на `vrack2-journal-db`**: по умолчанию boot-класс метрик — `JournalDbMetrics` (база `vrack2-journal-db`). Старая реализация на `vrack-db` сохранена как `VrackDbMetrics` — переключается в `service.json` ключом `bootstrap.DeviceMetrics` (id не меняется).
+- **Breaking**: экспорт `DeviceMetrics` удалён; вместо него — `JournalDbMetrics` (по умолчанию) и `VrackDbMetrics` (обратная совместимость). Экспортируются из `vrack2-core`.
+- **Breaking**: `Device.metric(path, value, modify?)` — параметр `modify` **убран**: агрегация задаётся в объявлении метрики через `Metric.modify('min'|'max'|'sum'|'avg'|'count')` (по умолчанию `avg`). `IvUs`/`Metric.inUs()` (микросекунды) удалены — минимальная единица `inS()`/`inMs()`.
+
+### Tests
+
+- `test/integration/service.test.ts`, `hot-devices.test.ts`, `boot-database.test.ts`: boot-класс `DeviceMetrics` заменён на `JournalDbMetrics`; `read()`/`aggregate()` по новому API.
+- `test/fixtures/devices/testkit/{Counter,Lamp}.js`: `modify` вынесен в объявление метрики; `this.metric(path, value)` — 2 аргумента.
+
+### Docs
+
+- 01-Architecture, 04-Ports-Actions-Metrics, 06-Container, 07-Bootstrap, 10-Standalone, 11-API: метрики на `JournalDbMetrics`/`VrackDbMetrics`, `modify` в объявлении, API-таблица.
+
 ## 2026.10.06
 
 ### Minor
