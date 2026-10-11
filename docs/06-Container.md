@@ -231,6 +231,7 @@ if (!(id in devices)) throw CONT_DEVICE_NF
 | `device.remove` | `id` | При `removeDevice()`. |
 | `device.metric.register` | `{ device, data, trace }` | При `registerDevice()`. |
 | `device.status` | `{ device, data: 'status', trace: IDeviceStatus }` | Автоматический канал — при каждом изменении статуса устройства (см. «Статус устройства»). |
+| `device.port` | `{ device, data: имяПорта, trace: данные }` | Поток данных на **выходном** порту при `push` — по умолчанию; отключается модификатором `noCapture()`. Наблюдение не-инвазивное: данные всё равно уходят по соединениям. |
 | `device.render` / `device.metric` / `device.save` / `device.error` / `device.terminal` / `device.notify` / `device.event` / `device.alert` / `device.terminate` | `{ device, data, trace, ... }` | Сообщения устройств. |
 | `system.error` | `CoreError` | Boot-класс сообщил об ошибке. |
 | `service.loaded` | — | Финализация структуры (ServiceLoader). |

@@ -16,4 +16,9 @@ export default interface ILocalPort {
     dynamic: boolean;
     /** Count of dynamic ports */
     count: number;
+    /**
+     * Whether the output port's data flow is hidden from the container
+     * (no `device.port` event is emitted). Input ports ignore it.
+     */
+    noCapture: boolean;
 }

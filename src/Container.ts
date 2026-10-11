@@ -564,7 +564,7 @@ export default class Container extends EventEmitter {
                 this.checkPortName(subkey)
                 const handler = ImportManager.camelize('input.' + subkey) as keyof Device
                 this.checkInputHandler(subkey, handler, dev)
-                const ndp = new DevicePort(subkey, pList[subkey], dev)
+                const ndp = new DevicePort(subkey, pList[subkey], dev, 'input')
                 dev.ports.input[subkey] = ndp
                 // add structure device input ports
                 this.structure[dev.id].inputs[subkey] = []
@@ -584,7 +584,7 @@ export default class Container extends EventEmitter {
             const pList = this.getPortList(key, exp)
             for (const subkey in pList) {
                 this.checkPortName(subkey)
-                const ndp = new DevicePort(subkey, pList[subkey], dev)
+                const ndp = new DevicePort(subkey, pList[subkey], dev, 'output')
                 dev.ports.output[subkey] = ndp
                 // add structure device output ports
                 this.structure[dev.id].outputs[subkey] = []

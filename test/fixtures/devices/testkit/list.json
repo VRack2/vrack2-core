@@ -1,1 +1,1 @@
-["Counter", "DbReader", "Lamp", "NoHandler", "ReturnSrc", "Talker", "Tracker", "StopFail"]
+["Counter", "DbReader", "Lamp", "NoCaptureSrc", "NoHandler", "ReturnSrc", "Talker", "Tracker", "StopFail"]

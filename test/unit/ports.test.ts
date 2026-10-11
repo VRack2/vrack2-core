@@ -33,6 +33,23 @@ describe('BasicPort', () => {
         expect(exp.count).toBe(3)
         expect(exp.requirement).toEqual(expect.objectContaining({ type: 'number' }))
     })
+
+    it('noCapture() marks the port and export() carries the flag', () => {
+        const p = new BasicPort()
+        expect(p.export().noCapture).toBe(false) // default: capturable (event emitted)
+
+        const same = p.noCapture()
+        expect(same).toBe(p) // fluent
+        expect(p.export().noCapture).toBe(true)
+    })
+
+    it('noCapture() composes with the other modifiers', () => {
+        const p = Port.standard().description('out').requirement(Rule.number()).noCapture()
+        const exp = p.export()
+        expect(exp.type).toBe('standard')
+        expect(exp.description).toBe('out')
+        expect(exp.noCapture).toBe(true)
+    })
 })
 
 describe('StandardPort', () => {

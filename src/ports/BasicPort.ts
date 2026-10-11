@@ -19,7 +19,8 @@ export default class BasicPort {
             description: '',
             required: false,
             dynamic: false,
-            count: 0
+            count: 0,
+            noCapture: false
         }
     }
 
@@ -66,6 +67,24 @@ export default class BasicPort {
     }
 
     /**
+     * Marks an output port as not capturable: its data flow does **not**
+     * emit the container `device.port` event (the port's output stays hidden
+     * from external observation / logging).
+     *
+     * By default every output port emits `device.port` on each `push` — that
+     * event is the observation point. `noCapture()` opts a single output port
+     * out of it (for internal signals that should not be observable).
+     *
+     * This flag only affects the `device.port` event. It does **not** touch
+     * the separate one-time capture mechanism (`DevicePort.listens`), and it
+     * is ignored on input ports.
+     */
+    noCapture(){
+        this.port.noCapture = true
+        return this
+    }
+
+    /**
      * Exports the port data. 
      * Collects all data into an IPort object. 
      * Internal types of type BasicType are also exported to the corresponding properties 
@@ -81,7 +100,8 @@ export default class BasicPort {
             description: this.port.description,
             required: this.port.required,
             dynamic: this.port.dynamic,
-            count: this.port.count
+            count: this.port.count,
+            noCapture: this.port.noCapture
         }
 
         if (this.port.requirement instanceof BasicType) nPort.requirement = this.port.requirement.export() 

@@ -29,6 +29,19 @@ export default class DevicePort {
     /** Port type */
     type: string
 
+    /**
+     * Port direction: `'input'` or `'output'`.
+     * Output ports emit the container `device.port` event on each `push`
+     * (unless `noCapture` is set); input ports never do.
+     */
+    direct: 'input' | 'output'
+
+    /**
+     * Whether this output port's data flow is hidden from the container:
+     * `true` → no `device.port` event on `push`. Ignored on input ports.
+     */
+    noCapture: boolean
+
     /** Flag determines whether the port should be connected */
     required: boolean
 
@@ -39,14 +52,16 @@ export default class DevicePort {
 
     /**
      * Список слушателей порта
-     * Используется для захвата порта. Если какие либо данные будут проброшены 
+     * Используется для захвата порта. Если какие либо данные будут проброшены
      * в порт, они будут переданы для каждого вызванного слушателя
-    */
+     */
     listens = new Map<number, (data:any) => void>()
 
-    constructor(id: string, port: IPort, device: Device) {
+    constructor(id: string, port: IPort, device: Device, direct: 'input' | 'output') {
         this.id = id
         this.type = port.type
+        this.direct = direct
+        this.noCapture = port.noCapture
         this.required = port.required
         this.Device = device
     }
@@ -80,8 +95,18 @@ export default class DevicePort {
      * onStart()/onStartAsync()) is not stopped, so startup traffic
      * (for example command registration) flows.
     */
-    push(data: any): any { 
+    push(data: any): any {
         if (!this.Device.running) return
+        // Выходной порт по умолчанию создаёт событие `device.port` в контейнере
+        // (точка наблюдения / логгирования потока). noCapture отключает его.
+        // Наблюдение не-инвазивное: данные всё равно уходят по соединениям ниже.
+        if (this.direct === 'output' && !this.noCapture) {
+            this.Device.Container.emit('device.port', {
+                device: this.Device.id,
+                data: this.id,
+                trace: data
+            })
+        }
         if (this.bind !== null) return this.bind(data)
 
         // Если у нас есть слушатели порта
