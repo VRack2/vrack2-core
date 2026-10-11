@@ -17,6 +17,17 @@ export default class DevicePort {
     id: string;
     /** Port type */
     type: string;
+    /**
+     * Port direction: `'input'` or `'output'`.
+     * Output ports emit the container `device.port` event on each `push`
+     * (unless `noCapture` is set); input ports never do.
+     */
+    direct: 'input' | 'output';
+    /**
+     * Whether this output port's data flow is hidden from the container:
+     * `true` → no `device.port` event on `push`. Ignored on input ports.
+     */
+    noCapture: boolean;
     /** Flag determines whether the port should be connected */
     required: boolean;
     /**  Ссылка на устройство владельца */
@@ -26,9 +37,9 @@ export default class DevicePort {
      * Список слушателей порта
      * Используется для захвата порта. Если какие либо данные будут проброшены
      * в порт, они будут переданы для каждого вызванного слушателя
-    */
+     */
     listens: Map<number, (data: any) => void>;
-    constructor(id: string, port: IPort, device: Device);
+    constructor(id: string, port: IPort, device: Device, direct: 'input' | 'output');
     /**
      * Adding communication to a port
     */

@@ -51,8 +51,8 @@ export default class JournalDbMetrics extends BootClass {
      */
     read(device: string, name: string, period: string): {
         relevant: boolean;
-        start: number;
-        end: number;
+        start: string;
+        end: string;
         rows: import("vrack2-journal-db").Row[];
     };
     /**
