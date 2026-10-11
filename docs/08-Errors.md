@@ -145,6 +145,7 @@
 
 | Код | Описание |
 |---|---|
+| `SLG_NOT_STARTED` | Публичный метод `ServiceLogger` (`query()`/`tail()`/`count()`) вызван до включения захвата (`enabled: false` и `enable()` ещё не вызывался) или после уничтожения boot-класса. |
 | `SLG_APPEND_FAILED` | Не удалось записать событие устройства в таблицу `device_log` (логирование продолжается). Несёт `channel`, `device` и причину. |
 
 ### ImportManager (`IM_*`)

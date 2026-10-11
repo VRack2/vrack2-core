@@ -12,7 +12,7 @@ import path from 'path'
 import os from 'os'
 import fs from 'fs'
 
-import { MainProcess, ServiceLogger, IServiceStructure } from 'vrack2-core'
+import { MainProcess, ServiceLogger, ErrorManager, IServiceStructure } from 'vrack2-core'
 import { Store } from 'vrack2-journal-db'
 
 /**
@@ -170,6 +170,65 @@ describe('ServiceLogger: event capture', () => {
             expect(rows[0].data).toBe('notify-message')
         } finally {
             store.closeAll()
+        }
+    })
+
+    it('enabled: false — no capture, query() throws SLG_NOT_STARTED; enable() starts capture', async () => {
+        const mp = makeMP(TALKER_SERVICE, {
+            ServiceLogger: { options: { enabled: false } },
+        })
+        await mp.run()
+        try {
+            const logger = mp.Bootstrap.getBootClass('ServiceLogger', ServiceLogger)
+            expect(logger.enabled).toBe(false)
+            expect(logger.DB).toBeNull()
+
+            // no journal created, public read API is guarded
+            expect(() => logger.count()).toThrow()
+            try { logger.count() } catch (e) {
+                expect(ErrorManager.isCode(e, 'SLG_NOT_STARTED')).toBe(true)
+            }
+
+            // events are not captured while disabled
+            const t: any = mp.Container.devices['Talker1']
+            t.ports.input.data.push('notify')
+            t.ports.input.data.push('error')
+
+            // enable() starts capture instantly
+            logger.enable()
+            expect(logger.enabled).toBe(true)
+            expect(logger.DB).toBeInstanceOf(Store)
+
+            t.ports.input.data.push('alert')
+            expect(logger.count()).toBe(1)
+            expect(logger.tail(10).map((r: any) => r.event)).toEqual(['alert'])
+        } finally {
+            await mp.stop()
+        }
+    })
+
+    it('disable() stops capture, enable() resumes it (journal and subscriptions stay)', async () => {
+        const mp = makeMP(TALKER_SERVICE)
+        await mp.run()
+        try {
+            const logger = mp.Bootstrap.getBootClass('ServiceLogger', ServiceLogger)
+            const t: any = mp.Container.devices['Talker1']
+
+            t.ports.input.data.push('notify')
+            expect(logger.count()).toBe(1)
+
+            logger.disable()
+            expect(logger.enabled).toBe(false)
+            t.ports.input.data.push('error')
+            expect(logger.count()).toBe(1)
+
+            logger.enable()
+            expect(logger.enabled).toBe(true)
+            t.ports.input.data.push('alert')
+            expect(logger.count()).toBe(2)
+            expect(logger.tail(10).map((r: any) => r.event)).toEqual(['notify', 'alert'])
+        } finally {
+            await mp.stop()
         }
     })
 

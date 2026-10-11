@@ -56,7 +56,7 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `ReturnPort` | Порт типа `return`. | 2.0.0 | — |
 | `Rule` | Фабрика правил валидации (`.string()`, `.number()`, `.required()`, …). | 2.0.0 | — |
 | `ServiceLoader` | Собирает сервис из `service.json`: резолв классов, валидация, связь портов. | 2.0.0 | — |
-| `ServiceLogger` | Boot-класс (включён по умолчанию): журналирует события устройств (все каналы, кроме `render`) в `device_log` (`vrack2-journal-db`); `DB`/`table`/`query()`/`tail()`/`count()`. | 2026.10.11 | — |
+| `ServiceLogger` | Boot-класс (включён по умолчанию): журналирует события устройств (все каналы, кроме `render`) в `device_log` (`vrack2-journal-db`); опция `enabled` (default `true`) + живое `enable()`/`disable()`; `DB`/`table`/`query()`/`tail()`/`count()`. | 2026.10.11 | — |
 | `StandardPort` | Порт типа `standard`. | 2.0.0 | — |
 | `StorageTypes` | Константы типов хранилища (экспорт `vrack-db`). | 2.0.0 | — |
 | `StructureStorage` | Boot-класс: персистентность структуры сервиса. | 2.0.0 | — |

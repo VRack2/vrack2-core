@@ -194,6 +194,7 @@ await db.ping()             // SELECT 1; бросает, если БД недо�
 
 | Опция | По умолчанию |
 |---|---|
+| `enabled` | `true` (захват включён на старте; живое переключение — `enable()`/`disable()`) |
 | `path` | `./journals` (хранилище коренится в `<path>/{containerId}`) |
 | `channels` | все каналы, кроме `render` |
 
@@ -204,12 +205,15 @@ await db.ping()             // SELECT 1; бросает, если БД недо�
 ```ts
 logger.DB                 // Store vrack2-journal-db (внешний доступ к базе)
 logger.table              // таблица 'device_log'
+logger.enabled            // живое состояние захвата
+logger.enable()           // включить захват (идемпотентно; при enabled: false — создаёт журнал и подписки)
+logger.disable()          // выключить захват (журнал и подписки остаются — включение мгновенное)
 logger.query(period)      // { relevant, start, end, rows } — period вида 'now-6h:now'
 logger.tail(count?)       // последние N строк (старые → новые)
 logger.count()            // всего строк
 ```
 
-Поведение: fail-soft — сбой записи → `SLG_APPEND_FAILED` на `system.error`, логирование продолжается. Отключение — `"ServiceLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
+Поведение: fail-soft — сбой записи → `SLG_APPEND_FAILED` на `system.error`, логирование продолжается. `enabled: false` — журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `SLG_NOT_STARTED` (см. [08-Errors](08-Errors.md)). Полное отключение boot-класса — `"ServiceLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
 
 ## Стандартный список boot-классов
 
