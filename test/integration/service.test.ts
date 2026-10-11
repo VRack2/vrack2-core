@@ -47,6 +47,7 @@ function makeMP(service: IServiceStructure, extraBoot: IMainProcessOptions['boot
             DeviceStorage: { path: 'vrack2-core.DeviceFileStorage', options: { storageDir: path.join(tmp, 'storage') } },
             StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: path.join(tmp, 'structure') } },
             DeviceMetrics: { path: 'vrack2-core.JournalDbMetrics', options: { path: path.join(tmp, 'journals') } },
+            ServiceLogger: { path: 'vrack2-core.ServiceLogger', options: { path: path.join(tmp, 'logs') } },
             ...extraBoot,
         },
     })
@@ -205,6 +206,7 @@ describe('Layered boot-list config', () => {
         service: IServiceStructure,
         constructorBoot: IMainProcessOptions['bootstrap'] = {
             DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: FIXTURES, dir: 'devices' } },
+            ServiceLogger: { path: 'vrack2-core.ServiceLogger', options: { path: path.join(tmp, 'logs') } },
         },
         confFile?: string,
     ): MainProcess {
@@ -332,7 +334,7 @@ describe('Container: device initialization', () => {
 
         const dm = mp.Bootstrap.getBootClass('DeviceManager', DeviceManager)
         expect(dm.getVendorList()).toContain('testkit')
-        expect(dm.getVendorDeviceList('testkit').sort()).toEqual(['Counter', 'DbReader', 'Lamp', 'NoHandler', 'ReturnSrc', 'StopFail', 'Tracker'])
+        expect(dm.getVendorDeviceList('testkit').sort()).toEqual(['Counter', 'DbReader', 'Lamp', 'NoHandler', 'ReturnSrc', 'StopFail', 'Talker', 'Tracker'])
 
         expect(mp.Container.devices).toHaveProperty('Counter1')
         expect(mp.Container.devices).toHaveProperty('Lamp1')

@@ -91,7 +91,7 @@ export default class Lamp extends Device {
 
 ## Точка входа `index.js`
 
-Стандартный набор boot-классов — `DeviceManager`, `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage` ([07-Bootstrap](07-Bootstrap.md)).
+Стандартный набор boot-классов — `DeviceManager`, `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`, `ServiceLogger` (журнал событий устройств, включён по умолчанию) ([07-Bootstrap](07-Bootstrap.md)).
 
 ```js
 import { ImportManager } from 'vrack2-core'

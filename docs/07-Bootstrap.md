@@ -87,9 +87,9 @@ Boot-классы владеют ресурсами уровня процесс�
 - Сбой `onDestroy()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
 - `onDestroy()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `JournalDbMetrics.read()` / `JournalDbMetrics.has()`), а `onDestroy()` используется только самим `Bootstrap`.
 
-## Пять стандартных boot-классов
+## Шесть стандартных boot-классов
 
-> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные четыре — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик (по умолчанию в `vrack2-journal-db`), без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`). Каждый можно заменить своей реализацией.
+> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик (по умолчанию в `vrack2-journal-db`), без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`), без `ServiceLogger` — записи событий устройств в журнал. Каждый можно заменить своей реализацией.
 
 ### `DeviceManager`
 
@@ -188,6 +188,29 @@ await db.ping()             // SELECT 1; бросает, если БД недо�
 - Старт — fail-fast: сбой `connect()` → сервис **не стартует** (`BDB_CONNECT_FAILED`); повторные попытки — за супервайзером.
 - Остановка только через `Bootstrap.destroyAll()`: «закрыть одну БД» из device-кода нельзя (это общий ресурс).
 
+### `ServiceLogger`
+
+Журналирует события устройств в `vrack2-journal-db` (таблица `device_log`): все каналы событий — `device.terminal`, `device.notify`, `device.event`, `device.alert`, `device.error`, `device.terminate`, кроме `device.render`. Включён по умолчанию (входит в `MainProcess.DEFAULT_BOOTLIST`).
+
+| Опция | По умолчанию |
+|---|---|
+| `path` | `./journals` (хранилище коренится в `<path>/{containerId}`) |
+| `channels` | все каналы, кроме `render` |
+
+Строка журнала: `{ ts, device, event, data, trace }`.
+
+Публичный API:
+
+```ts
+logger.DB                 // Store vrack2-journal-db (внешний доступ к базе)
+logger.table              // таблица 'device_log'
+logger.query(period)      // { relevant, start, end, rows } — period вида 'now-6h:now'
+logger.tail(count?)       // последние N строк (старые → новые)
+logger.count()            // всего строк
+```
+
+Поведение: fail-soft — сбой записи → `SLG_APPEND_FAILED` на `system.error`, логирование продолжается. Отключение — `"ServiceLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
+
 ## Стандартный список boot-классов
 
 ```ts
@@ -196,6 +219,7 @@ const bootstrapConfig = {
     DeviceFileStorage:{ path: 'vrack2-core.DeviceFileStorage',options: { storageDir: './storage' } },
     DeviceMetrics:    { path: 'vrack2-core.JournalDbMetrics', options: {} },
     StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: './structure' } },
+    ServiceLogger:    { path: 'vrack2-core.ServiceLogger',    options: {} },
 }
 ```
 

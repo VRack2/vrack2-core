@@ -4,7 +4,7 @@
  */
 
 import path from 'path';
-import { Store, Interval } from 'vrack2-journal-db';
+import { Store, defineLogTable } from 'vrack2-journal-db';
 import type { AggFn } from 'vrack2-journal-db';
 import IDeviceEvent from '../service/IDeviceEvent';
 import BootClass from './BootClass';
@@ -79,7 +79,7 @@ export default class JournalDbMetrics extends BootClass {
      */
     read(device: string, name: string, period: string) {
         const table = this.getMetric(device, name)
-        const [start, end] = Interval.period(period)
+        const [start, end] = period.split(':')
         const rows = table ? table.query(start, end) : []
         return {
             relevant: rows.length > 0,
@@ -101,7 +101,7 @@ export default class JournalDbMetrics extends BootClass {
     aggregate(device: string, name: string, period: string) {
         const table = this.getMetric(device, name)
         if (!table) return {}
-        const [start, end] = Interval.period(period)
+        const [start, end] = period.split(':')
         return table.aggregate(start, end, [{ field: 'value', fn: this.getModify(device, name) }])
     }
 
@@ -117,7 +117,7 @@ export default class JournalDbMetrics extends BootClass {
     percentile(device: string, name: string, period: string, levels: number | number[] = [0.5, 0.9, 0.95, 0.99]) {
         const table = this.getMetric(device, name)
         if (!table) return {}
-        const [start, end] = Interval.period(period)
+        const [start, end] = period.split(':')
         return table.percentile(start, end, levels)
     }
 
@@ -144,10 +144,11 @@ export default class JournalDbMetrics extends BootClass {
     protected registerMetric(metricPath: string, metric: IMetricSettings) {
         const modify = this.toAggFn(metric.modify)
         this.modifies[metricPath] = modify
-        this.DB.openTable(metricPath, {
-            retention: metric.retentions,
-            agg: { value: modify },
-        })
+        this.DB.create(defineLogTable({
+            name: metricPath,
+            columns: { ts: 'delta', value: 'auto' },
+            ...(metric.retentions ? { retention: metric.retentions, agg: { value: modify } } : {}),
+        }))
     }
 
     /**

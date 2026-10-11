@@ -65,6 +65,7 @@ function makeMP(
             DeviceStorage: { path: 'vrack2-core.DeviceFileStorage', options: { storageDir: path.join(tmp, 'storage') } },
             StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: path.join(tmp, 'structure') } },
             DeviceMetrics: { path: 'vrack2-core.JournalDbMetrics', options: { path: path.join(tmp, 'journals') } },
+            ServiceLogger: { path: 'vrack2-core.ServiceLogger', options: { path: path.join(tmp, 'logs') } },
             [dbId]: { path: dbPath, options: dbOptions },
         },
     })

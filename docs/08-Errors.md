@@ -141,6 +141,12 @@
 | `BDB_TX_LOCKED` | Вложенный вызов `transaction()` изнутри открытой транзакции не допускается. |
 | `BDB_TRANSACTION_FAILED` | Транзакция не завершена commit'ом (ошибка в колбэке или в COMMIT; rollback выполнен). |
 
+### ServiceLogger (`SLG_*`)
+
+| Код | Описание |
+|---|---|
+| `SLG_APPEND_FAILED` | Не удалось записать событие устройства в таблицу `device_log` (логирование продолжается). Несёт `channel`, `device` и причину. |
+
 ### ImportManager (`IM_*`)
 
 | Код | Описание |

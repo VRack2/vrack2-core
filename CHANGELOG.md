@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026.10.11
+
+### Minor
+
+- **`vrack2-journal-db` обновлена `2.1.0 → 2.2.0`** (breaking в самом пакете, перенесено в `JournalDbMetrics`): API `Store` переведён на «ClickHouse-модель» — `Store.openTable(name, cfg)` **удалён**, `Interval` **больше не экспортируется** из корня. `JournalDbMetrics.registerMetric()` теперь создаёт таблицу через `Store.create(defineLogTable({ name, columns: { ts: 'delta', value: 'auto' }, retention, agg }))` (формат `retention` `'res:ttl'` не изменился). Публичный API boot-класса сохранён: `read()` / `aggregate()` / `percentile()` передают период в две границы (`period.split(':')`) — новые методы `Table` сами резолвят строки `'now-6h'`. Данные, записанные на `2.1.0`, читаются на `2.2.0` (проверено: `allRows` / `aggregate` поверх legacy-сегментов тиров `r*`).
+- **Поведение `read()`**: поля `start` / `end` в результате теперь возвращаются **строками-границами** (например `'now-6h'`, `'now'`), а не резолвлёнными миллисекундами — пакет сам принимает строки в границах запроса. `relevant` / `rows` не изменились.
+- **Новый boot-класс `ServiceLogger`** (включён по умолчанию в `MainProcess.DEFAULT_BOOTLIST`): журналирует события устройств — все каналы (`terminal`, `notify`, `event`, `alert`, `error`, `terminate`), **кроме `device.render`** — в таблицу `device_log` (`vrack2-journal-db`; опция `path`, по умолчанию `./journals`, хранилище коренится в `<path>/{containerId}`). Строка: `{ ts, device, event, data, trace }`. Публичный API: `logger.DB` (Store), `logger.table`, `logger.query(period)`, `logger.tail(count?)`, `logger.count()`; опциональный `channels` — фильтр каналов. Fail-soft: сбой записи → `SLG_APPEND_FAILED` на `system.error`, логирование продолжается. Отключение — `"ServiceLogger": null` в слоевой конфигурации. Экспортируется из `vrack2-core`.
+- Новый код ошибки `SLG_APPEND_FAILED` (модуль `ServiceLogger`) — таблица в [08-Errors](docs/08-Errors.md).
+- Документация: 00-Overview (boot-классы + журнал событий), 07-Bootstrap (раздел `ServiceLogger`, «шесть стандартных boot-классов»), 08-Errors (`SLG_APPEND_FAILED`), 11-API (строка `ServiceLogger`).
+
+### Tests
+
+- `277/277` на `vrack2-journal-db@2.2.0`: `service`, `boot-database`, `hot-devices` (метрики через `JournalDbMetrics`), `service-logger` — зелёные; `aggregate()` / `percentile()` / `read()` проверены end-to-end.
+- Новый `test/integration/service-logger.test.ts` (7): `ServiceLogger` в ядровых дефолтах и доступ к `DB`, отключение через `null`, захват всех каналов (кроме `render`/`save`/`metric`), форма строки, опция `channels`, внешнее чтение через `Store` после `destroyAll()`, `query()` / `count()`.
+- `test/integration/service.test.ts`: +`Talker` в ожидаемый список устройств вендора.
+- Новый фикстура `test/fixtures/devices/testkit/Talker.js` (+`list.json`).
+
 ## 2026.10.07
 
 ### Major
