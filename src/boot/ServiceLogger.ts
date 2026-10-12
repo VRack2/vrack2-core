@@ -32,6 +32,11 @@ import ErrorManager from '../errors/ErrorManager';
  * vrack2-journal-db and read the `device_log` table directly (or use the
  * `DB` / `table` / `query()` / `tail()` / `count()` methods of this class).
  *
+ * The store is opened with `lock: 'off'` — each boot class owns exactly one
+ * table and writes are serialized by the process event loop, so the journal-db
+ * inter-process `.lock` file is not needed (and would only false-positive
+ * across two in-process Store instances over the same dir).
+ *
  * Row: `{ ts, device, event, data, trace }`
  *
  * Fail-soft: an append failure reports `SLG_APPEND_FAILED` on `system.error`
@@ -96,7 +101,7 @@ export default class ServiceLogger extends BootClass {
     enable(): void {
         if (!this.DB) {
             const baseDir = path.resolve(this.options.path, this.Container.id)
-            this.DB = new Store(baseDir)
+            this.DB = new Store(baseDir, { lock: 'off' })
             this.DB.init()
             this.table = this.DB.create(defineLogTable({
                 name: 'device_log',

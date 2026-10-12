@@ -52,6 +52,7 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `MainProcess` | Точка входа; оркеструет Bootstrap → ServiceLoader → Container. | 2.0.0 | — |
 | `Metric` | Базовый класс метрик устройства. | 2.0.0 | — |
 | `Port` | Статический фабричный класс портов (`Port.standard()`, `Port.return()`). | 2.0.0 | — |
+| `PortLogger` | Boot-класс (включён по умолчанию): журналирует трафик выходных портов (событие `device.port`, кроме портов с `noCapture()`) в `port_log` (`vrack2-journal-db`, общий каталог с `ServiceLogger`); опция `enabled` (default `true`) + живое `enable()`/`disable()`; `DB`/`table`/`query()`/`tail()`/`count()`. | 2026.10.12 | — |
 | `ReactiveRef` | Утилита реактивной ссылки (независима от `Device.shares`). | 2026.09.11 | — |
 | `ReturnPort` | Порт типа `return`. | 2.0.0 | — |
 | `Rule` | Фабрика правил валидации (`.string()`, `.number()`, `.required()`, …). | 2.0.0 | — |

@@ -31,6 +31,7 @@ export { default as DeviceFileStorage } from './boot/DeviceFileStorage'
 export { default as DeviceManager } from './boot/DeviceManager';
 export { default as StructureStorage } from './boot/StructureStorage';
 export { default as ServiceLogger } from './boot/ServiceLogger';
+export { default as PortLogger } from './boot/PortLogger';
 export { default as JournalDbMetrics } from './boot/JournalDbMetrics';
 export { default as VrackDbMetrics } from './boot/VrackDbMetrics';
 export { default as BootDatabase, IExecResult } from './boot/BootDatabase'

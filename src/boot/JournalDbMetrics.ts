@@ -46,7 +46,7 @@ export default class JournalDbMetrics extends BootClass {
 
     onStart(): void {
         const baseDir = path.resolve(this.options.path, this.Container.id)
-        this.DB = new Store(baseDir)
+        this.DB = new Store(baseDir, { lock: 'off' })
         this.DB.init()
 
         this.Container.on('device.metric', this.deviceMetric.bind(this))

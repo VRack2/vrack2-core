@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026.10.12
+
+### Minor
+
+- **`vrack2-journal-db`-хранилища всех boot-классов (`JournalDbMetrics`, `ServiceLogger`, `PortLogger`) теперь открываются с `lock: 'off'`**: межпроцессный `.lock`-файл пакета здесь не нужен — у каждой таблицы один владелец в рамках процесса, записи сериализованы event loop'ом, а прежний lock ложно срабатывал на двух `Store` в одном процессе над одним каталогом («журнал заблокирован процессом N»). Внешние читатели открывают каталог после остановки сервиса — lock их не защищал.
+- **Новый boot-класс `PortLogger`** (включён по умолчанию в `MainProcess.DEFAULT_BOOTLIST`): журналирует трафик **выходных портов** — событие `device.port` (см. `2026.10.11`), кроме портов с `noCapture()` — в таблицу `port_log` (`vrack2-journal-db`; опция `path`, по умолчанию `./journals`, хранилище коренится в `<path>/{containerId}` — тот же каталог, что `ServiceLogger`/`JournalDbMetrics`; lock у пакета на уровне таблицы, поэтому каждый boot-класс владеет своей таблицей в одном общем каталоге). Строка: `{ ts, device, port, data }`. Публичный API — как у `ServiceLogger`: `logger.DB` (Store), `logger.table`, `logger.query(period)`, `logger.tail(count?)`, `logger.count()`; опции `enabled` (по умолчанию `true`) и `path`; живое переключение захвата: `logger.enable()` / `logger.disable()`. При `enabled: false` журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `PLG_NOT_STARTED`. Fail-soft: сбой записи → `PLG_APPEND_FAILED` на `system.error`, логирование продолжается. Отключение boot-класса — `"PortLogger": null` в слоевой конфигурации. Экспортируется из `vrack2-core`.
+- Новые коды ошибок `PLG_NOT_STARTED`, `PLG_APPEND_FAILED` (модуль `PortLogger`) — таблица в [08-Errors](docs/08-Errors.md).
+- Документация: 07-Bootstrap (раздел `PortLogger`, «семь стандартных boot-классов»), 08-Errors (`PLG_*`), 10-Standalone (стандартный набор), 11-API (строка `PortLogger`).
+
+### Tests
+
+- `+9` интеграционных тестов `port-logger` (захват `device.port`, `noCapture()`-порты не видны, общий каталог с `ServiceLogger`, `enabled: false` + `enable()`, `disable()`/`enable()`, `query()`/`tail()`/`count()`, чтение извне после остановки процесса).
+
 ## 2026.10.11
 
 ### Minor

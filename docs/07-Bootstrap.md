@@ -87,9 +87,9 @@ Boot-классы владеют ресурсами уровня процесс�
 - Сбой `onDestroy()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
 - `onDestroy()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `JournalDbMetrics.read()` / `JournalDbMetrics.has()`), а `onDestroy()` используется только самим `Bootstrap`.
 
-## Шесть стандартных boot-классов
+## Семь стандартных boot-классов
 
-> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик (по умолчанию в `vrack2-journal-db`), без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`), без `ServiceLogger` — записи событий устройств в журнал. Каждый можно заменить своей реализацией.
+> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик (по умолчанию в `vrack2-journal-db`), без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`), без `ServiceLogger` — записи событий устройств в журнал, без `PortLogger` — записи трафика выходных портов в журнал. Каждый можно заменить своей реализацией.
 
 ### `DeviceManager`
 
@@ -215,6 +215,23 @@ logger.count()            // всего строк
 
 Поведение: fail-soft — сбой записи → `SLG_APPEND_FAILED` на `system.error`, логирование продолжается. `enabled: false` — журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `SLG_NOT_STARTED` (см. [08-Errors](08-Errors.md)). Полное отключение boot-класса — `"ServiceLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
 
+### `PortLogger`
+
+Журналирует трафик **выходных портов** в `vrack2-journal-db` (таблица `port_log`): каждое событие `device.port` — по умолчанию создаётся каждым выходным портом на каждый `push` (см. [04-Ports-Actions-Metrics](04-Ports-Actions-Metrics.md)), кроме портов с модификатором `noCapture()`. Включён по умолчанию (входит в `MainProcess.DEFAULT_BOOTLIST`).
+
+Хранилище коренится в том же каталоге, что и `ServiceLogger` / `JournalDbMetrics` — `<path>/{containerId}`, каждый boot-класс владеет своей таблицей в одном общем каталоге. Все хранилища (`JournalDbMetrics`, `ServiceLogger`, `PortLogger`) открываются с `lock: 'off'` — у каждой таблицы один владелец в рамках процесса, записи сериализованы event loop'ом, а межпроцессный `.lock`-файл `vrack2-journal-db` здесь не нужен.
+
+| Опция | По умолчанию |
+|---|---|
+| `enabled` | `true` (захват включён на старте; живое переключение — `enable()`/`disable()`) |
+| `path` | `./journals` (хранилище коренится в `<path>/{containerId}`) |
+
+Строка журнала: `{ ts, device, port, data }` — `port` — имя выходного порта, `data` — переданные данные.
+
+Публичный API — как у `ServiceLogger`: `logger.DB` (Store), `logger.table` (таблица `port_log`), `logger.enabled`, `logger.enable()`, `logger.disable()`, `logger.query(period)`, `logger.tail(count?)`, `logger.count()`.
+
+Поведение: fail-soft — сбой записи → `PLG_APPEND_FAILED` на `system.error`, логирование продолжается. `enabled: false` — журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `PLG_NOT_STARTED` (см. [08-Errors](08-Errors.md)). Полное отключение boot-класса — `"PortLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
+
 ## Стандартный список boot-классов
 
 ```ts
@@ -224,6 +241,7 @@ const bootstrapConfig = {
     DeviceMetrics:    { path: 'vrack2-core.JournalDbMetrics', options: {} },
     StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: './structure' } },
     ServiceLogger:    { path: 'vrack2-core.ServiceLogger',    options: {} },
+    PortLogger:       { path: 'vrack2-core.PortLogger',       options: {} },
 }
 ```
 

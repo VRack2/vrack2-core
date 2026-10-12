@@ -148,6 +148,13 @@
 | `SLG_NOT_STARTED` | Публичный метод `ServiceLogger` (`query()`/`tail()`/`count()`) вызван до включения захвата (`enabled: false` и `enable()` ещё не вызывался) или после уничтожения boot-класса. |
 | `SLG_APPEND_FAILED` | Не удалось записать событие устройства в таблицу `device_log` (логирование продолжается). Несёт `channel`, `device` и причину. |
 
+### PortLogger (`PLG_*`)
+
+| Код | Описание |
+|---|---|
+| `PLG_NOT_STARTED` | Публичный метод `PortLogger` (`query()`/`tail()`/`count()`) вызван до включения захвата (`enabled: false` и `enable()` ещё не вызывался) или после уничтожения boot-класса. |
+| `PLG_APPEND_FAILED` | Не удалось записать событие `device.port` в таблицу `port_log` (логирование продолжается). Несёт `device`, `port` и причину. |
+
 ### ImportManager (`IM_*`)
 
 | Код | Описание |

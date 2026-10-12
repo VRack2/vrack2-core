@@ -43,7 +43,7 @@ describe('vrack2-core smoke', () => {
             'Bootstrap', 'Container', 'CoreError', 'Device', 'DeviceConnect',
             'DeviceFileStorage', 'DeviceManager', 'DevicePort',
             'ErrorManager', 'ImportManager', 'JournalDbMetrics', 'MainProcess',
-            'Metric', 'Port', 'ReactiveRef', 'ReturnPort', 'Rule', 'ServiceLoader', 'ServiceLogger',
+            'Metric', 'Port', 'PortLogger', 'ReactiveRef', 'ReturnPort', 'Rule', 'ServiceLoader', 'ServiceLogger',
             'StandardPort', 'StorageTypes', 'StructureStorage', 'SubruleNames',
             'UniversalWorker', 'Utility', 'Validator', 'VrackDbMetrics', 'mergeBootList',
         ]
