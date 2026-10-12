@@ -1,5 +1,5 @@
 import { Store, Table } from 'vrack2-journal-db';
-import type { Row } from 'vrack2-journal-db';
+import type { Row, TruncateResult } from 'vrack2-journal-db';
 import IDeviceEvent from '../service/IDeviceEvent';
 import BootClass from './BootClass';
 import BasicType from '../validator/types/BasicType';
@@ -21,7 +21,8 @@ import BasicType from '../validator/types/BasicType';
  * The store is rooted at `<path>/<container.id>`, the same layout as
  * `JournalDbMetrics`: an external service can open the same dir with
  * vrack2-journal-db and read the `device_log` table directly (or use the
- * `DB` / `table` / `query()` / `tail()` / `count()` methods of this class).
+ * `DB` / `table` / `query()` / `tail()` / `count()` / `truncate()` methods of
+ * this class).
  *
  * The store is opened with `lock: 'off'` — each boot class owns exactly one
  * table and writes are serialized by the process event loop, so the journal-db
@@ -103,6 +104,15 @@ export default class ServiceLogger extends BootClass {
      * @throws SLG_NOT_STARTED if capture has never been enabled
      */
     count(): number;
+    /**
+     * Fully clear the `device_log` table (in memory and on disk): every row is
+     * removed and the table stays open with the same schema, ready for new
+     * `append()` calls.
+     *
+     * @returns `{ removedRows }` — how many rows were removed
+     * @throws SLG_NOT_STARTED if capture has never been enabled
+     */
+    truncate(): TruncateResult;
     /**
      * Appends a channel event to the `device_log` table while capture is
      * enabled (fail-soft: a failure reports `SLG_APPEND_FAILED` on

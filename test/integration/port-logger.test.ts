@@ -4,7 +4,8 @@
  * Boots a real MainProcess (default boot list → PortLogger is enabled by
  * default), drives output-port traffic through the testkit devices and
  * verifies the `device.port` events are captured in the journal-db table
- * `port_log` and readable back — via query() / tail() / count(), and
+ * `port_log` and readable back — via query() / tail() / count() / truncate(),
+ * and
  * externally through the exposed Store (a fresh instance over the same dir).
  *
  * Also covers: coexistence with ServiceLogger in one shared store dir
@@ -211,6 +212,48 @@ describe('PortLogger: event capture', () => {
             const empty = logger.query('now+1h:now+2h')
             expect(empty.relevant).toBe(false)
             expect(empty.rows).toEqual([])
+        } finally {
+            await mp.stop()
+        }
+    })
+
+    it('truncate() clears the table, returns removedRows, and the table stays open', async () => {
+        const mp = makeMP(TALKER_SERVICE)
+        await mp.run()
+        try {
+            const t: any = mp.Container.devices['Talker1']
+            t.ports.input.data.push('notify')
+            t.ports.input.data.push('event')
+            t.ports.input.data.push('alert')
+
+            const logger = mp.Bootstrap.getBootClass('PortLogger', PortLogger)
+            expect(logger.count()).toBe(3)
+
+            const res = logger.truncate()
+            expect(res.removedRows).toBe(3)
+            expect(logger.count()).toBe(0)
+            expect(logger.tail(10)).toEqual([])
+
+            // table stays open: capture continues after truncate
+            t.ports.input.data.push('alert')
+            expect(logger.count()).toBe(1)
+            expect(logger.tail(1).map((r: any) => r.data)).toEqual(['alert'])
+        } finally {
+            await mp.stop()
+        }
+    })
+
+    it('truncate() throws PLG_NOT_STARTED when capture has never been enabled', async () => {
+        const mp = makeMP(TALKER_SERVICE, {
+            PortLogger: { options: { enabled: false } },
+        })
+        await mp.run()
+        try {
+            const logger = mp.Bootstrap.getBootClass('PortLogger', PortLogger)
+            expect(() => logger.truncate()).toThrow()
+            try { logger.truncate() } catch (e) {
+                expect(ErrorManager.isCode(e, 'PLG_NOT_STARTED')).toBe(true)
+            }
         } finally {
             await mp.stop()
         }

@@ -5,7 +5,7 @@
 
 import path from 'path';
 import { Store, Table, defineLogTable } from 'vrack2-journal-db';
-import type { Row } from 'vrack2-journal-db';
+import type { Row, TruncateResult } from 'vrack2-journal-db';
 import BootClass from './BootClass';
 import Rule from '../validator/Rule';
 import BasicType from '../validator/types/BasicType';
@@ -31,7 +31,7 @@ import ErrorManager from '../errors/ErrorManager';
  * in one shared store dir). An external
  * service can open the same dir with vrack2-journal-db and read the
  * `port_log` table directly (or use the `DB` / `table` / `query()` / `tail()`
- * / `count()` methods of this class).
+ * / `count()` / `truncate()` methods of this class).
  *
  * The store is opened with `lock: 'off'` — each boot class owns exactly one
  * table and writes are serialized by the process event loop, so the journal-db
@@ -162,6 +162,18 @@ export default class PortLogger extends BootClass {
     }
 
     /**
+     * Fully clear the `port_log` table (in memory and on disk): every row is
+     * removed and the table stays open with the same schema, ready for new
+     * `append()` calls.
+     *
+     * @returns `{ removedRows }` — how many rows were removed
+     * @throws PLG_NOT_STARTED if capture has never been enabled
+     */
+    truncate(): TruncateResult {
+        return this.ensureTable().truncate()
+    }
+
+    /**
      * Appends a `device.port` event to the `port_log` table while capture is
      * enabled (fail-soft: a failure reports `PLG_APPEND_FAILED` on
      * `system.error`, logging continues).
@@ -181,7 +193,7 @@ export default class PortLogger extends BootClass {
 ErrorManager.registerMany('PortLogger', [
     {
         short: 'PLG_NOT_STARTED',
-        description: 'PortLogger public method (query/tail/count) called before capture has been enabled (the enabled option is false and enable() was never called), or after the boot class was destroyed',
+        description: 'PortLogger public method (query/tail/count/truncate) called before capture has been enabled (the enabled option is false and enable() was never called), or after the boot class was destroyed',
     },
     {
         short: 'PLG_APPEND_FAILED',

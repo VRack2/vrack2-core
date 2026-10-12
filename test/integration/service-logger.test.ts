@@ -4,7 +4,8 @@
  * Boots a real MainProcess (default boot list → ServiceLogger is enabled by
  * default), drives channel events through the testkit Talker device and
  * verifies the events (all channels except `device.render`) are captured in
- * the journal-db table and readable back — via query() / tail() / count(),
+ * the journal-db table and readable back — via query() / tail() / count() /
+ * truncate(),
  * and externally through the exposed Store (a fresh instance over the same dir).
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -251,6 +252,48 @@ describe('ServiceLogger: event capture', () => {
             const empty = logger.query('now+1h:now+2h')
             expect(empty.relevant).toBe(false)
             expect(empty.rows).toEqual([])
+        } finally {
+            await mp.stop()
+        }
+    })
+
+    it('truncate() clears the table, returns removedRows, and the table stays open', async () => {
+        const mp = makeMP(TALKER_SERVICE)
+        await mp.run()
+        try {
+            const t: any = mp.Container.devices['Talker1']
+            t.ports.input.data.push('notify')
+            t.ports.input.data.push('event')
+            t.ports.input.data.push('alert')
+
+            const logger = mp.Bootstrap.getBootClass('ServiceLogger', ServiceLogger)
+            expect(logger.count()).toBe(3)
+
+            const res = logger.truncate()
+            expect(res.removedRows).toBe(3)
+            expect(logger.count()).toBe(0)
+            expect(logger.tail(10)).toEqual([])
+
+            // table stays open: capture continues after truncate
+            t.ports.input.data.push('alert')
+            expect(logger.count()).toBe(1)
+            expect(logger.tail(1).map((r: any) => r.event)).toEqual(['alert'])
+        } finally {
+            await mp.stop()
+        }
+    })
+
+    it('truncate() throws SLG_NOT_STARTED when capture has never been enabled', async () => {
+        const mp = makeMP(TALKER_SERVICE, {
+            ServiceLogger: { options: { enabled: false } },
+        })
+        await mp.run()
+        try {
+            const logger = mp.Bootstrap.getBootClass('ServiceLogger', ServiceLogger)
+            expect(() => logger.truncate()).toThrow()
+            try { logger.truncate() } catch (e) {
+                expect(ErrorManager.isCode(e, 'SLG_NOT_STARTED')).toBe(true)
+            }
         } finally {
             await mp.stop()
         }

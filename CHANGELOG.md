@@ -8,10 +8,14 @@
 - **Новый boot-класс `PortLogger`** (включён по умолчанию в `MainProcess.DEFAULT_BOOTLIST`): журналирует трафик **выходных портов** — событие `device.port` (см. `2026.10.11`), кроме портов с `noCapture()` — в таблицу `port_log` (`vrack2-journal-db`; опция `path`, по умолчанию `./journals`, хранилище коренится в `<path>/{containerId}` — тот же каталог, что `ServiceLogger`/`JournalDbMetrics`; lock у пакета на уровне таблицы, поэтому каждый boot-класс владеет своей таблицей в одном общем каталоге). Строка: `{ ts, device, port, data }`. Публичный API — как у `ServiceLogger`: `logger.DB` (Store), `logger.table`, `logger.query(period)`, `logger.tail(count?)`, `logger.count()`; опции `enabled` (по умолчанию `true`) и `path`; живое переключение захвата: `logger.enable()` / `logger.disable()`. При `enabled: false` журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `PLG_NOT_STARTED`. Fail-soft: сбой записи → `PLG_APPEND_FAILED` на `system.error`, логирование продолжается. Отключение boot-класса — `"PortLogger": null` в слоевой конфигурации. Экспортируется из `vrack2-core`.
 - Новые коды ошибок `PLG_NOT_STARTED`, `PLG_APPEND_FAILED` (модуль `PortLogger`) — таблица в [08-Errors](docs/08-Errors.md).
 - Документация: 07-Bootstrap (раздел `PortLogger`, «семь стандартных boot-классов»), 08-Errors (`PLG_*`), 10-Standalone (стандартный набор), 11-API (строка `PortLogger`).
+- **`vrack2-journal-db` обновлена `2.2.0 → 2.3.0`**: пакет добавил метод `Table.truncate()` (полная очистка таблицы).
+- **`ServiceLogger.truncate()` / `PortLogger.truncate()`** — фасад к `Table.truncate()`: полностью очищает таблицу (в памяти и на диске) и возвращает `{ removedRows }`; таблица остаётся открытой — запись (`append`) продолжается. До `enable()` бросает `SLG_NOT_STARTED` / `PLG_NOT_STARTED` соответственно.
+- Документация: 07-Bootstrap (`truncate()` в публичном API обоих логгеров), 08-Errors (`*_NOT_STARTED`), 11-API (строки `ServiceLogger` / `PortLogger`).
 
 ### Tests
 
 - `+9` интеграционных тестов `port-logger` (захват `device.port`, `noCapture()`-порты не видны, общий каталог с `ServiceLogger`, `enabled: false` + `enable()`, `disable()`/`enable()`, `query()`/`tail()`/`count()`, чтение извне после остановки процесса).
+- `+2` интеграционных теста (`service-logger`, `port-logger`): `truncate()` очищает таблицу, возвращает `removedRows`, запись продолжается; бросает `SLG_NOT_STARTED` / `PLG_NOT_STARTED` до `enable()`.
 
 ## 2026.10.11
 

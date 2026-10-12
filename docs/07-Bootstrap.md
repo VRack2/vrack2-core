@@ -211,9 +211,10 @@ logger.disable()          // выключить захват (журнал и п
 logger.query(period)      // { relevant, start, end, rows } — period вида 'now-6h:now'
 logger.tail(count?)       // последние N строк (старые → новые)
 logger.count()            // всего строк
+logger.truncate()         // полностью очистить таблицу (в памяти и на диске) → { removedRows }
 ```
 
-Поведение: fail-soft — сбой записи → `SLG_APPEND_FAILED` на `system.error`, логирование продолжается. `enabled: false` — журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `SLG_NOT_STARTED` (см. [08-Errors](08-Errors.md)). Полное отключение boot-класса — `"ServiceLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
+Поведение: fail-soft — сбой записи → `SLG_APPEND_FAILED` на `system.error`, логирование продолжается. `enabled: false` — журнал на диске не создаётся, а `query()`/`tail()`/`count()`/`truncate()` до `enable()` бросают `SLG_NOT_STARTED` (см. [08-Errors](08-Errors.md)). Полное отключение boot-класса — `"ServiceLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
 
 ### `PortLogger`
 
@@ -228,9 +229,9 @@ logger.count()            // всего строк
 
 Строка журнала: `{ ts, device, port, data }` — `port` — имя выходного порта, `data` — переданные данные.
 
-Публичный API — как у `ServiceLogger`: `logger.DB` (Store), `logger.table` (таблица `port_log`), `logger.enabled`, `logger.enable()`, `logger.disable()`, `logger.query(period)`, `logger.tail(count?)`, `logger.count()`.
+Публичный API — как у `ServiceLogger`: `logger.DB` (Store), `logger.table` (таблица `port_log`), `logger.enabled`, `logger.enable()`, `logger.disable()`, `logger.query(period)`, `logger.tail(count?)`, `logger.count()`, `logger.truncate()`.
 
-Поведение: fail-soft — сбой записи → `PLG_APPEND_FAILED` на `system.error`, логирование продолжается. `enabled: false` — журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `PLG_NOT_STARTED` (см. [08-Errors](08-Errors.md)). Полное отключение boot-класса — `"PortLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
+Поведение: fail-soft — сбой записи → `PLG_APPEND_FAILED` на `system.error`, логирование продолжается. `enabled: false` — журнал на диске не создаётся, а `query()`/`tail()`/`count()`/`truncate()` до `enable()` бросают `PLG_NOT_STARTED` (см. [08-Errors](08-Errors.md)). Полное отключение boot-класса — `"PortLogger": null` в секции `bootstrap` (см. слоевую конфигурацию ниже).
 
 ## Стандартный список boot-классов
 
