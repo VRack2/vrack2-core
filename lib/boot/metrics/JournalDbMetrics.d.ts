@@ -1,9 +1,9 @@
 import { Store } from 'vrack2-journal-db';
 import type { AggFn } from 'vrack2-journal-db';
-import IDeviceEvent from '../service/IDeviceEvent';
-import BootClass from './BootClass';
-import IMetricSettings from '../metrics/IMetricSettings';
-import BasicType from '../validator/types/BasicType';
+import IDeviceEvent from '../../service/IDeviceEvent';
+import IMetricSettings from '../../metrics/IMetricSettings';
+import BasicType from '../../validator/types/BasicType';
+import BootDeviceMetrics from './BootDeviceMetrics';
 /**
  * Default metrics engine, backed by vrack2-journal-db — a disk-backed,
  * append-only columnar journal with a metric engine (retention tiers + rollup).
@@ -17,8 +17,9 @@ import BasicType from '../validator/types/BasicType';
  *
  * @see Store
  * @see https://github.com/VRack2/vrack2-journal-db
+ * @see BootDeviceMetrics
  */
-export default class JournalDbMetrics extends BootClass {
+export default class JournalDbMetrics extends BootDeviceMetrics {
     /**
      * The journal-db store (one table per metric). Created in `onStart()`.
      */
@@ -30,7 +31,7 @@ export default class JournalDbMetrics extends BootClass {
     checkOptions(): {
         [key: string]: BasicType;
     };
-    onStart(): void;
+    protected onEngineStart(): void;
     onDestroy(): Promise<void>;
     /**
      * Checks if the metric exists
@@ -50,8 +51,9 @@ export default class JournalDbMetrics extends BootClass {
      * @param precision Bucket size: an interval string ('15m', '5s', '1h') or a point count (10, 200, 1500); a numeric string ('600') is also a point count
      * @param func Per-bucket aggregation: 'last' (default) | 'first' | 'max' | 'min' | 'avg' | 'sum'
      * @returns `{ relevant, start, end, rows }` — `start`/`end` are the
-     * absolute period bounds (ms, aligned to the grid), `relevant` — the
-     * metric is registered, `rows` are `{ time, value }` (`value: null` where empty)
+     * absolute period bounds (seconds, aligned to the grid), `relevant` — the
+     * metric is registered, `rows` are `{ time, value }` with `time` in seconds
+     * (`value: null` where empty). Matches the `vrack-db` (seconds) unit.
      * @throws RangeError if the period/precision is malformed, start > end, or func is unknown
      */
     read(device: string, name: string, period: string, precision: string | number, func?: string): {
@@ -119,17 +121,6 @@ export default class JournalDbMetrics extends BootClass {
      */
     percentile(device: string, name: string, period: string, levels?: number | number[]): Record<string, number | null>;
     /**
-     * Registers the device metric — opens its table with the declared
-     * retention and aggregation.
-     *
-     * When a device is initialized the container passes the list of its metrics
-     * to the `device.metric.register` event; each one becomes a table here.
-     *
-     * @param nEvent `{ device, data, trace: IMetricSettings }`
-     * @see IMetricSettings
-     */
-    protected deviceRegisterMetric(nEvent: IDeviceEvent): void;
-    /**
      * Open the metric table (idempotent — re-open returns the existing table).
      *
      * @param metricPath Metric path
@@ -155,11 +146,4 @@ export default class JournalDbMetrics extends BootClass {
      * (`min` | `max` | `sum` | `avg` | `count`), defaulting to `avg`.
      */
     protected toAggFn(modify: string | undefined): AggFn;
-    /**
-     * Metric path
-     *
-     * @param device Device ID
-     * @param name Metric name
-     */
-    protected getMetricPath(device: string, name: string): string;
 }

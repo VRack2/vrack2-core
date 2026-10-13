@@ -40,7 +40,7 @@ describe('vrack2-core smoke', () => {
         const expected = [
             'Action', 'BasicAction', 'BasicMetric', 'BasicPort', 'BasicType',
             'BootClass', 'BootDatabase', 'BootDatabaseMemory', 'BootDatabaseSqlite',
-            'Bootstrap', 'Container', 'CoreError', 'Device', 'DeviceConnect',
+            'BootDeviceMetrics', 'Bootstrap', 'Container', 'CoreError', 'Device', 'DeviceConnect',
             'DeviceFileStorage', 'DeviceManager', 'DevicePort',
             'ErrorManager', 'ImportManager', 'JournalDbMetrics', 'MainProcess',
             'Metric', 'Port', 'PortLogger', 'ReactiveRef', 'ReturnPort', 'Rule', 'ServiceLoader', 'ServiceLogger',

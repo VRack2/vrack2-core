@@ -4,9 +4,9 @@
  */
 
 import { Interval, IntervalMs, IntervalUs, SingleDB } from "vrack-db";
-import IDeviceEvent from "../service/IDeviceEvent";
-import BootClass from "./BootClass";
-import IMetricSettings from "../metrics/IMetricSettings";
+import IDeviceEvent from "../../service/IDeviceEvent";
+import IMetricSettings from "../../metrics/IMetricSettings";
+import BootDeviceMetrics from "./BootDeviceMetrics";
 
 /**
  * Legacy in-memory metrics engine, backed by vrack-db.
@@ -19,13 +19,14 @@ import IMetricSettings from "../metrics/IMetricSettings";
  * Using a database vrack-db. Collects and stores container metrics in memory.
  *
  * @see SingleDB
+ * @see BootDeviceMetrics
  *
  * Uses the `device.metric` and `device.metric.register` events
  *
  * @see deviceMetric()
  * @see deviceRegisterMetric()
  */
-export default class VrackDbMetrics extends BootClass {
+export default class VrackDbMetrics extends BootDeviceMetrics {
     /**
      * VRack-DB class instance
     */
@@ -35,11 +36,6 @@ export default class VrackDbMetrics extends BootClass {
      * Per-metric write-modify (from the metric description), default `last`.
      */
     protected modifies: Record<string, string> = {}
-
-    onStart(): void {
-        this.Container.on('device.metric', this.deviceMetric.bind(this))
-        this.Container.on('device.metric.register', this.deviceRegisterMetric.bind(this))
-    }
 
     /**
      * Checks if the metric exists in the device
@@ -65,20 +61,6 @@ export default class VrackDbMetrics extends BootClass {
     read(device: string, name: string, period: string, precision: string | number, func?: string) {
         const path = this.getMetricPath(device, name)
         return this.DB.read(path, period, precision, func)
-    }
-
-    /**
-     * Registers the device metric
-     *
-     * When a device is initialized - the container gets a list of
-     * device metrics and passes them to the `device.metric.register` event for each metric.
-     *
-     * @param nEvent Object like a { device: 'Device ID',  data: 'metric.name', trace: IMetricSettings object}
-     * @see IMetricSettings
-     * @see registerMetric
-    */
-    protected deviceRegisterMetric(nEvent: IDeviceEvent) {
-        this.registerMetric(this.getMetricPath(nEvent.device, nEvent.data), nEvent.trace)
     }
 
     /**
@@ -119,15 +101,5 @@ export default class VrackDbMetrics extends BootClass {
             case 'us': return IntervalUs
         }
         return Interval
-    }
-
-    /**
-     * Return metric path
-     *
-     * @param device Device ID
-     * @param name Metric name
-    */
-    protected getMetricPath(device: string, name: string) {
-        return (device + '.' + name).toLowerCase()
     }
 }

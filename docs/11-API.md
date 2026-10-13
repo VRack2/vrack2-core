@@ -38,6 +38,7 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `BootDatabase` | Машина состояний БД сервиса (`pending → ready → closed`), транзакции `acquire()`. | 2026.09.22 | — |
 | `BootDatabaseMemory` | Адаптер БД: in-memory (`file = ':memory:'`), данные живут до конца процесса. | 2026.09.22 | — |
 | `BootDatabaseSqlite` | Адаптер БД: SQLite на встроенном `node:sqlite` (нужен Node ≥ 22.5). | 2026.09.22 | — |
+| `BootDeviceMetrics` | Абстрактный базовый класс движков метрик: общий контракт `has()`/`read()` и подписка на `device.metric`/`device.metric.register`; реализуют `JournalDbMetrics` и `VrackDbMetrics`. | 2026.10.13 | — |
 | `Bootstrap` | Загружает и запускает boot-классы (модули сервиса). | 2.0.0 | — |
 | `Container` | Рантайм-контейнер: регистрация устройств, движение данных, lifecycle, события. | 2.0.0 | — |
 | `CoreError` | Класс кодированной ошибки (бросается для ожидаемых сбоев). | 2.0.0 | — |

@@ -639,16 +639,17 @@ describe('Counter: input, actions, output, metric, storage', () => {
         c.ports.input.data.push(5)
 
         // dense series, { time, value } — the vrack-db SingleDB.read contract
+        // time is returned in seconds (vrack-db unit), matching VrackDbMetrics
         const res = dm.read('Counter1', 'count', `${start}:${end}`, '15s')
         expect(res.relevant).toBe(true)
-        expect(res.start).toBe(start)
-        expect(res.end).toBe(end)
+        expect(res.start).toBe(start / 1000)
+        expect(res.end).toBe(end / 1000)
         expect(res.rows).toEqual([
-            { time: start, value: null },
-            { time: start + 15_000, value: null },
-            { time: start + 30_000, value: null },
-            { time: now, value: 5 },
-            { time: end, value: null },
+            { time: start / 1000, value: null },
+            { time: (start + 15_000) / 1000, value: null },
+            { time: (start + 30_000) / 1000, value: null },
+            { time: now / 1000, value: 5 },
+            { time: end / 1000, value: null },
         ])
     })
 
@@ -664,11 +665,11 @@ describe('Counter: input, actions, output, metric, storage', () => {
         const now = Math.floor(Date.now() / 15_000) * 15_000
         const empty = dm.read('Counter1', 'missing', `${now - 60_000}:${now}`, '15s')
         expect(empty.relevant).toBe(false)
-        expect(empty.start).toBe(now - 60_000)
-        expect(empty.end).toBe(now)
+        expect(empty.start).toBe((now - 60_000) / 1000)
+        expect(empty.end).toBe(now / 1000)
         expect(empty.rows.length).toBe(5)
         expect(empty.rows.every((r: any) => r.value === null)).toBe(true)
-        expect(empty.rows.map((r: any) => r.time)).toEqual([now - 60_000, now - 45_000, now - 30_000, now - 15_000, now])
+        expect(empty.rows.map((r: any) => r.time)).toEqual([(now - 60_000) / 1000, (now - 45_000) / 1000, (now - 30_000) / 1000, (now - 15_000) / 1000, now / 1000])
 
         // a numeric string precision is a point count (WS/API callers send numbers as strings)
         const h = Math.floor(Date.now() / 6_000) * 6_000

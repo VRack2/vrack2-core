@@ -6,11 +6,11 @@
 import path from 'path';
 import { Interval, Store, defineLogTable } from 'vrack2-journal-db';
 import type { AggFn } from 'vrack2-journal-db';
-import IDeviceEvent from '../service/IDeviceEvent';
-import BootClass from './BootClass';
-import IMetricSettings from '../metrics/IMetricSettings';
-import Rule from '../validator/Rule';
-import BasicType from '../validator/types/BasicType';
+import IDeviceEvent from '../../service/IDeviceEvent';
+import IMetricSettings from '../../metrics/IMetricSettings';
+import Rule from '../../validator/Rule';
+import BasicType from '../../validator/types/BasicType';
+import BootDeviceMetrics from './BootDeviceMetrics';
 
 /**
  * Default metrics engine, backed by vrack2-journal-db — a disk-backed,
@@ -25,8 +25,9 @@ import BasicType from '../validator/types/BasicType';
  *
  * @see Store
  * @see https://github.com/VRack2/vrack2-journal-db
+ * @see BootDeviceMetrics
  */
-export default class JournalDbMetrics extends BootClass {
+export default class JournalDbMetrics extends BootDeviceMetrics {
     /**
      * The journal-db store (one table per metric). Created in `onStart()`.
      */
@@ -44,13 +45,10 @@ export default class JournalDbMetrics extends BootClass {
         }
     }
 
-    onStart(): void {
+    protected onEngineStart(): void {
         const baseDir = path.resolve(this.options.path, this.Container.id)
         this.DB = new Store(baseDir, { lock: 'off' })
         this.DB.init()
-
-        this.Container.on('device.metric', this.deviceMetric.bind(this))
-        this.Container.on('device.metric.register', this.deviceRegisterMetric.bind(this))
     }
 
     async onDestroy(): Promise<void> {
@@ -78,8 +76,9 @@ export default class JournalDbMetrics extends BootClass {
      * @param precision Bucket size: an interval string ('15m', '5s', '1h') or a point count (10, 200, 1500); a numeric string ('600') is also a point count
      * @param func Per-bucket aggregation: 'last' (default) | 'first' | 'max' | 'min' | 'avg' | 'sum'
      * @returns `{ relevant, start, end, rows }` — `start`/`end` are the
-     * absolute period bounds (ms, aligned to the grid), `relevant` — the
-     * metric is registered, `rows` are `{ time, value }` (`value: null` where empty)
+     * absolute period bounds (seconds, aligned to the grid), `relevant` — the
+     * metric is registered, `rows` are `{ time, value }` with `time` in seconds
+     * (`value: null` where empty). Matches the `vrack-db` (seconds) unit.
      * @throws RangeError if the period/precision is malformed, start > end, or func is unknown
      */
     read(device: string, name: string, period: string, precision: string | number, func: string = 'last') {
@@ -107,9 +106,9 @@ export default class JournalDbMetrics extends BootClass {
 
         return {
             relevant: table !== undefined,
-            start: s,
-            end: e,
-            rows: grid.map((time, i) => ({ time, value: buckets[i] ? this.aggregateValues(buckets[i] as number[], func) : null })),
+            start: s / 1000,
+            end: e / 1000,
+            rows: grid.map((time, i) => ({ time: time / 1000, value: buckets[i] ? this.aggregateValues(buckets[i] as number[], func) : null })),
         }
     }
 
@@ -220,20 +219,6 @@ export default class JournalDbMetrics extends BootClass {
     }
 
     /**
-     * Registers the device metric — opens its table with the declared
-     * retention and aggregation.
-     *
-     * When a device is initialized the container passes the list of its metrics
-     * to the `device.metric.register` event; each one becomes a table here.
-     *
-     * @param nEvent `{ device, data, trace: IMetricSettings }`
-     * @see IMetricSettings
-     */
-    protected deviceRegisterMetric(nEvent: IDeviceEvent) {
-        this.registerMetric(this.getMetricPath(nEvent.device, nEvent.data), nEvent.trace)
-    }
-
-    /**
      * Open the metric table (idempotent — re-open returns the existing table).
      *
      * @param metricPath Metric path
@@ -282,15 +267,5 @@ export default class JournalDbMetrics extends BootClass {
     protected toAggFn(modify: string | undefined): AggFn {
         const allowed: readonly AggFn[] = ['min', 'max', 'sum', 'avg', 'count']
         return allowed.includes(modify as AggFn) ? (modify as AggFn) : 'avg'
-    }
-
-    /**
-     * Metric path
-     *
-     * @param device Device ID
-     * @param name Metric name
-     */
-    protected getMetricPath(device: string, name: string) {
-        return (device + '.' + name).toLowerCase()
     }
 }
