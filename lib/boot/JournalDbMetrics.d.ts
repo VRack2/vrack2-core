@@ -40,23 +40,62 @@ export default class JournalDbMetrics extends BootClass {
      */
     has(device: string, name: string): boolean;
     /**
-     * Read raw metric rows for a period. Each point is already at the
-     * resolution of the retention tier that owns it (fine for recent data,
-     * coarser for older data) — no manual downsampling.
+     * Read the dense metric series for a period — the `vrack-db`
+     * `SingleDB.read` contract: one point per `precision` bucket, old → new,
+     * `value: null` where the bucket has no data.
      *
      * @param device Device ID
      * @param name Registered metric name
      * @param period Period in the form 'now-6h:now'
+     * @param precision Bucket size: an interval string ('15m', '5s', '1h') or a point count (10, 200, 1500)
+     * @param func Per-bucket aggregation: 'last' (default) | 'first' | 'max' | 'min' | 'avg' | 'sum'
      * @returns `{ relevant, start, end, rows }` — `start`/`end` are the
-     * absolute period bounds in ms, `rows` are `{ ts, value }`, old → new
-     * @throws RangeError if the period is malformed or start > end (see `Interval.period`)
+     * absolute period bounds (ms, aligned to the grid), `relevant` — the
+     * metric is registered, `rows` are `{ time, value }` (`value: null` where empty)
+     * @throws RangeError if the period/precision is malformed, start > end, or func is unknown
      */
-    read(device: string, name: string, period: string): {
+    read(device: string, name: string, period: string, precision: string | number, func?: string): {
         relevant: boolean;
         start: number;
         end: number;
-        rows: import("vrack2-journal-db").Row[];
+        rows: {
+            time: number;
+            value: number | null;
+        }[];
     };
+    /**
+     * Resolve `precision` to a bucket size (ms) — as in `vrack-db`
+     * `SingleDB.parsePrecission`: an interval string ('15m' → 900 000) or a
+     * point count (the bucket that fits exactly `count` points in [start, end]).
+     *
+     * @param start Period start (ms)
+     * @param end Period end (ms)
+     * @param precision An interval string or a point count
+     * @throws RangeError if the interval is malformed (see `Interval.parseInterval`)
+     */
+    protected parsePrecision(start: number, end: number, precision: string | number): number;
+    /**
+     * The allowed per-bucket aggregation functions (the same set as `vrack-db`).
+     */
+    static readonly AGGREGATE_FUNCTIONS: string[];
+    /**
+     * Rejects an unknown aggregation function (checked before the read, so it
+     * fails fast even when the period has no data).
+     *
+     * @param func The requested aggregation function
+     * @throws RangeError for an unknown func
+     */
+    protected checkFunc(func: string): void;
+    /**
+     * Aggregate one bucket's values — the same semantics as `vrack-db`
+     * `MetricResult.aggregate`: `last`/`first` — the last/first value,
+     * `max`/`min` — the extremes, `avg` — the mean, `sum` — the sum.
+     *
+     * @param values The bucket's values (non-empty)
+     * @param func 'last' | 'first' | 'max' | 'min' | 'avg' | 'sum'
+     * @throws RangeError for an unknown func
+     */
+    protected aggregateValues(values: number[], func: string): number;
     /**
      * Aggregate the metric value over a period using the metric's `modify`
      * function (default `avg`).

@@ -371,7 +371,8 @@ describe('hot integration flow', () => {
         // 8. Metric of the hot device is registered & written
         const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
         expect(dm.has('LampX', 'brightness')).toBe(true)
-        const res = dm.read('LampX', 'brightness', 'now-1m:now')
+        const res = dm.read('LampX', 'brightness', 'now-1m:now', '15s')
+        expect(res.relevant).toBe(true)
         expect(res.rows.some((r: any) => r.value === 150)).toBe(true)
 
         // 9. Storage persists on save

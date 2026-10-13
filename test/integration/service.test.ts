@@ -632,26 +632,27 @@ describe('Counter: input, actions, output, metric, storage', () => {
         expect(dm.has('Counter1', 'missing')).toBe(false)
 
         const c: any = mp.Container.devices['Counter1']
+        // grid-aligned 1-minute window: 5 buckets of 15s, the write falls into the 4th
+        const now = Math.floor(Date.now() / 15_000) * 15_000
+        const start = now - 45_000
+        const end = now + 15_000
         c.ports.input.data.push(5)
 
-        const t0 = Date.now()
-        const res = dm.read('Counter1', 'count', 'now-1m:now')
-        const t1 = Date.now()
+        // dense series, { time, value } — the vrack-db SingleDB.read contract
+        const res = dm.read('Counter1', 'count', `${start}:${end}`, '15s')
         expect(res.relevant).toBe(true)
-        expect(res.rows.length).toBeGreaterThanOrEqual(1)
-        expect(res.rows.some((r: any) => r.value === 5)).toBe(true)
-
-        // start/end are absolute ms of the period (the vrack-db SingleDB.read contract)
-        expect(typeof res.start).toBe('number')
-        expect(typeof res.end).toBe('number')
-        expect(res.end - res.start).toBe(60_000)
-        expect(res.start).toBeGreaterThanOrEqual(t0 - 60_000)
-        expect(res.start).toBeLessThanOrEqual(t1 - 60_000)
-        expect(res.end).toBeGreaterThanOrEqual(t0)
-        expect(res.end).toBeLessThanOrEqual(t1)
+        expect(res.start).toBe(start)
+        expect(res.end).toBe(end)
+        expect(res.rows).toEqual([
+            { time: start, value: null },
+            { time: start + 15_000, value: null },
+            { time: start + 30_000, value: null },
+            { time: now, value: 5 },
+            { time: end, value: null },
+        ])
     })
 
-    it('read(): missing metric -> relevant: false with absolute ms bounds; malformed period -> RangeError', async () => {
+    it('read(): missing metric -> relevant: false with an all-null dense grid; malformed period/precision/func -> RangeError', async () => {
         const mp = makeMP({
             devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
             connections: [],
@@ -660,19 +661,18 @@ describe('Counter: input, actions, output, metric, storage', () => {
 
         const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
 
-        const t0 = Date.now()
-        const empty = dm.read('Counter1', 'missing', 'now-1m:now')
-        const t1 = Date.now()
+        const now = Math.floor(Date.now() / 15_000) * 15_000
+        const empty = dm.read('Counter1', 'missing', `${now - 60_000}:${now}`, '15s')
         expect(empty.relevant).toBe(false)
-        expect(empty.rows).toEqual([])
-        expect(typeof empty.start).toBe('number')
-        expect(typeof empty.end).toBe('number')
-        expect(empty.end - empty.start).toBe(60_000)
-        expect(empty.start).toBeGreaterThanOrEqual(t0 - 60_000)
-        expect(empty.start).toBeLessThanOrEqual(t1 - 60_000)
+        expect(empty.start).toBe(now - 60_000)
+        expect(empty.end).toBe(now)
+        expect(empty.rows.length).toBe(5)
+        expect(empty.rows.every((r: any) => r.value === null)).toBe(true)
+        expect(empty.rows.map((r: any) => r.time)).toEqual([now - 60_000, now - 45_000, now - 30_000, now - 15_000, now])
 
-        expect(() => dm.read('Counter1', 'count', 'garbage')).toThrow(RangeError)
-        expect(() => dm.read('Counter1', 'count', 'now-1m')).toThrow(RangeError)
+        expect(() => dm.read('Counter1', 'count', 'garbage', '15s')).toThrow(RangeError)
+        expect(() => dm.read('Counter1', 'count', 'now-1m', '15s')).toThrow(RangeError)
+        expect(() => dm.read('Counter1', 'count', 'now-1m:now', '15s', 'bogus')).toThrow(RangeError)
     })
 
     it('persists storage to disk and reloads it in a second process', async () => {
@@ -752,12 +752,16 @@ describe('Lamp: input, output, metric', () => {
         const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
         const l: any = mp.Container.devices['Lamp1']
 
+        const now = Math.floor(Date.now() / 15_000) * 15_000
         l.ports.input.on.push(1)
         expect(dm.has('Lamp1', 'brightness')).toBe(true)
 
-        const res = dm.read('Lamp1', 'brightness', 'now-1m:now')
+        // grid-aligned window covering the write (ts >= now)
+        const res = dm.read('Lamp1', 'brightness', `${now - 45_000}:${now + 15_000}`, '15s')
         expect(res.relevant).toBe(true)
+        expect(res.rows.length).toBe(5)
         expect(res.rows.some((r: any) => r.value === 200)).toBe(true)
+        expect(res.rows.filter((r: any) => r.value !== null).length).toBe(1)
     })
 })
 

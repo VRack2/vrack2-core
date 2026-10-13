@@ -134,8 +134,8 @@ Boot-классы владеют ресурсами уровня процесс�
 - `device.metric.register` → создаёт метрику в базе (путь — `device.metricname`, нижний регистр);
 - `device.metric` → пишет значение (агрегация `modify` берётся из объявления метрики).
 
-Методы `JournalDbMetrics`: `has(device, name)`, `read(device, name, period)`, `aggregate(device, name, period)`, `percentile(device, name, period, p)`.
-Методы `VrackDbMetrics` (старый API): `has(device, name)`, `read(device, name, period, precision, func?)`.
+Методы `JournalDbMetrics`: `has(device, name)`, `read(device, name, period, precision, func?)`, `aggregate(device, name, period)`, `percentile(device, name, period, p)`.
+Методы `VrackDbMetrics` (старый API): `has(device, name)`, `read(device, name, period, precision, func?)` — та же форма `read()`, что у `JournalDbMetrics`.
 
 ### `StructureStorage`
 
