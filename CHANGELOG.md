@@ -5,12 +5,13 @@
 ### Minor
 
 - **`JournalDbMetrics.read()` — полный контракт `vrack-db SingleDB.read`** (движок метрик снова заменяем с `VrackDbMetrics` без изменения кода потребителей). Сигнатура: `read(device, name, period, precision, func?)` — `precision` — интервал (`'15m'`, `'5s'`) или число точек (10, 200, 1500), `func` — `last | first | max | min | avg | sum` (по умолчанию `last`). Результат `{ relevant, start, end, rows }`: `start`/`end` — **абсолютные мс** периода (выровнены по сетке `precision`), а не строки-границы `'now-6h'` / `'now'` (введённые в `2026.10.11`); `relevant` — метрика зарегистрирована (как в `vrack-db`: `false` только для несуществующей метрики); `rows` — **плотный ряд** `{ time, value }` (старые → новые; ключ `time`, как в `vrack-db`, не `ts`), пустые бакеты — `value: null`; семантики агрегации — как в `vrack-db MetricResult.aggregate`.
+- `precision` принимает и **числовую строку** (`'600'`) — как **максимальное число точек** (то же, что число `600`; API/WS-вызовчики часто шлют числа строками — ранее падало `RangeError: Interval: некорректный интервал`).
 - Период/сетка резолвятся в boot-классе через `Interval` (`period` / `getIntervals` / `getIntervalOfFixedCount` / `parseInterval`) из `vrack2-journal-db` (**обновлена `2.3.0 → 2.4.0`** — `Interval` снова экспортируется из корня); `Table.query()` получает числовые границы. Неправильный `period` / `precision`, `start > end` или неизвестный `func` → `RangeError` (как в самих пакетах).
 - Документация: 04-Ports-Actions-Metrics (сигнатура и форма результата `read()`), 07-Bootstrap (список методов `JournalDbMetrics` / `VrackDbMetrics`).
 
 ### Tests
 
-- `service`: `read()` — детерминированная сетка 5×15s: точные `{ time, value }`-строки, `null` в пустых бакетах; несуществующая метрика → `relevant: false` + полностью `null`-сетка (контракт `readFake`); `Lamp1` — ровно один непустой бакет; неправильный период / `func` → `RangeError`.
+- `service`: `read()` — детерминированная сетка 5×15s: точные `{ time, value }`-строки, `null` в пустых бакетах; несуществующая метрика → `relevant: false` + полностью `null`-сетка (контракт `readFake`); числовая строка `'600'` = 600 точек (601 точка на сетке 1h); `Lamp1` — ровно один непустой бакет; неправильный период / `func` → `RangeError`.
 - `hot-devices`: чтение метрики хот-устройства — новая сигнатура + `relevant`.
 
 ## 2026.10.12

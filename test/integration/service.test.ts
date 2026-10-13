@@ -670,6 +670,13 @@ describe('Counter: input, actions, output, metric, storage', () => {
         expect(empty.rows.every((r: any) => r.value === null)).toBe(true)
         expect(empty.rows.map((r: any) => r.time)).toEqual([now - 60_000, now - 45_000, now - 30_000, now - 15_000, now])
 
+        // a numeric string precision is a point count (WS/API callers send numbers as strings)
+        const h = Math.floor(Date.now() / 6_000) * 6_000
+        const pts = dm.read('Counter1', 'missing', `${h - 3_600_000}:${h}`, '600')
+        expect(pts.relevant).toBe(false)
+        expect(pts.rows.length).toBe(601) // ceil(3 600 000 / 600) = 6000 ms -> 600 buckets + 1
+        expect(pts.rows.every((r: any) => r.value === null)).toBe(true)
+
         expect(() => dm.read('Counter1', 'count', 'garbage', '15s')).toThrow(RangeError)
         expect(() => dm.read('Counter1', 'count', 'now-1m', '15s')).toThrow(RangeError)
         expect(() => dm.read('Counter1', 'count', 'now-1m:now', '15s', 'bogus')).toThrow(RangeError)

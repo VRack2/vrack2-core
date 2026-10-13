@@ -75,7 +75,7 @@ export default class JournalDbMetrics extends BootClass {
      * @param device Device ID
      * @param name Registered metric name
      * @param period Period in the form 'now-6h:now'
-     * @param precision Bucket size: an interval string ('15m', '5s', '1h') or a point count (10, 200, 1500)
+     * @param precision Bucket size: an interval string ('15m', '5s', '1h') or a point count (10, 200, 1500); a numeric string ('600') is also a point count
      * @param func Per-bucket aggregation: 'last' (default) | 'first' | 'max' | 'min' | 'avg' | 'sum'
      * @returns `{ relevant, start, end, rows }` — `start`/`end` are the
      * absolute period bounds (ms, aligned to the grid), `relevant` — the
@@ -117,15 +117,19 @@ export default class JournalDbMetrics extends BootClass {
      * Resolve `precision` to a bucket size (ms) — as in `vrack-db`
      * `SingleDB.parsePrecission`: an interval string ('15m' → 900 000) or a
      * point count (the bucket that fits exactly `count` points in [start, end]).
+     * A numeric string ('600') is treated as a point count too — WS/API
+     * callers often send numbers as strings.
      *
      * @param start Period start (ms)
      * @param end Period end (ms)
-     * @param precision An interval string or a point count
+     * @param precision An interval string or a point count (number or numeric string)
      * @throws RangeError if the interval is malformed (see `Interval.parseInterval`)
      */
     protected parsePrecision(start: number, end: number, precision: string | number): number {
         if (typeof precision === 'number') return Interval.getIntervalOfFixedCount(start, end, precision)
-        return Interval.parseInterval(precision)
+        const s = String(precision).trim()
+        if (/^\d+$/.test(s)) return Interval.getIntervalOfFixedCount(start, end, parseInt(s, 10))
+        return Interval.parseInterval(s)
     }
 
     /**
