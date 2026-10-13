@@ -4,7 +4,7 @@
  */
 
 import path from 'path';
-import { Store, defineLogTable } from 'vrack2-journal-db';
+import { Interval, Store, defineLogTable } from 'vrack2-journal-db';
 import type { AggFn } from 'vrack2-journal-db';
 import IDeviceEvent from '../service/IDeviceEvent';
 import BootClass from './BootClass';
@@ -75,11 +75,13 @@ export default class JournalDbMetrics extends BootClass {
      * @param device Device ID
      * @param name Registered metric name
      * @param period Period in the form 'now-6h:now'
-     * @returns `{ relevant, start, end, rows }` — `rows` are `{ ts, value }`, old → new
+     * @returns `{ relevant, start, end, rows }` — `start`/`end` are the
+     * absolute period bounds in ms, `rows` are `{ ts, value }`, old → new
+     * @throws RangeError if the period is malformed or start > end (see `Interval.period`)
      */
     read(device: string, name: string, period: string) {
         const table = this.getMetric(device, name)
-        const [start, end] = period.split(':')
+        const [start, end] = Interval.period(period)
         const rows = table ? table.query(start, end) : []
         return {
             relevant: rows.length > 0,

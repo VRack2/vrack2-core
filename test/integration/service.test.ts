@@ -634,10 +634,45 @@ describe('Counter: input, actions, output, metric, storage', () => {
         const c: any = mp.Container.devices['Counter1']
         c.ports.input.data.push(5)
 
+        const t0 = Date.now()
         const res = dm.read('Counter1', 'count', 'now-1m:now')
+        const t1 = Date.now()
         expect(res.relevant).toBe(true)
         expect(res.rows.length).toBeGreaterThanOrEqual(1)
         expect(res.rows.some((r: any) => r.value === 5)).toBe(true)
+
+        // start/end are absolute ms of the period (the vrack-db SingleDB.read contract)
+        expect(typeof res.start).toBe('number')
+        expect(typeof res.end).toBe('number')
+        expect(res.end - res.start).toBe(60_000)
+        expect(res.start).toBeGreaterThanOrEqual(t0 - 60_000)
+        expect(res.start).toBeLessThanOrEqual(t1 - 60_000)
+        expect(res.end).toBeGreaterThanOrEqual(t0)
+        expect(res.end).toBeLessThanOrEqual(t1)
+    })
+
+    it('read(): missing metric -> relevant: false with absolute ms bounds; malformed period -> RangeError', async () => {
+        const mp = makeMP({
+            devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
+            connections: [],
+        })
+        await mp.run()
+
+        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
+
+        const t0 = Date.now()
+        const empty = dm.read('Counter1', 'missing', 'now-1m:now')
+        const t1 = Date.now()
+        expect(empty.relevant).toBe(false)
+        expect(empty.rows).toEqual([])
+        expect(typeof empty.start).toBe('number')
+        expect(typeof empty.end).toBe('number')
+        expect(empty.end - empty.start).toBe(60_000)
+        expect(empty.start).toBeGreaterThanOrEqual(t0 - 60_000)
+        expect(empty.start).toBeLessThanOrEqual(t1 - 60_000)
+
+        expect(() => dm.read('Counter1', 'count', 'garbage')).toThrow(RangeError)
+        expect(() => dm.read('Counter1', 'count', 'now-1m')).toThrow(RangeError)
     })
 
     it('persists storage to disk and reloads it in a second process', async () => {

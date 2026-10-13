@@ -47,12 +47,14 @@ export default class JournalDbMetrics extends BootClass {
      * @param device Device ID
      * @param name Registered metric name
      * @param period Period in the form 'now-6h:now'
-     * @returns `{ relevant, start, end, rows }` — `rows` are `{ ts, value }`, old → new
+     * @returns `{ relevant, start, end, rows }` — `start`/`end` are the
+     * absolute period bounds in ms, `rows` are `{ ts, value }`, old → new
+     * @throws RangeError if the period is malformed or start > end (see `Interval.period`)
      */
     read(device: string, name: string, period: string): {
         relevant: boolean;
-        start: string;
-        end: string;
+        start: number;
+        end: number;
         rows: import("vrack2-journal-db").Row[];
     };
     /**

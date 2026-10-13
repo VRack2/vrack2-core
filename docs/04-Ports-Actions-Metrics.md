@@ -149,7 +149,7 @@ metrics() {
 
 - При `registerDevice()` каждая метрика регистрируется: событие `device.metric.register` → boot-класс метрик создаёт её в базе (путь — `device.metricname`, нижний регистр).
 - Запись: `device.metric(path, value)` → событие `device.metric` → запись в базу. Агрегация (`modify`) задаётся в объявлении метрики, а не при записи. Запись незарегистрированной метрики игнорируется.
-- Чтение: `JournalDbMetrics.read(device, name, period)` — `period` вида `'now-6h:now'`, возвращает `{ relevant, start, end, rows }` (`rows` — `{ ts, value }`).
+- Чтение: `JournalDbMetrics.read(device, name, period)` — `period` вида `'now-6h:now'`, возвращает `{ relevant, start, end, rows }` (`start`/`end` — абсолютные границы периода в мс, как в старой `vrack-db SingleDB.read`; `rows` — `{ ts, value }`). Неправильный `period` или `start > end` — `RangeError`.
 - Агрегация: `JournalDbMetrics.aggregate(device, name, period)` — значение по функции `modify` метрики; `JournalDbMetrics.percentile(device, name, period, p)`.
 - Проверка существования: `JournalDbMetrics.has(device, name)`.
 - Старая реализация `VrackDbMetrics` (на `vrack-db`) сохраняет прежний API: `read(device, name, period, precision, func?)` и `modify` `last | first | max | min | avg | sum`.
