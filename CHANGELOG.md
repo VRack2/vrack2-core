@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026.10.14
+
+### Minor
+
+- **`vrack2-journal-db` обновлена `2.4.0 → 3.0.0`** (breaking в самом пакете): ошибки `Interval` — некорректный `period` / `precision`, `start > end` — теперь **кодированные** (`vError` / `vShort`, напр. `INT_PERIOD_FORMAT`), а не `RangeError` (в 2.x). `JournalDbMetrics.read()` — поведение соответствующее; неизвестный `func` по-прежнему → `RangeError` (бросает сам `vrack2-core`).
+- Документация: `@throws` в `JournalDbMetrics.ts` (кодованная ошибка пакета вместо `RangeError`).
+
+### Tests
+
+- `service` (`read()`): неправильный период → кодованная ошибка `INT_PERIOD_FORMAT` (2.x: `RangeError`).
+
 ## 2026.10.13
 
 ### Minor

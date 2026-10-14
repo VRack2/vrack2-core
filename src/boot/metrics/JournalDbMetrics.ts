@@ -79,7 +79,7 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
      * absolute period bounds (seconds, aligned to the grid), `relevant` — the
      * metric is registered, `rows` are `{ time, value }` with `time` in seconds
      * (`value: null` where empty). Matches the `vrack-db` (seconds) unit.
-     * @throws RangeError if the period/precision is malformed, start > end, or func is unknown
+      * @throws coded error (vError/vShort, from `vrack2-journal-db` `Interval`) if the period/precision is malformed or start > end; RangeError if func is unknown
      */
     read(device: string, name: string, period: string, precision: string | number, func: string = 'last') {
         this.checkFunc(func)
@@ -122,7 +122,7 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
      * @param start Period start (ms)
      * @param end Period end (ms)
      * @param precision An interval string or a point count (number or numeric string)
-     * @throws RangeError if the interval is malformed (see `Interval.parseInterval`)
+      * @throws coded error (vError/vShort) if the interval is malformed (see `Interval.parseInterval`)
      */
     protected parsePrecision(start: number, end: number, precision: string | number): number {
         if (typeof precision === 'number') return Interval.getIntervalOfFixedCount(start, end, precision)

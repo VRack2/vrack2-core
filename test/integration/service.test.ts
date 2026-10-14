@@ -678,8 +678,12 @@ describe('Counter: input, actions, output, metric, storage', () => {
         expect(pts.rows.length).toBe(601) // ceil(3 600 000 / 600) = 6000 ms -> 600 buckets + 1
         expect(pts.rows.every((r: any) => r.value === null)).toBe(true)
 
-        expect(() => dm.read('Counter1', 'count', 'garbage', '15s')).toThrow(RangeError)
-        expect(() => dm.read('Counter1', 'count', 'now-1m', '15s')).toThrow(RangeError)
+        // vrack2-journal-db 3.x: malformed period -> coded error (vError/vShort), not RangeError
+        for (const period of ['garbage', 'now-1m']) {
+            let err: any
+            try { dm.read('Counter1', 'count', period, '15s') } catch (e) { err = e }
+            expect(hasCode(err, 'INT_PERIOD_FORMAT')).toBe(true)
+        }
         expect(() => dm.read('Counter1', 'count', 'now-1m:now', '15s', 'bogus')).toThrow(RangeError)
     })
 
