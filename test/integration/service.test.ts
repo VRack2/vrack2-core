@@ -868,6 +868,43 @@ describe('MainProcess.stop()', () => {
         expect(t1.order.filter((o: string) => o === 'onStop')).toHaveLength(1)
     })
 
+    it('destroys boot classes after stopping devices (reverse load order)', async () => {
+        const mp = makeMP(EMPTY_SERVICE, {
+            TermA: { path: 'testkit.TermBoot', options: {} },
+            TermB: { path: 'testkit.TermBoot', options: {} },
+        })
+        await mp.run()
+
+        await mp.stop()
+
+        // devices stopped, THEN boot classes destroyed, in reverse load order
+        expect((testkit.TermBoot as any).destroyed).toEqual(['TermB', 'TermA'])
+        // stop() is the whole teardown: a manual destroyAll() is a no-op
+        await mp.Bootstrap.destroyAll()
+        expect((testkit.TermBoot as any).destroyed).toEqual(['TermB', 'TermA'])
+    })
+
+    it('destroys boot classes even when a device fails to stop (best-effort teardown)', async () => {
+        const mp = makeMP({
+            devices: [{ id: 'Bad', type: 'testkit.StopFail', options: {} }],
+            connections: [],
+        }, {
+            TermB: { path: 'testkit.TermBoot', options: {} },
+        })
+        await mp.run()
+
+        let err: any
+        try {
+            await mp.stop()
+        } catch (e) {
+            err = e
+        }
+
+        expect(ErrorManager.isCode(err, 'CONT_DEVICE_STOP_ALL_EXCEPTION')).toBe(true)
+        // despite the device stop failure, the boot class was still destroyed
+        expect((testkit.TermBoot as any).destroyed).toEqual(['TermB'])
+    })
+
     it('propagates stop failures: CONT_DEVICE_STOP_ALL_EXCEPTION, other devices still stopped', async () => {
         const mp = makeMP({
             devices: [

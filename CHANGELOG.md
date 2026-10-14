@@ -4,11 +4,13 @@
 
 ### Minor
 
+- **`MainProcess.stop()` теперь полный teardown**: после `Container.stopAll()` (остановка устройств) — `Bootstrap.destroyAll()` (уничтожение ВСЕХ boot-классов в обратном порядке загрузки) — закрываются journal-db store'ы (`JournalDbMetrics`/`ServiceLogger`/`PortLogger` → `Store.closeAll()`, журнал flush-ится до `process.exit()`), отключается `BootDatabase`, освобождаются прочие процесс-ресурсы. Порядок зеркальный стартовому: устройства (стартовали последними) — первыми, boot-классы (загружались первыми) — последними. Если остановка устройства упала (`CONT_DEVICE_STOP_ALL_EXCEPTION`) — boot-классы всё равно уничтожаются (best-effort; `try/finally`), их сбои — `BTSP_TERMINATE_FAILED` в `system.error`. Идемпотентность сохранена (latch `destroyed`). Раньше `destroyAll()` требовалось вызывать вручную — тесты и пример в 10-Standalone делали это в обход.
 - **`vrack2-journal-db` обновлена `2.4.0 → 3.0.0`** (breaking в самом пакете): ошибки `Interval` — некорректный `period` / `precision`, `start > end` — теперь **кодированные** (`vError` / `vShort`, напр. `INT_PERIOD_FORMAT`), а не `RangeError` (в 2.x). `JournalDbMetrics.read()` — поведение соответствующее; неизвестный `func` по-прежнему → `RangeError` (бросает сам `vrack2-core`).
 - Документация: `@throws` в `JournalDbMetrics.ts` (кодованная ошибка пакета вместо `RangeError`).
 
 ### Tests
 
+- `service` (`MainProcess.stop()`): `+2` — boot-классы уничтожаются после остановки устройств (обратный порядок, повторный `destroyAll()` — no-op); boot-классы уничтожаются даже при падающем устройстве (`CONT_DEVICE_STOP_ALL_EXCEPTION` + `TermBoot.destroyed`).
 - `service` (`read()`): неправильный период → кодованная ошибка `INT_PERIOD_FORMAT` (2.x: `RangeError`).
 
 ## 2026.10.13
