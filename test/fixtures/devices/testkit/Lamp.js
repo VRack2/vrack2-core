@@ -29,7 +29,7 @@ export default class Lamp extends Device {
 
     metrics() {
         return {
-            brightness: Metric.inS().retentions('1s:6h').modify('avg').description('Current brightness'),
+            brightness: Metric.one().descriptions('Current brightness'),
         }
     }
 

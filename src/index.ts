@@ -47,12 +47,13 @@ export { default as DeviceConnect } from './service/DeviceConnect'
 export { default as DevicePort } from './service/DevicePort'
 export { default as Port } from './ports/Port'
 export { default as Metric } from './metrics/Metric'
+export { default as MetricOne } from './metrics/MetricOne'
+export { default as MetricGroup } from './metrics/MetricGroup'
 
 export { default as BasicPort } from './ports/BasicPort'
 export { default as StandardPort } from './ports/StandardPort'
 export { default as ReturnPort } from './ports/ReturnPort'
 export { default as BasicType } from './validator/types/BasicType'
-export { default as BasicMetric } from './metrics/BasicMetric'
 export { default as BasicAction } from './actions/BasicAction'
 
 /* ---------------- INTERFACES ------------------- */

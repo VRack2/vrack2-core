@@ -6,7 +6,8 @@ import IPort from "./ports/IPort";
 import IAction from "./actions/IAction";
 import Bootstrap from "./Bootstrap";
 import IMetricSettings from "./metrics/IMetricSettings";
-import BasicMetric from "./metrics/BasicMetric";
+import MetricOne from "./metrics/MetricOne";
+import MetricGroup from "./metrics/MetricGroup";
 import IDeviceStatus from "./service/IDeviceStatus";
 /**
  * Contains the structure of the service
@@ -136,7 +137,7 @@ export default class Container extends EventEmitter {
     */
     protected deviceMetrics: {
         [key: string]: {
-            [key: string]: BasicMetric;
+            [key: string]: MetricOne | MetricGroup;
         };
     };
     /**

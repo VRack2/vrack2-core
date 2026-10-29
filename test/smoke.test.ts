@@ -38,12 +38,12 @@ describe('vrack2-core smoke', () => {
         // Single source of truth for this list: docs/11-API.md.
         // Add a new public export there (with purpose/since) before exporting it.
         const expected = [
-            'Action', 'BasicAction', 'BasicMetric', 'BasicPort', 'BasicType',
+            'Action', 'BasicAction', 'BasicPort', 'BasicType',
             'BootClass', 'BootDatabase', 'BootDatabaseMemory', 'BootDatabaseSqlite',
             'BootDeviceMetrics', 'Bootstrap', 'Container', 'CoreError', 'Device', 'DeviceConnect',
             'DeviceFileStorage', 'DeviceManager', 'DevicePort',
             'ErrorManager', 'ImportManager', 'JournalDbMetrics', 'MainProcess',
-            'Metric', 'Port', 'PortLogger', 'ReactiveRef', 'ReturnPort', 'Rule', 'ServiceLoader', 'ServiceLogger',
+            'Metric', 'MetricGroup', 'MetricOne', 'Port', 'PortLogger', 'ReactiveRef', 'ReturnPort', 'Rule', 'ServiceLoader', 'ServiceLogger',
             'StandardPort', 'StorageTypes', 'StructureStorage', 'SubruleNames',
             'UniversalWorker', 'Utility', 'Validator', 'VrackDbMetrics', 'mergeBootList',
         ]

@@ -67,7 +67,8 @@ Notes:
   (`vrack2-core` → `src/index.ts`, `testkit` → `test/fixtures/boot/index.js`) —
   no build step is required before testing.
 - Integration tests use temp dirs under `os.tmpdir()` and clean up after each test.
-- The only runtime dependency is `vrack-db` (used by `DeviceMetrics` and the `BasicMetric` metric storage).
+- The runtime dependencies are `vrack-db` (used by `VrackDbMetrics`) and
+  `vrack2-journal-db` (used by `JournalDbMetrics` and the log boot-classes).
 
 ## Rules for changes (read before editing)
 

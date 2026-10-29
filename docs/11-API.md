@@ -31,14 +31,13 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 |---|---|---|---|
 | `Action` | Базовый класс action устройства (декларативное описание). | 2.0.0 | — |
 | `BasicAction` | Стандартная реализация `Action` (`.name()`, `.requirements()`, `.returns()`, `.description()`). | 2.0.0 | — |
-| `BasicMetric` | Стандартная реализация `Metric` (`.name()`, `.in()`, `.retentions()`, `.modify()`, `.description()`). | 2.0.0 | — |
 | `BasicPort` | Базовый класс портов устройства. | 2.0.0 | — |
 | `BasicType` | Базовый валидационный тип — блок `Rule` (`.required()`, `.min()`, …). | 2.0.0 | — |
 | `BootClass` | Базовый класс boot-классов (lifecycle `onStart()` / `onStartAsync()` / `onDestroy()`). | 2.0.0 | — |
 | `BootDatabase` | Машина состояний БД сервиса (`pending → ready → closed`), транзакции `acquire()`. | 2026.09.22 | — |
 | `BootDatabaseMemory` | Адаптер БД: in-memory (`file = ':memory:'`), данные живут до конца процесса. | 2026.09.22 | — |
 | `BootDatabaseSqlite` | Адаптер БД: SQLite на встроенном `node:sqlite` (нужен Node ≥ 22.5). | 2026.09.22 | — |
-| `BootDeviceMetrics` | Абстрактный базовый класс движков метрик: общий контракт `has()`/`read()` и подписка на `device.metric`/`device.metric.register`; реализуют `JournalDbMetrics` и `VrackDbMetrics`. | 2026.10.13 | — |
+| `BootDeviceMetrics` | Абстрактный базовый класс движков метрик: общий контракт `has()`/`read()`, реестр объявлений (точные пути + wildcard-группы) и подписка на `device.metric`/`device.metric.register`; реализуют `JournalDbMetrics` и `VrackDbMetrics`. | 2026.10.13 | — |
 | `Bootstrap` | Загружает и запускает boot-классы (модули сервиса). | 2.0.0 | — |
 | `Container` | Рантайм-контейнер: регистрация устройств, движение данных, lifecycle, события. | 2.0.0 | — |
 | `CoreError` | Класс кодированной ошибки (бросается для ожидаемых сбоев). | 2.0.0 | — |
@@ -51,7 +50,9 @@ lifecycle-хуки `preProcess`/`process`/`processPromise`/`stop`/`stopPromise`/
 | `ImportManager` | Утилита: импорт классов по `vendor.Class`, `camelize`, и универсальный `importClassUniversal()` (файл по пути **или** пакет, детекция автоматически), и др. | 2.0.0 | — |
 | `JournalDbMetrics` | Boot-класс: хранилище метрик через `vrack2-journal-db` — **по умолчанию** (id `DeviceMetrics`). | 2026.10.07 | — |
 | `MainProcess` | Точка входа; оркеструет Bootstrap → ServiceLoader → Container. | 2.0.0 | — |
-| `Metric` | Базовый класс метрик устройства. | 2.0.0 | — |
+| `Metric` | Фабрика объявлений метрик: `Metric.one()` / `Metric.group()` (только метаданные). | 2.0.0 | — |
+| `MetricOne` | Объявление одной метрики: `.descriptions()`, `.additional()`. | 2026.10.29 | — |
+| `MetricGroup` | Объявление группы по wildcard-паттерну (`'group.*'`): `.descriptions()`, `.additional()`, `.list()`. | 2026.10.29 | — |
 | `Port` | Статический фабричный класс портов (`Port.standard()`, `Port.return()`). | 2.0.0 | — |
 | `PortLogger` | Boot-класс (включён по умолчанию): журналирует трафик выходных портов (событие `device.port`, кроме портов с `noCapture()`) в `port_log` (`vrack2-journal-db`, общий каталог с `ServiceLogger`); опция `enabled` (default `true`) + живое `enable()`/`disable()`; `DB`/`table`/`query()`/`tail()`/`count()`/`truncate()`. | 2026.10.12 | — |
 | `ReactiveRef` | Утилита реактивной ссылки (независима от `Device.shares`). | 2026.09.11 | — |

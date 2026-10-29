@@ -15,7 +15,8 @@ import DeviceConnect from "./service/DeviceConnect";
 import IAction from "./actions/IAction";
 import Bootstrap from "./Bootstrap";
 import IMetricSettings from "./metrics/IMetricSettings";
-import BasicMetric from "./metrics/BasicMetric";
+import MetricOne from "./metrics/MetricOne";
+import MetricGroup from "./metrics/MetricGroup";
 import IDeviceEvent from "./service/IDeviceEvent";
 import IDeviceStatus from "./service/IDeviceStatus";
 
@@ -274,7 +275,7 @@ export default class Container extends EventEmitter {
      * List of all device metrics
      * 
     */
-    protected deviceMetrics: { [key: string]: { [key: string]: BasicMetric } }
+    protected deviceMetrics: { [key: string]: { [key: string]: MetricOne | MetricGroup } }
 
     /** 
      * Container structure 

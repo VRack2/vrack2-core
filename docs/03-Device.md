@@ -90,9 +90,9 @@ actions(): { [key: string]: BasicAction } {
     }
 }
 
-metrics(): { [key: string]: BasicMetric } {
+metrics(): { [key: string]: MetricOne | MetricGroup } {
     return {
-        count: Metric.inS().retentions('1s:6h').description('Current counter value'),
+        count: Metric.one().descriptions('Current counter value'),
     }
 }
 
@@ -175,7 +175,7 @@ export default class Counter extends Device {
 
     metrics() {
         return {
-            count: Metric.inS().retentions('1s:6h').description('Current counter value'),
+            count: Metric.one().descriptions('Current counter value'),
         }
     }
 

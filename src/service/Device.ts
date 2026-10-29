@@ -11,7 +11,8 @@ import BasicPort from "../ports/BasicPort";
 import DevicePort from "./DevicePort";
 import IDeviceEvent from "./IDeviceEvent";
 import CoreError from "../errors/CoreError";
-import BasicMetric from "../metrics/BasicMetric";
+import MetricOne from "../metrics/MetricOne";
+import MetricGroup from "../metrics/MetricGroup";
 import ImportManager from "../ImportManager";
 
 interface IDeviceSettings {
@@ -166,18 +167,26 @@ export default class Device {
     actions(): { [key: string]: BasicAction } { return {} }
 
     /**
-     * Defining device metrics. 
-     * 
+     * Defining device metrics — declarations are metadata, not storage
+     * config and not permission: the engine stores every metric name the
+     * device writes. Exact keys declare a single metric; wildcard keys
+     * (`'group.*'`, `*` matches one dot-separated segment) declare a group
+     * with optional known members.
+     *
      * @example
-     * 
+     *
      * ```
      * return {
-     *  'test.metric': Metric.inS().retentions('1s:6h').description('Test metric')
+     *  'test.metric': Metric.one().descriptions('Test metric'),
+     *  'boilers.*': Metric.group().descriptions('Boiler metrics').list({
+     *      'temp': Metric.one().descriptions('Boiler temperature')
+     *  })
      * }
      * ```
-     * @see BasicMetric
+     * @see MetricOne
+     * @see MetricGroup
     */
-    metrics(): { [key: string]: BasicMetric } { return {} }
+    metrics(): { [key: string]: MetricOne | MetricGroup } { return {} }
 
     /**
      * Hook: run before every device action — after argument validation, before
@@ -317,10 +326,11 @@ export default class Device {
     /**
      * Write metric value (raw append at the current time).
      *
-     * The aggregation function is set on the metric itself via
-     * `BasicMetric.modify()`; it is no longer chosen per write.
+     * Any name may be written: declared metric names (exact or matching a
+     * declared `'group.*'` pattern) carry their declaration metadata;
+     * undeclared names are stored without description.
      *
-     * @param path Registered metric path
+     * @param path Metric name
      * @param value value record
      */
     metric(path: string, value: number) {

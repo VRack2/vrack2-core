@@ -1,17 +1,26 @@
 import { Store } from 'vrack2-journal-db';
-import type { AggFn } from 'vrack2-journal-db';
+import type { ScanOptions, Table } from 'vrack2-journal-db';
 import IDeviceEvent from '../../service/IDeviceEvent';
-import IMetricSettings from '../../metrics/IMetricSettings';
 import BasicType from '../../validator/types/BasicType';
 import BootDeviceMetrics from './BootDeviceMetrics';
 /**
  * Default metrics engine, backed by vrack2-journal-db — a disk-backed,
- * append-only columnar journal with a metric engine (retention tiers + rollup).
+ * append-only columnar journal.
  *
- * One metric = one `Table` inside a shared `Store` (a catalog of journals under
- * a single data dir). The store is rooted at `<path>/<container.id>` so each
- * vrack instance keeps its metrics separate (the container id is unique per
- * instance).
+ * One table for the whole service: `metrics { ts, dev, met, value }` inside
+ * a single `Store` rooted at `<path>/<container.id>` (the container id is
+ * unique per vrack instance). Every device metric is a row, not a table —
+ * thousands of metrics cost one journal per retention tier, not per metric.
+ * The table is clustered by `['dev','met']` (dimension-local segments, whole
+ * segments skipped by the `.meta` dims summaries), so a read of one metric
+ * stays sublinear. Retention is service-level: a Graphite-style
+ * `'res:ttl[,...]'` string — one tier is pure TTL (rows kept raw, auto-purged),
+ * two or more tiers also roll up (`value: 'avg'`).
+ *
+ * Metric declarations (`Metric.one()` / `Metric.group()`) are metadata only:
+ * the engine records them in the base registry (`has()`/`read()` report them)
+ * and creates no per-metric storage. A write of any name goes into the same
+ * table, declared or not.
  *
  * Uses the `device.metric` and `device.metric.register` events.
  *
@@ -21,23 +30,46 @@ import BootDeviceMetrics from './BootDeviceMetrics';
  */
 export default class JournalDbMetrics extends BootDeviceMetrics {
     /**
-     * The journal-db store (one table per metric). Created in `onStart()`.
+     * The journal-db store (holds the single `metrics` table). Created in
+     * {@link onEngineStart}.
      */
     DB: Store;
     /**
-     * Per-metric aggregation function (from the metric description), default `avg`.
+     * The single metrics table. Created in {@link onEngineStart}.
      */
-    protected modifies: Record<string, AggFn>;
+    table: Table;
+    /**
+     * Default service retention — the old per-metric Graphite default, now
+     * one policy for the whole service (raw 5s for 10 min up to daily rows
+     * for a year; a single `'res:ttl'` pair would be pure TTL).
+     */
+    static readonly DEFAULT_RETENTION = "5s:10m, 1m:2h, 15m:1d, 1h:1w, 6h:1mon, 1d:1y";
+    /**
+     * Background cluster-compaction watermark: closed segments up to this ts
+     * have been (re)laid out by the dimension cluster key.
+     */
+    protected compactedTo: number;
+    /**
+     * Background cluster-compaction timer (null when disabled).
+     */
+    protected compactTimer: ReturnType<typeof setInterval> | null;
     checkOptions(): {
         [key: string]: BasicType;
     };
     protected onEngineStart(): void;
     onDestroy(): Promise<void>;
     /**
-     * Checks if the metric exists
+     * Cluster-compacts closed segments written since the last pass (window
+     * between the watermark and now — already-clustered older segments are
+     * outside the window and left untouched).
+     */
+    protected runClusterCompact(): void;
+    /**
+     * Checks if the metric exists — declared or written since the engine
+     * started.
      *
      * @param device Device ID
-     * @param name Registered metric name
+     * @param name Metric name
      */
     has(device: string, name: string): boolean;
     /**
@@ -46,14 +78,15 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
      * `value: null` where the bucket has no data.
      *
      * @param device Device ID
-     * @param name Registered metric name
+     * @param name Metric name
      * @param period Period in the form 'now-6h:now'
      * @param precision Bucket size: an interval string ('15m', '5s', '1h') or a point count (10, 200, 1500); a numeric string ('600') is also a point count
      * @param func Per-bucket aggregation: 'last' (default) | 'first' | 'max' | 'min' | 'avg' | 'sum'
      * @returns `{ relevant, start, end, rows }` — `start`/`end` are the
      * absolute period bounds (seconds, aligned to the grid), `relevant` — the
-     * metric is registered, `rows` are `{ time, value }` with `time` in seconds
-     * (`value: null` where empty). Matches the `vrack-db` (seconds) unit.
+     * metric is known (declared or written), `rows` are `{ time, value }` with
+     * `time` in seconds (`value: null` where empty). Matches the `vrack-db`
+     * (seconds) unit.
       * @throws coded error (vError/vShort, from `vrack2-journal-db` `Interval`) if the period/precision is malformed or start > end; RangeError if func is unknown
      */
     read(device: string, name: string, period: string, precision: string | number, func?: string): {
@@ -101,49 +134,45 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
      */
     protected aggregateValues(values: number[], func: string): number;
     /**
-     * Aggregate the metric value over a period using the metric's `modify`
-     * function (default `avg`).
+     * Aggregate the metric value over a period (avg — the single table has
+     * no per-metric modify anymore).
      *
      * @param device Device ID
-     * @param name Registered metric name
+     * @param name Metric name
      * @param period Period in the form 'now-6h:now'
-     * @returns `{ [fn]: number | null }`
+     * @returns `{ value_avg: number | null }`
      */
     aggregate(device: string, name: string, period: string): Record<string, number | null>;
     /**
      * Exact quantiles of the metric value over a period.
      *
      * @param device Device ID
-     * @param name Registered metric name
+     * @param name Metric name
      * @param period Period in the form 'now-6h:now'
      * @param levels A level (0..1) or array of levels, e.g. `[0.5, 0.95, 0.99]`
      * @returns `{ p50: number, p95: number, ... }`
      */
     percentile(device: string, name: string, period: string, levels?: number | number[]): Record<string, number | null>;
     /**
-     * Open the metric table (idempotent — re-open returns the existing table).
-     *
-     * @param metricPath Metric path
-     * @param metric Metric settings
+     * Percentile by linear interpolation between ranks (same as
+     * `vrack2-journal-db` `Percentile.of`).
      */
-    protected registerMetric(metricPath: string, metric: IMetricSettings): void;
+    protected percentileOf(sorted: number[], q: number): number;
     /**
-     * Write a metric value (raw append at the current time).
-     *
-     * @param nEvent `{ device, data, trace: { value } }`
+     * `device.metric.register` is a metadata registration in the base — no
+     * per-metric storage exists in this engine.
      */
     protected deviceMetric(nEvent: IDeviceEvent): void;
     /**
-     * Resolve the open table for a device metric (null if not registered).
+     * The `where` selecting one device metric in the shared table.
      */
-    protected getMetric(device: string, name: string): import("vrack2-journal-db").Table | undefined;
+    protected metricWhere(device: string, name: string): NonNullable<ScanOptions['where']>;
     /**
-     * The metric's aggregation function (from its description), default `avg`.
+     * Raw rows of one metric in a ts window (projection: ts + value).
+     *
+     * @param start Period start (ms or journal-db period string)
+     * @param end Period end (ms or journal-db period string)
+     * @param limit Optional max rows to scan
      */
-    protected getModify(device: string, name: string): AggFn;
-    /**
-     * Coerce a declared `modify` to a valid journal-db `AggFn`
-     * (`min` | `max` | `sum` | `avg` | `count`), defaulting to `avg`.
-     */
-    protected toAggFn(modify: string | undefined): AggFn;
+    protected metricRows(device: string, name: string, start: number | string, end: number | string, limit?: number): import("vrack2-journal-db").Row[];
 }

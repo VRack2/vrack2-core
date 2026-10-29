@@ -19,7 +19,10 @@ export default class Counter extends Device {
 
     metrics() {
         return {
-            count: Metric.inS().retentions('1s:6h').modify('max').description('Current counter value'),
+            count: Metric.one().descriptions('Current counter value'),
+            'dyn.*': Metric.group().descriptions('Dynamic metrics').list({
+                extra: Metric.one().descriptions('Declared group member'),
+            }),
         }
     }
 

@@ -31,6 +31,6 @@
   },
   "dependencies": {
     "vrack-db": "^3.0.2",
-    "vrack2-journal-db": "^3.1.1"
+    "vrack2-journal-db": "^4.0.1"
   }
 }

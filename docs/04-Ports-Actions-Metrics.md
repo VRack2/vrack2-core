@@ -127,32 +127,35 @@ actionSetValue(data) {
 ```js
 metrics() {
     return {
-        count: Metric.inS()
-            .retentions('1s:6h')
-            .modify('max')          // агрегация при чтении/агрегации
-            .description('Current counter value'),
+        count: Metric.one().descriptions('Current counter value'),
+        'boilers.*': Metric.group()
+            .descriptions('Per-boiler metrics')
+            .list({ temp: Metric.one().descriptions('Boiler temperature') }),
     }
 }
 ```
 
-| Метод | Значение |
+| Элемент | Значение |
 |---|---|
-| `Metric.inS()` / `inMs()` | Минимальная единица времени: секунда / миллисекунда. |
-| `retentions('5s:10m, 1m:2h, ...')` | Политика хранения: с какой точностью и как долго хранятся данные. Формат Graphite-стиля; по умолчанию `5s:10m, 1m:2h, 15m:1d, 1h:1w, 6h:1mon, 1d:1y`. |
-| `timeStorage(StorageTypes.X)` | Тип хранения времени (по умолчанию `Uint64`). |
-| `valueStorage(StorageTypes.X)` | Тип хранения значения (по умолчанию `Float`). |
-| `modify('min'\|'max'\|'sum'\|'avg'\|'count')` | Агрегационная функция метрики (по умолчанию `avg`). Определяется **в объявлении** метрики, а не при каждой записи. |
-| `description(text)` | Описание. |
-| `additional(obj)` | Произвольные дополнительные данные. |
+| `Metric.one()` | Объявление одной метрики (ключ — точное имя). |
+| `Metric.group()` | Объявление группы (ключ — wildcard-паттерн, напр. `'boilers.*'`). `*` матчит один сегмент имени через точку. |
+| `.descriptions(text)` | Описание (группы — общее; участники могут иметь своё). |
+| `.additional(obj)` | Произвольные дополнительные данные. |
+| `.list({ name: Metric.one() })` | Известные участники группы (не исчерпывающе: группа принимает любое имя по паттерну). |
+
+Объявление — **только метаданные**: хранение, retention и единица времени
+(всегда мс) принадлежат движку метрик, а не устройству. `retentions`,
+`modify`, `vType`/`tType` из объявления **удалены**.
 
 ### Как работает
 
-- При `registerDevice()` каждая метрика регистрируется: событие `device.metric.register` → boot-класс метрик создаёт её в базе (путь — `device.metricname`, нижний регистр).
-- Запись: `device.metric(path, value)` → событие `device.metric` → запись в базу. Агрегация (`modify`) задаётся в объявлении метрики, а не при записи. Запись незарегистрированной метрики игнорируется.
-- Чтение: `JournalDbMetrics.read(device, name, period, precision, func?)` — полный контракт `vrack-db SingleDB.read`: `period` вида `'now-6h:now'`, `precision` — интервал (`'15m'`, `'5s'`) или **максимальное число точек** в ряду (10, 200, 1500; числовая строка `'600'` = те же 600 точек — API/WS-вызовчики часто шлют числа строками), `func` — `last | first | max | min | avg | sum` (по умолчанию `last`). Возвращает `{ relevant, start, end, rows }`: `start`/`end` — абсолютные границы в секундах (выровнены по сетке `precision`), `relevant` — метрика зарегистрирована, `rows` — **плотный ряд** `{ time, value }` (старые → новые), пустые бакеты — `value: null` (те же семантики агрегации, что `vrack-db MetricResult.aggregate`). Неправильный `period` / `precision` — кодированная ошибка пакета `vrack2-journal-db` (`vError` / `vShort`, напр. `INT_PERIOD_FORMAT`); неизвестный `func` — `RangeError`.
-- Агрегация: `JournalDbMetrics.aggregate(device, name, period)` — значение по функции `modify` метрики; `JournalDbMetrics.percentile(device, name, period, p)`.
-- Проверка существования: `JournalDbMetrics.has(device, name)`.
-- Старая реализация `VrackDbMetrics` (на `vrack-db`) сохраняет прежний API: `read(device, name, period, precision, func?)` и `modify` `last | first | max | min | avg | sum`.
+- Хранение: **одна таблица на сервис** — `metrics { ts, dev, met, value }` в `vrack2-journal-db` (`cluster: ['dev','met']`); retention — сервисный, опция boot-класса `JournalDbMetrics.retention` (по умолчанию `5s:10m, 1m:2h, 15m:1d, 1h:1w, 6h:1mon, 1d:1y`; одна пара `res:ttl` — чистый TTL без rollup).
+- При `registerDevice()` объявления регистрируются: событие `device.metric.register` → движок запоминает точные пути и паттерны групп (известные участники группы разворачиваются в точные пути). Пер-метрических хранилищ не создаётся.
+- Запись: `device.metric(name, value)` → событие `device.metric` → строка в общую таблицу (путь `device.name`, нижний регистр). **Любое имя пишется молча**: декларация — не разрешение; незарегистрированная метрика хранится без описания.
+- Чтение: `JournalDbMetrics.read(device, name, period, precision, func?)` — полный контракт `vrack-db SingleDB.read`: `period` вида `'now-6h:now'`, `precision` — интервал (`'15m'`, `'5s'`) или **максимальное число точек** в ряду (10, 200, 1500; числовая строка `'600'` = те же 600 точек — API/WS-вызовчики часто шлют числа строками), `func` — `last | first | max | min | avg | sum` (по умолчанию `last`). Возвращает `{ relevant, start, end, rows }`: `start`/`end` — абсолютные границы в секундах (выровнены по сетке `precision`), `relevant` — метрика известна (объявлена или писалась), `rows` — **плотный ряд** `{ time, value }` (старые → новые), пустые бакеты — `value: null` (те же семантики агрегации, что `vrack-db MetricResult.aggregate`). Неправильный `period` / `precision` — кодированная ошибка пакета `vrack2-journal-db` (`vError` / `vShort`, напр. `INT_PERIOD_FORMAT`); неизвестный `func` — `RangeError`.
+- Агрегация: `JournalDbMetrics.aggregate(device, name, period)` — всегда `avg` (у общей таблицы нет per-metric `modify`); `JournalDbMetrics.percentile(device, name, period, p)` — точные квантили по сырым строкам окна.
+- Проверка существования: `JournalDbMetrics.has(device, name)` — объявлена (точно или участник группы) или писалась с запуска движка.
+- Старая реализация `VrackDbMetrics` (на `vrack-db`, in-memory): retention задаётся **сервисно** (опция `retentions`), единица — всегда ms; точные объявления создают серии сразу, участники групп и незадекларированные имена — лениво при первой записи. API: `read(device, name, period, precision, func?)`.
 
 ## Связанные документы
 

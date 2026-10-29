@@ -31,7 +31,7 @@ constructor(id: string, bootstrap: Bootstrap)
 | `meta` | Произвольные метаданные контейнера, приходящие снаружи (от хоста, запускающего сервис). Контракт не зафиксирован — содержимое непрозрачное (opaque). |
 | `Bootstrap` | Экземпляр boot-класса (один на контейнер). |
 | `deviceActions` | `{ [id]: { [action]: BasicAction } }`. |
-| `deviceMetrics` | `{ [id]: { [metric]: BasicMetric } }`. |
+| `deviceMetrics` | `{ [id]: { [metric]: MetricOne \| MetricGroup } }` — объявления метрик устройства. |
 | `structure` | Живая структура `IContainerStructure`. |
 | `started` | `Set<string>` — полностью стартованные устройства. |
 | `deviceStatus` | `{ [id]: IDeviceStatus }` — систематизированные статусы устройств (см. «Статус устройства»). |

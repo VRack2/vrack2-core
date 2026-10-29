@@ -129,13 +129,22 @@ Boot-классы владеют ресурсами уровня процесс�
 | `JournalDbMetrics` | `vrack2-journal-db` | **по умолчанию**; новые сервисы |
 | `VrackDbMetrics` | `vrack-db` | обратная совместимость со старыми сервисами |
 
+Опции `JournalDbMetrics`:
+
+| Опция | По умолчанию | Значение |
+|---|---|---|
+| `path` | `'./journals'` | База каталога; store коренится в `<path>/{containerId}` |
+| `retention` | `5s:10m, 1m:2h, 15m:1d, 1h:1w, 6h:1mon, 1d:1y` | Сервисный retention (Graphite-стиль); одна пара `res:ttl` — чистый TTL без rollup |
+| `clusterCompactInterval` | `600000` | Период фоновой компакции кластера, мс (`0` — выключено) |
+| `maxReadPoints` | `200000` | Максимум бакетов/строк, материализуемых одним `read()`/`percentile()` (сверх — `JDM_POINTS_LIMIT`) |
+
 События:
 
-- `device.metric.register` → создаёт метрику в базе (путь — `device.metricname`, нижний регистр);
-- `device.metric` → пишет значение (агрегация `modify` берётся из объявления метрики).
+- `device.metric.register` → регистрация объявления (точные пути и wildcard-паттерны групп `'group.*'`; пер-метрических хранилищ не создаётся);
+- `device.metric` → пишет строку `{ ts, dev, met, value }` в единую таблицу `metrics`. Любое имя пишется молча — декларация не является разрешением.
 
-Методы `JournalDbMetrics`: `has(device, name)`, `read(device, name, period, precision, func?)`, `aggregate(device, name, period)`, `percentile(device, name, period, p)`.
-Методы `VrackDbMetrics` (старый API): `has(device, name)`, `read(device, name, period, precision, func?)` — та же форма `read()`, что у `JournalDbMetrics`.
+Методы `JournalDbMetrics`: `has(device, name)`, `read(device, name, period, precision, func?)`, `aggregate(device, name, period)` (всегда `avg`), `percentile(device, name, period, p)`.
+Методы `VrackDbMetrics` (in-memory, обратная совместимость): `has(device, name)`, `read(device, name, period, precision, func?)` — та же форма `read()`; опция `retentions` задаётся **сервисно** и применяется всем метрикам (единица времени — ms); незадекларированные имена создают серии лениво при первой записи.
 
 ### `StructureStorage`
 
@@ -272,7 +281,7 @@ const bootstrapConfig = {
   "devices": [],
   "connections": [],
   "bootstrap": {
-    "DeviceMetrics": { "options": { "flushInterval": 30000 } },
+    "DeviceMetrics": { "options": { "retention": "10s:1h, 1h:30d" } },
     "DeviceFileStorage": null
   }
 }

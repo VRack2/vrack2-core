@@ -155,6 +155,18 @@
 | `PLG_NOT_STARTED` | Публичный метод `PortLogger` (`query()`/`tail()`/`count()`/`truncate()`) вызван до включения захвата (`enabled: false` и `enable()` ещё не вызывался) или после уничтожения boot-класса. |
 | `PLG_APPEND_FAILED` | Не удалось записать событие `device.port` в таблицу `port_log` (логирование продолжается). Несёт `device`, `port` и причину. |
 
+### BootDeviceMetrics (`BDM_*`)
+
+| Код | Описание |
+|---|---|
+| `BDM_GROUP_PATTERN` | Некорректный ключ объявления группы: wildcard-ключ должен содержать ровно один `*`, а имя участника `list()` не должно содержать `*` (мульти-wildcard разворачивает участников в недостижимые пути). Несёт `key`, опционально `member`. |
+
+### JournalDbMetrics (`JDM_*`)
+
+| Код | Описание |
+|---|---|
+| `JDM_POINTS_LIMIT` | Окно `read()`/`percentile()` превышает `maxReadPoints` (слишком много бакетов сетки / сканируемых строк) — сузьте период или укрупните `precision`. Несёт `points`, `limit`. |
+
 ### ImportManager (`IM_*`)
 
 | Код | Описание |

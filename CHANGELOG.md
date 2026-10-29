@@ -1,5 +1,36 @@
 # Changelog
 
+## 2026.10.29
+
+### Breaking
+
+- **Метрики: одна таблица на сервис вместо таблицы на метрику.** `JournalDbMetrics` хранит все метрики сервиса в одной таблице `metrics { ts, dev, met, value }` (`cluster: ['dev','met']`, dims-саммари в `.meta` — чтение одной метрики остаётся сублинейным) в одном store `<path>/{containerId}`. Старые каталоги журналов (формат ≤3.1, по таблице на метрику) не читаются — миграция не предусмотрена (прод-данных нет).
+- **Объявление метрики — только метаданные.** `Metric.inS()` / `Metric.inMs()` и классы `BasicMetric`, `IvS`, `IvMS` **удалены** (экспорт `BasicMetric` из `vrack2-core` снят). Новое API: `Metric.one()` (`MetricOne`: `.descriptions()`, `.additional()`) и `Metric.group()` (`MetricGroup`: `.descriptions()`, `.additional()`, `.list()`) — новые экспорты. Из `IMetricSettings` удалены `interval`, `retentions`, `modify`, `vType`, `tType`; остались `kind` (`'one' | 'group'`), `description`, `additional`, `list`. Единица времени — всегда мс.
+- **Wildcard-группы.** Ключ объявления может быть паттерном (`'boilers.*'`, `*` — один сегмент имени): `Metric.group().descriptions(...).list({ member: Metric.one() })`. Известные участники разворачиваются в точные пути (`has()` — true до первой записи); неизвестные участники принимаются как обычные метрики.
+- **Запись незарегистрированной метрики больше не игнорируется**: любое имя пишется молча (декларация — метаданные, не разрешение); `relevant` / `has()` = объявлена (точно или участник группы) **или** писалась с запуска движка.
+- **Retention — уровень сервиса**, не метрики: опция boot-класса `JournalDbMetrics.retention` (по умолчанию `5s:10m, 1m:2h, 15m:1d, 1h:1w, 6h:1mon, 1d:1y`; одна пара `res:ttl` — чистый TTL без rollup) и `VrackDbMetrics.retentions`. Опция `JournalDbMetrics.clusterCompactInterval` (default `600000` мс) — фоновая компакция кластера по watermark-окну.
+- `JournalDbMetrics.aggregate(device, name, period)` — всегда `avg` (per-metric `modify` удалён); `percentile()` считается в core по сырым строкам окна (линейная интерполяция, как `Percentile.of` в `vrack2-journal-db`).
+
+### Tests
+
+- `service`: `+3` — единая таблица: участник группы (`dyn.extra`) и незадекларированное имя пишутся и читаются, `has()` до/после записи, отсутствие утечек между метриками, `aggregate` по `where`; структура содержит `'dyn.*'` с `kind: 'group'` и `list`; некорректные wildcard-ключи групп → `BDM_GROUP_PATTERN` (fail-closed при регистрации); окно `read()`/`percentile()` сверх `maxReadPoints` → `JDM_POINTS_LIMIT` (вместо материалзации всего окна).
+- `smoke`: strict-set — `BasicMetric` убран, добавлены `MetricOne` / `MetricGroup`.
+
+### Fix (review follow-up)
+
+- Фоновый `clusterCompact` обёрнут в try/catch: бросок пакета (IO/состояние журнала) больше не роняет процесс через uncaughtException в `setInterval` — ошибка уходит в `system.error`, watermark не двигается, следующее окно повторяет попытку.
+- Watermark компакции сидируется с `0`, а не с wall-clock: первый проход покрывает весь уже имеющийся в сторе диапазон (хвост сегментов прошлого запуска, часы назад), иначе `clusterCompact(start,end)` навсегда пропускает сегменты целиком ниже окна.
+- Лимит материалации чтений: опция `maxReadPoints` (default `200000`) — `read()` проверяет размер сетки, `percentile()` ограничивает число сканируемых строк (`scan.limit`); превышение — кодированная ошибка `JDM_POINTS_LIMIT`. `percentile()` больше не собирает и не сортирует неограниченное число значений окна.
+- Валидация объявлений групп при регистрации: wildcard-ключ — ровно один `*` (иначе `BDM_GROUP_PATTERN`), имена участников `list()` без `*` — раньше мультив wildcard давал молча недостижимые `declared`-пути.
+- Реестр объявлений движка хранит копию `IMetricSettings` (`cloneSettings`): мутация структуры (`getStructure()`) не меняет declared-метаданные движка.
+- Удалён незадействованный `BootDeviceMetrics.getDeclaration()`; `AGENTS.md` — зависимости приведены к `vrack-db` + `vrack2-journal-db`.
+
+## 2026.10.28
+
+### Minor
+
+- **`vrack2-journal-db` обновлена `3.1.1 → 4.0.1`**. Публичный API, используемый `vrack2-core` (`Store`, `Table`, `Interval`, `defineLogTable`, `AggFn`, `query` / `allRows` / `truncate`, `openTables`), без изменений — код не менялся. Поведение хранилищ (`JournalDbMetrics` / `ServiceLogger` / `PortLogger`): **WAL по умолчанию выключен** (`wal: 'off'` — раньше WAL писался всегда): вдвое меньше записанных байтов; при жёсткой гибели процесса строки активного сегмента теряются (детерминированный `MainProcess.stop()` → `Store.closeAll()` флешит журнал как раньше). Содержание пакета: breaking — удалены форматы сегментов v1/v2 и миграция (прод-данных нет; только бинарный контейнер v4, при несовпадении версии — `SFW3_BAD_VERSION`); **кластеризация по измерениям** (`cluster: ['met','dev']`, `clusterCompact`, `setCluster`) с dims-саммари в `.meta` — `where` по измерению пропускает сегмент целиком, сублинейный скан «одна метрика + ts-окно»; `Table.aggregate(start, end, exprs, where?)` с pushdown и склейкой тир-агрегатов; одно-тирной `retention` = чистый TTL без rollup; ускорение сканов (зональная фильтрация, pushdown во все тиры, k-way merge), WAL-watermark (без дублей при крахе), корректный ранний стоп `limit`-скана. База под будущую модель «одна таблица метрик на store».
+
 ## 2026.10.14
 
 ### Minor

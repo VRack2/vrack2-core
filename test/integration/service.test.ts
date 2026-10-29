@@ -344,6 +344,10 @@ describe('Container: device initialization', () => {
         expect(structure['Counter1'].inputs).toHaveProperty('data')
         expect(structure['Counter1'].outputs).toHaveProperty('result')
         expect(structure['Counter1'].metrics).toHaveProperty('count')
+        expect(structure['Counter1'].metrics.count).toEqual({ kind: 'one', description: 'Current counter value' })
+        expect(structure['Counter1'].metrics).toHaveProperty('dyn.*')
+        expect(structure['Counter1'].metrics['dyn.*'].kind).toBe('group')
+        expect(Object.keys(structure['Counter1'].metrics['dyn.*'].list)).toEqual(['extra'])
         expect(structure['Counter1'].actions).toHaveProperty('reset')
         expect(structure['Counter1'].actions).toHaveProperty('set.value')
     })
@@ -774,6 +778,90 @@ describe('Lamp: input, output, metric', () => {
         expect(res.rows.length).toBe(5)
         expect(res.rows.some((r: any) => r.value === 200)).toBe(true)
         expect(res.rows.filter((r: any) => r.value !== null).length).toBe(1)
+    })
+
+    it('single metrics table: group members and undeclared names are stored and read back', async () => {
+        const mp = makeMP({
+            devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
+            connections: [],
+        })
+        await mp.run()
+
+        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
+        const c: any = mp.Container.devices['Counter1']
+
+        // known group members are declared (has() true) before any write
+        expect(dm.has('Counter1', 'dyn.extra')).toBe(true)
+        expect(dm.has('Counter1', 'dyn.other')).toBe(false)
+
+        const now = Math.floor(Date.now() / 15_000) * 15_000
+        await c.metric('dyn.extra', 7)
+        await c.metric('dyn.other', 11) // undeclared: written silently, no description
+
+        expect(dm.has('Counter1', 'dyn.other')).toBe(true)
+
+        const res = dm.read('Counter1', 'dyn.other', `${now - 45_000}:${now + 15_000}`, '15s')
+        expect(res.relevant).toBe(true)
+        expect(res.rows.filter((r: any) => r.value !== null)).toEqual([{ time: expect.any(Number), value: 11 }])
+
+        // reads of one metric never leak rows of the others from the shared table
+        expect(dm.read('Counter1', 'count', `${now - 45_000}:${now + 15_000}`, '15s').rows.every((r: any) => r.value === null)).toBe(true)
+        expect(dm.read('Counter1', 'dyn.extra', `${now - 45_000}:${now + 15_000}`, '15s').rows.filter((r: any) => r.value !== null)).toEqual([{ time: expect.any(Number), value: 7 }])
+
+        const agg = dm.aggregate('Counter1', 'dyn.extra', `${now - 45_000}:${now + 15_000}`)
+        expect(agg.value_avg).toBe(7)
+    })
+
+    it('malformed group patterns are rejected at registration (BDM_GROUP_PATTERN, fail-closed)', async () => {
+        const mp = makeMP({
+            devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
+            connections: [],
+        })
+        await mp.run()
+
+        for (const key of ['a.*.b.*', '.*.*']) {
+            let err: any
+            try {
+                mp.Container.emit('device.metric.register', { device: 'Counter1', data: key, trace: { kind: 'group' } })
+            } catch (e) { err = e }
+            expect(ErrorManager.isCode(err, 'BDM_GROUP_PATTERN')).toBe(true)
+        }
+
+        // member names must not contain `*`
+        let err: any
+        try {
+            mp.Container.emit('device.metric.register', { device: 'Counter1', data: 'ok.*', trace: { kind: 'group', list: { 'x*': { kind: 'one' } } } })
+        } catch (e) { err = e }
+        expect(ErrorManager.isCode(err, 'BDM_GROUP_PATTERN')).toBe(true)
+
+        // kind 'one' under a wildcard key is a malformed group declaration too
+        err = undefined
+        try {
+            mp.Container.emit('device.metric.register', { device: 'Counter1', data: 'ok.*', trace: { kind: 'one' } })
+        } catch (e) { err = e }
+        expect(ErrorManager.isCode(err, 'BDM_GROUP_PATTERN')).toBe(true)
+    })
+
+    it('read()/percentile() over maxReadPoints throw JDM_POINTS_LIMIT instead of materializing the window', async () => {
+        const mp = makeMP(
+            { devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }], connections: [] },
+            { DeviceMetrics: { path: 'vrack2-core.JournalDbMetrics', options: { path: path.join(tmp, 'journals'), maxReadPoints: 50 } } },
+        )
+        await mp.run()
+
+        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
+
+        let err: any
+        try { dm.read('Counter1', 'count', 'now-1h:now', '1s') } catch (e) { err = e }
+        expect(ErrorManager.isCode(err, 'JDM_POINTS_LIMIT')).toBe(true)
+        expect(err.getUnknownProperty('points')).toBe(3601)
+
+        // percentile caps the scanned rows (60 writes > limit 50)
+        const c: any = mp.Container.devices['Counter1']
+        for (let i = 0; i < 60; i++) c.ports.input.data.push(i)
+        err = undefined
+        try { dm.percentile('Counter1', 'count', 'now-1m:now', 0.5) } catch (e) { err = e }
+        expect(ErrorManager.isCode(err, 'JDM_POINTS_LIMIT')).toBe(true)
     })
 })
 

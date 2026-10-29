@@ -61,7 +61,7 @@ export default class Lamp extends Device {
     }
     inputs()  { return { on: Port.standard() } }
     outputs() { return { status: Port.standard() } }
-    metrics() { return { brightness: Metric.inS().retentions('1s:6h') } }
+    metrics() { return { brightness: Metric.one() } }
 
     onStart() { this.state = { on: false, brightness: 0 } }
 
