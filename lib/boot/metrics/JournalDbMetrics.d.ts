@@ -1,5 +1,5 @@
 import { Store } from 'vrack2-journal-db';
-import type { ScanOptions, Table } from 'vrack2-journal-db';
+import type { AggAcc, ScanOptions, Table } from 'vrack2-journal-db';
 import IDeviceEvent from '../../service/IDeviceEvent';
 import BasicType from '../../validator/types/BasicType';
 import BootDeviceMetrics from './BootDeviceMetrics';
@@ -15,7 +15,9 @@ import BootDeviceMetrics from './BootDeviceMetrics';
  * segments skipped by the `.meta` dims summaries), so a read of one metric
  * stays sublinear. Retention is service-level: a Graphite-style
  * `'res:ttl[,...]'` string — one tier is pure TTL (rows kept raw, auto-purged),
- * two or more tiers also roll up (`value: 'avg'`).
+ * two or more tiers also roll up, keeping `min`/`max`/`sum`/`count`/`last`/
+ * `first` per bucket (`agg: { value: [...] }`), so reads of aged metrics stay
+ * honest for every `read()` function, not just the average.
  *
  * Metric declarations (`Metric.one()` / `Metric.group()`) are metadata only:
  * the engine records them in the base registry (`has()`/`read()` report them)
@@ -124,15 +126,17 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
      */
     protected checkFunc(func: string): void;
     /**
-     * Aggregate one bucket's values — the same semantics as `vrack-db`
-     * `MetricResult.aggregate`: `last`/`first` — the last/first value,
-     * `max`/`min` — the extremes, `avg` — the mean, `sum` — the sum.
+     * Aggregate one bucket's accumulator — the same semantics as `vrack-db`
+     * `MetricResult.aggregate`: `last`/`first` — the value at the greatest/
+     * smallest ts, `max`/`min` — the extremes, `avg` — sum/count, `sum` —
+     * the sum.
      *
-     * @param values The bucket's values (non-empty)
+     * @param acc The bucket's fold accumulator (from raw values and/or rollup
+     * tier columns — see `Aggregation`)
      * @param func 'last' | 'first' | 'max' | 'min' | 'avg' | 'sum'
      * @throws RangeError for an unknown func
      */
-    protected aggregateValues(values: number[], func: string): number;
+    protected aggregateAcc(acc: AggAcc, func: string): number | null;
     /**
      * Aggregate the metric value over a period (avg — the single table has
      * no per-metric modify anymore).
@@ -168,7 +172,8 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
      */
     protected metricWhere(device: string, name: string): NonNullable<ScanOptions['where']>;
     /**
-     * Raw rows of one metric in a ts window (projection: ts + value).
+     * Rows of one metric in a ts window — raw rows (ts + value) and coarse
+     * tier rollup rows (ts + the `<field>_<fn>` columns), projection only.
      *
      * @param start Period start (ms or journal-db period string)
      * @param end Period end (ms or journal-db period string)

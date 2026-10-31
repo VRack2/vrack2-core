@@ -4,8 +4,8 @@
  */
 
 import path from 'path';
-import { Interval, Store, defineLogTable } from 'vrack2-journal-db';
-import type { ScanOptions, Table } from 'vrack2-journal-db';
+import { Aggregation, Interval, Store, defineLogTable } from 'vrack2-journal-db';
+import type { AggAcc, ScanOptions, Table } from 'vrack2-journal-db';
 import ErrorManager from '../../errors/ErrorManager';
 import IDeviceEvent from '../../service/IDeviceEvent';
 import Rule from '../../validator/Rule';
@@ -24,7 +24,9 @@ import BootDeviceMetrics from './BootDeviceMetrics';
  * segments skipped by the `.meta` dims summaries), so a read of one metric
  * stays sublinear. Retention is service-level: a Graphite-style
  * `'res:ttl[,...]'` string — one tier is pure TTL (rows kept raw, auto-purged),
- * two or more tiers also roll up (`value: 'avg'`).
+ * two or more tiers also roll up, keeping `min`/`max`/`sum`/`count`/`last`/
+ * `first` per bucket (`agg: { value: [...] }`), so reads of aged metrics stay
+ * honest for every `read()` function, not just the average.
  *
  * Metric declarations (`Metric.one()` / `Metric.group()`) are metadata only:
  * the engine records them in the base registry (`has()`/`read()` report them)
@@ -72,7 +74,7 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
             path: Rule.string().required().default('./journals')
                 .description('Base dir for the journal-db store; the store is rooted at <path>/<container.id>'),
             retention: Rule.string().required().default(JournalDbMetrics.DEFAULT_RETENTION)
-                .description('Service-level retention, Graphite-style "res:ttl" list (one tier — pure TTL, no rollup; two or more — rollup of value by avg)'),
+                .description('Service-level retention, Graphite-style "res:ttl" list (one tier — pure TTL, no rollup; two or more — rollup of value keeping min/max/sum/count/last/first per bucket)'),
             clusterCompactInterval: Rule.number().required().default(600000)
                 .description('Background cluster-compaction period, ms (0 — off; freshly written segments become dimension-clustered on each pass)'),
             maxReadPoints: Rule.number().integer().min(10).required().default(200000)
@@ -89,7 +91,7 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
             desc: 'All device metrics of the service: one row per value (dev, met, value)',
             columns: { ts: 'delta', dev: 'auto', met: 'auto', value: 'auto' },
             retention: this.options.retention,
-            agg: { value: 'avg' },
+            agg: { value: ['min', 'max', 'sum', 'count', 'last', 'first'] },
             dims: ['dev', 'met'],
             cluster: ['dev', 'met'],
         }))
@@ -170,23 +172,32 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
         const s = grid[0]
         const e = grid[grid.length - 1]
 
-        const buckets: (number[] | null)[] = new Array(grid.length).fill(null)
+        const buckets: (AggAcc | null)[] = new Array(grid.length).fill(null)
         // query the exact period: points in the unaligned head/tail slivers
-        // (outside the rounded grid) clamp into the first/last bucket
+        // (outside the rounded grid) clamp into the first/last bucket. Coarse
+        // tier rows carry per-fn rollup columns (value_min/value_sum/
+        // value_last+ts/…) — they merge into the bucket accumulator through
+        // their associative rules, so aged-out data keeps honest min/max/
+        // sum/last/first at any grid precision.
         for (const row of this.metricRows(device, name, start, end)) {
             const t = row.ts
-            const v = row.value
             if (typeof t !== 'number') continue
-            if (typeof v !== 'number' || !Number.isFinite(v)) continue
             const i = Math.min(grid.length - 1, Math.max(0, Math.floor((t - s) / step)))
-            ;(buckets[i] ??= []).push(v)
+            const acc = buckets[i] ??= Aggregation.newAcc()
+            if (Aggregation.hasRollupCols(row, 'value')) {
+                const o = Aggregation.fromRollupRow(row, 'value')
+                if (o !== null) Aggregation.merge(acc, o)
+            } else {
+                const v = row.value
+                if (typeof v === 'number' && Number.isFinite(v)) Aggregation.addValue(acc, v, t)
+            }
         }
 
         return {
             relevant: this.isKnown(this.getMetricPath(device, name)),
             start: s / 1000,
             end: e / 1000,
-            rows: grid.map((time, i) => ({ time: time / 1000, value: buckets[i] ? this.aggregateValues(buckets[i] as number[], func) : null })),
+            rows: grid.map((time, i) => ({ time: time / 1000, value: buckets[i] ? this.aggregateAcc(buckets[i] as AggAcc, func) : null })),
         }
     }
 
@@ -228,38 +239,24 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
     }
 
     /**
-     * Aggregate one bucket's values — the same semantics as `vrack-db`
-     * `MetricResult.aggregate`: `last`/`first` — the last/first value,
-     * `max`/`min` — the extremes, `avg` — the mean, `sum` — the sum.
+     * Aggregate one bucket's accumulator — the same semantics as `vrack-db`
+     * `MetricResult.aggregate`: `last`/`first` — the value at the greatest/
+     * smallest ts, `max`/`min` — the extremes, `avg` — sum/count, `sum` —
+     * the sum.
      *
-     * @param values The bucket's values (non-empty)
+     * @param acc The bucket's fold accumulator (from raw values and/or rollup
+     * tier columns — see `Aggregation`)
      * @param func 'last' | 'first' | 'max' | 'min' | 'avg' | 'sum'
      * @throws RangeError for an unknown func
      */
-    protected aggregateValues(values: number[], func: string): number {
+    protected aggregateAcc(acc: AggAcc, func: string): number | null {
         switch (func) {
-            case 'last': return values[values.length - 1]
-            case 'first': return values[0]
-            case 'max': {
-                let m = values[0]
-                for (const v of values) if (v > m) m = v
-                return m
-            }
-            case 'min': {
-                let m = values[0]
-                for (const v of values) if (v < m) m = v
-                return m
-            }
-            case 'avg': {
-                let sum = 0
-                for (const v of values) sum += v
-                return sum / values.length
-            }
-            case 'sum': {
-                let sum = 0
-                for (const v of values) sum += v
-                return sum
-            }
+            case 'last': return acc.count > 0 ? acc.lastVal : null
+            case 'first': return acc.count > 0 ? acc.firstVal : null
+            case 'max': return acc.count > 0 ? acc.max : null
+            case 'min': return acc.count > 0 ? acc.min : null
+            case 'avg': return acc.count > 0 ? acc.sum / acc.count : null
+            case 'sum': return acc.count > 0 ? acc.sum : null
             default: throw new RangeError(`JournalDbMetrics: unknown aggregate function '${func}' (available: last, first, max, min, avg, sum)`)
         }
     }
@@ -353,7 +350,8 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
     }
 
     /**
-     * Raw rows of one metric in a ts window (projection: ts + value).
+     * Rows of one metric in a ts window — raw rows (ts + value) and coarse
+     * tier rollup rows (ts + the `<field>_<fn>` columns), projection only.
      *
      * @param start Period start (ms or journal-db period string)
      * @param end Period end (ms or journal-db period string)
@@ -363,7 +361,7 @@ export default class JournalDbMetrics extends BootDeviceMetrics {
         return this.table.scan({
             start, end,
             where: this.metricWhere(device, name),
-            select: ['ts', 'value'],
+            select: ['ts', 'value', 'value_min', 'value_max', 'value_sum', 'value_count', 'value_avg', 'value_last', 'value_last_ts', 'value_first', 'value_first_ts'],
             ...(limit !== undefined ? { limit } : {}),
         })
     }

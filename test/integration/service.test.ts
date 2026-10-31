@@ -691,6 +691,40 @@ describe('Counter: input, actions, output, metric, storage', () => {
         expect(() => dm.read('Counter1', 'count', 'now-1m:now', '15s', 'bogus')).toThrow(RangeError)
     })
 
+    it('read(): aged-out data stays honest for max/min/sum/last/first after rollup (multi-agg tier columns)', async () => {
+        const mp = makeMP({
+            devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
+            connections: [],
+        })
+        await mp.run()
+
+        const dm = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
+        const now = Math.floor(Date.now() / 60_000) * 60_000
+        // aged rows: 30..11 minutes ago — beyond the raw 5s:10m tier; one spike of 99
+        for (let i = 0; i < 20; i++) {
+            dm.table.append({ ts: now - 30 * 60_000 + i * 60_000, dev: 'counter1', met: 'count', value: i === 10 ? 99 : 5 })
+        }
+        dm.table.flush()
+        dm.table.rollup()
+
+        const period = `${now - 31 * 60_000}:${now}`
+        const maxRes = dm.read('Counter1', 'count', period, '15m', 'max')
+        expect(maxRes.rows.some((r: any) => r.value === 99)).toBe(true)
+        const minRes = dm.read('Counter1', 'count', period, '15m', 'min')
+        expect(minRes.rows.some((r: any) => r.value === 5)).toBe(true)
+        const sumRes = dm.read('Counter1', 'count', period, '15m', 'sum')
+        expect(sumRes.rows.reduce((a: number, r: any) => a + (r.value ?? 0), 0)).toBe(19 * 5 + 99)
+        const lastRes = dm.read('Counter1', 'count', period, '15m', 'last')
+        const lastFilled = lastRes.rows.filter((r: any) => r.value !== null).pop()
+        expect(lastFilled.value).toBe(5) // the value at the greatest ts, not the bucket average
+        const firstRes = dm.read('Counter1', 'count', period, '15m', 'first')
+        expect(firstRes.rows.find((r: any) => r.value !== null).value).toBe(5)
+
+        // aggregate(): avg rebuilt from sum/count through the tier columns
+        const agg = dm.aggregate('Counter1', 'count', period)
+        expect(agg.value_avg).toBeCloseTo((19 * 5 + 99) / 20, 10)
+    })
+
     it('persists storage to disk and reloads it in a second process', async () => {
         const service = {
             devices: [{ id: 'Counter1', type: 'testkit.Counter', options: {} }],
