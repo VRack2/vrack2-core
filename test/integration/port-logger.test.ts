@@ -1,8 +1,9 @@
 /**
  * PortLogger integration tests.
  *
- * Boots a real MainProcess (default boot list → PortLogger is enabled by
- * default), drives output-port traffic through the testkit devices and
+ * Boots a real MainProcess with PortLogger explicitly added to the bootstrap
+ * (it is opt-in, not in the core default boot list), drives output-port
+ * traffic through the testkit devices and
  * verifies the `device.port` events are captured in the journal-db table
  * `port_log` and readable back — via query() / tail() / count() / truncate(),
  * and
@@ -17,7 +18,7 @@ import path from 'path'
 import os from 'os'
 import fs from 'fs'
 
-import { MainProcess, PortLogger, ServiceLogger, ErrorManager, IServiceStructure } from 'vrack2-core'
+import { MainProcess, PortLogger, ServiceLogger, ErrorManager, IServiceStructure, mergeBootList } from 'vrack2-core'
 import { Store } from 'vrack2-journal-db'
 
 let tmp = ''
@@ -38,17 +39,21 @@ const TALKER_SERVICE: IServiceStructure = {
 }
 
 function makeMP(service: IServiceStructure, serviceBootstrap?: IServiceStructure['bootstrap']): MainProcess {
+    const svcBoot = mergeBootList([
+        { PortLogger: { path: 'vrack2-core.PortLogger', options: {} } },
+        serviceBootstrap,
+    ])
     return new MainProcess({
         id: 'logger',
-        service: { ...service, bootstrap: serviceBootstrap },
+        service: { ...service, bootstrap: svcBoot },
         bootstrap: {
             DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: path.resolve(__dirname, '../fixtures'), dir: 'devices' } },
         },
     })
 }
 
-describe('PortLogger: default boot list', () => {
-    it('is enabled by default (id PortLogger) and exposes its DB + port_log table', async () => {
+describe('PortLogger: opt-in boot class', () => {
+    it('is loaded when explicitly added and exposes its DB + port_log table', async () => {
         const mp = makeMP(TALKER_SERVICE)
         await mp.run()
         try {
@@ -62,7 +67,7 @@ describe('PortLogger: default boot list', () => {
     })
 
     it('shares the same store dir as ServiceLogger (separate tables, per-table locks)', async () => {
-        const mp = makeMP(TALKER_SERVICE)
+        const mp = makeMP(TALKER_SERVICE, { ServiceLogger: { path: 'vrack2-core.ServiceLogger', options: {} } })
         await mp.run()
         try {
             const sl = mp.Bootstrap.getBootClass('ServiceLogger', ServiceLogger)

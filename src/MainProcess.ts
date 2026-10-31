@@ -60,9 +60,6 @@ export default class MainProcess  {
         DeviceManager: { path: 'vrack2-core.DeviceManager', options: { storageDir: './storage' }},
         DeviceStorage: { path: 'vrack2-core.DeviceFileStorage', options: {} },
         StructureStorage: { path: 'vrack2-core.StructureStorage', options: {} },
-        DeviceMetrics: { path: 'vrack2-core.JournalDbMetrics', options: {} },
-        ServiceLogger: { path: 'vrack2-core.ServiceLogger', options: {} },
-        PortLogger: { path: 'vrack2-core.PortLogger', options: {} }
     }
     Container: Container
     Loader: ServiceLoader

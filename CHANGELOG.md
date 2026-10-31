@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026.11.01
+
+### Breaking
+
+- **`MainProcess.DEFAULT_BOOTLIST` сокращён до ядра**: `DeviceManager`, `DeviceStorage`, `StructureStorage`. Boot-классы `DeviceMetrics` (`JournalDbMetrics`), `ServiceLogger` и `PortLogger` **удалены из дефолтов** — теперь opt-in: подключаются явно через `bootstrap` в `service.json`, конф-файле или аргументе конструктора. События (`device.metric`, `device.port`, каналы устройств) эмитятся контейнером всегда — без boot-класса их просто никто не слушает, и на диске не создаётся каталог `./journals`. Как включить и что даёт каждый — [07-Bootstrap](docs/07-Bootstrap.md) («Опциональные boot-классы», «Как включить метрики и журналирование»).
+
+### Minor
+
+- **`vrack2-journal-db` обновлена `^4.1.0` → `^4.2.0`**.
+
 ## 2026.10.31
 
 ### Метрики: multi-aggregate rollup (vrack2-journal-db 4.1.0)

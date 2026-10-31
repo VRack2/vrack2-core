@@ -1,8 +1,9 @@
 /**
  * ServiceLogger integration tests.
  *
- * Boots a real MainProcess (default boot list → ServiceLogger is enabled by
- * default), drives channel events through the testkit Talker device and
+ * Boots a real MainProcess with ServiceLogger explicitly added to the
+ * bootstrap (it is opt-in, not in the core default boot list), drives channel
+ * events through the testkit Talker device and
  * verifies the events (all channels except `device.render`) are captured in
  * the journal-db table and readable back — via query() / tail() / count() /
  * truncate(),
@@ -13,7 +14,7 @@ import path from 'path'
 import os from 'os'
 import fs from 'fs'
 
-import { MainProcess, ServiceLogger, ErrorManager, IServiceStructure } from 'vrack2-core'
+import { MainProcess, ServiceLogger, ErrorManager, IServiceStructure, mergeBootList } from 'vrack2-core'
 import { Store } from 'vrack2-journal-db'
 
 /**
@@ -39,22 +40,27 @@ const TALKER_SERVICE: IServiceStructure = {
 }
 
 /**
- * Boots a MainProcess whose constructor layer pins only DeviceManager —
- * every other boot class (incl. ServiceLogger) comes from the core
- * default boot list.
+ * Boots a MainProcess with ServiceLogger in the service-file bootstrap layer
+ * (opt-in boot class, not in the core default boot list). The optional
+ * `serviceBootstrap` parameter is merged over the base ServiceLogger entry,
+ * allowing tests to override options or remove it with `null`.
  */
 function makeMP(service: IServiceStructure, serviceBootstrap?: IServiceStructure['bootstrap']): MainProcess {
+    const svcBoot = mergeBootList([
+        { ServiceLogger: { path: 'vrack2-core.ServiceLogger', options: {} } },
+        serviceBootstrap,
+    ])
     return new MainProcess({
         id: 'logger',
-        service: { ...service, bootstrap: serviceBootstrap },
+        service: { ...service, bootstrap: svcBoot },
         bootstrap: {
             DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: path.resolve(__dirname, '../fixtures'), dir: 'devices' } },
         },
     })
 }
 
-describe('ServiceLogger: default boot list', () => {
-    it('is enabled by default (id ServiceLogger) and exposes its DB', async () => {
+describe('ServiceLogger: opt-in boot class', () => {
+    it('is loaded when explicitly added and exposes its DB', async () => {
         const mp = makeMP(TALKER_SERVICE)
         await mp.run()
         try {

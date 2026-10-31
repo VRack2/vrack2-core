@@ -23,7 +23,7 @@ MainProcess → Bootstrap (boot classes) → ServiceLoader (builds the service f
 ```
 
 - `MainProcess` — entry point; orchestrates the startup order.
-- `Bootstrap` — loads boot classes (service modules): `DeviceManager` (device registry, **required**), plus optional `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`, and the `BootDatabase` family (`BootDatabaseSqlite` / `BootDatabaseMemory` adapters).
+- `Bootstrap` — loads boot classes (service modules): `DeviceManager` (device registry, **required**), plus optional `DeviceFileStorage`, `StructureStorage` (in the core default boot list), and opt-in `DeviceMetrics`, `ServiceLogger`, `PortLogger`, `BootDatabase` family (`BootDatabaseSqlite` / `BootDatabaseMemory` adapters) — must be declared in `bootstrap` config.
 - `ServiceLoader` — builds the service: resolves device classes (`vendor.Class`), validates options, creates devices in the Container, wires connections; also adds/removes devices in a running service.
 - `Container` — runs devices, moves data through ports, executes actions, stores state, emits all events.
 

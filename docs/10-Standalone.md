@@ -91,7 +91,7 @@ export default class Lamp extends Device {
 
 ## Точка входа `index.js`
 
-Стандартный набор boot-классов — `DeviceManager`, `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`, `ServiceLogger` (журнал событий устройств) и `PortLogger` (журнал трафика выходных портов) — включены по умолчанию ([07-Bootstrap](07-Bootstrap.md)).
+Ядерные boot-классы — `DeviceManager`, `DeviceStorage` (`DeviceFileStorage`) и `StructureStorage` — включены по умолчанию ([07-Bootstrap](07-Bootstrap.md)). Метрики (`DeviceMetrics`), журнал событий (`ServiceLogger`) и журнал портов (`PortLogger`) — opt-in: добавьте их в `bootstrap`, если нужны.
 
 ```js
 import { ImportManager } from 'vrack2-core'
@@ -108,10 +108,13 @@ async function run() {
         id,
         service,
         bootstrap: {
-            DeviceManager:     { path: 'vrack2-core.DeviceManager',    options: { dir: './devices' } },
-            DeviceFileStorage: { path: 'vrack2-core.DeviceFileStorage',options: { storageDir: './storage' } },
-            DeviceMetrics:     { path: 'vrack2-core.JournalDbMetrics', options: {} },
-            StructureStorage:  { path: 'vrack2-core.StructureStorage', options: { structureDir: './structure' } },
+            DeviceManager:     { path: 'vrack2-core.DeviceManager',     options: { dir: './devices' } },
+            DeviceFileStorage: { path: 'vrack2-core.DeviceFileStorage', options: { storageDir: './storage' } },
+            StructureStorage:  { path: 'vrack2-core.StructureStorage',  options: { structureDir: './structure' } },
+            // opt-in — раскомментируйте при необходимости:
+            // DeviceMetrics:  { path: 'vrack2-core.JournalDbMetrics', options: { path: './journals' } },
+            // ServiceLogger:  { path: 'vrack2-core.ServiceLogger',    options: { path: './journals' } },
+            // PortLogger:     { path: 'vrack2-core.PortLogger',       options: { path: './journals' } },
         },
     })
 

@@ -15,6 +15,7 @@ import {
     ErrorManager,
     DeviceManager,
     JournalDbMetrics,
+    StructureStorage,
     Device,
     IMainProcessOptions,
     IServiceStructure,
@@ -200,14 +201,13 @@ describe('Layered boot-list config', () => {
     /**
      * Build a MainProcess whose **constructor** bootstrap layer contains only
      * DeviceManager (so the remaining core defaults — DeviceStorage /
-     * StructureStorage / DeviceMetrics — are visible to the service-file and
-     * conf-file layers under test).
+     * StructureStorage — are visible to the service-file and conf-file layers
+     * under test).
      */
     function makeMPBare(
         service: IServiceStructure,
         constructorBoot: IMainProcessOptions['bootstrap'] = {
             DeviceManager: { path: 'vrack2-core.DeviceManager', options: { systemDir: FIXTURES, dir: 'devices' } },
-            ServiceLogger: { path: 'vrack2-core.ServiceLogger', options: { path: path.join(tmp, 'logs') } },
         },
         confFile?: string,
     ): MainProcess {
@@ -230,28 +230,28 @@ describe('Layered boot-list config', () => {
         const service: IServiceStructure = {
             devices: [], connections: [],
             bootstrap: {
-                DeviceMetrics: { options: { marker: 'svc' } },
+                StructureStorage: { options: { structureDir: path.join(tmp, 'custom-structure') } },
             },
         }
         const mp = makeMPBare(service)
         await mp.run()
-        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
-        expect(bc.options.marker).toBe('svc')
         // path stays the core default
-        expect(mp.options.bootstrap.DeviceMetrics!.path).toBe('vrack2-core.JournalDbMetrics')
+        expect(mp.options.bootstrap.StructureStorage!.path).toBe('vrack2-core.StructureStorage')
+        // options are merged: structureDir overridden
+        expect(mp.options.bootstrap.StructureStorage!.options.structureDir).toBe(path.join(tmp, 'custom-structure'))
     })
 
     it('service file bootstrap: null removes a core default', async () => {
         const service: IServiceStructure = {
             devices: [], connections: [],
             bootstrap: {
-                DeviceMetrics: null,
+                StructureStorage: null,
             },
         }
         const mp = makeMPBare(service)
         await mp.run()
-        expect(mp.options.bootstrap.DeviceMetrics).toBeUndefined()
-        expect(() => mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)).toThrow()
+        expect(mp.options.bootstrap.StructureStorage).toBeUndefined()
+        expect(() => mp.Bootstrap.getBootClass('StructureStorage', StructureStorage)).toThrow()
     })
 
     it('service file bootstrap: options-only override for an unknown id throws BTSP_BAD_BOOTLIST', () => {
@@ -284,19 +284,18 @@ describe('Layered boot-list config', () => {
         const confPath = path.join(tmp, 'conf.json')
         fs.writeFileSync(confPath, JSON.stringify({
             bootstrap: {
-                DeviceMetrics: { options: { marker: 'conf' } },
+                StructureStorage: { options: { structureDir: path.join(tmp, 'conf-structure') } },
             },
         }))
         const service: IServiceStructure = {
             devices: [], connections: [],
             bootstrap: {
-                DeviceMetrics: { options: { marker: 'svc' } },
+                StructureStorage: { options: { structureDir: path.join(tmp, 'svc-structure') } },
             },
         }
         const mp = makeMPBare(service, undefined, confPath)
         await mp.run()
-        const bc = mp.Bootstrap.getBootClass('DeviceMetrics', JournalDbMetrics)
-        expect(bc.options.marker).toBe('conf')
+        expect(mp.options.bootstrap.StructureStorage!.options.structureDir).toBe(path.join(tmp, 'conf-structure'))
     })
 
     it('conf file bootstrap with a custom path overrides the service file path', async () => {

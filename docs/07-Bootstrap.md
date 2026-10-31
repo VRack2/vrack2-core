@@ -87,9 +87,31 @@ Boot-классы владеют ресурсами уровня процесс�
 - Сбой `onDestroy()` одного boot-класса **не блокирует** остальные — они всё равно останавливаются, а ошибка уходит в `system.error` (`BTSP_TERMINATE_FAILED`).
 - `onDestroy()` — lifecycle-хук, а не публичный API: device-коду обращаться к ресурсам boot-класса следует через их публичные методы (как `JournalDbMetrics.read()` / `JournalDbMetrics.has()`), а `onDestroy()` используется только самим `Bootstrap`.
 
-## Семь стандартных boot-классов
+## Стандартные boot-классы
 
-> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `DeviceMetrics` — метрик (по умолчанию в `vrack2-journal-db`), без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`), без `ServiceLogger` — записи событий устройств в журнал, без `PortLogger` — записи трафика выходных портов в журнал. Каждый можно заменить своей реализацией.
+### Ядерные (входят в `MainProcess.DEFAULT_BOOTLIST`)
+
+Загружаются автоматически при каждом запуске `MainProcess`:
+
+| id | Класс | Назначение |
+|---|---|---|
+| `DeviceManager` | `DeviceManager` | Реестр устройств — **обязателен**: без него сервис не запустится |
+| `DeviceStorage` | `DeviceFileStorage` | Сохранение состояния устройств на диск |
+| `StructureStorage` | `StructureStorage` | Сохранение структуры контейнера на диск |
+
+### Опциональные (opt-in)
+
+Не входят в `DEFAULT_BOOTLIST` — подключаются явно через `bootstrap` в `service.json`, конф-файле или аргументе конструктора:
+
+| id | Класс | Назначение |
+|---|---|---|
+| `DeviceMetrics` | `JournalDbMetrics` / `VrackDbMetrics` | Движок метрик: пишет `device.metric` в журнал/БД |
+| `ServiceLogger` | `ServiceLogger` | Журнал событий устройств (`device_log`) |
+| `PortLogger` | `PortLogger` | Журнал трафика выходных портов (`port_log`) |
+
+> **Зачем opt-in:** метрики и журналирование создают каталоги на диске, открывают journal-db store'ы и подписываются на события контейнера. Для минимального сервиса (embedded, воркер, тест) это лишний I/O. События (`device.metric`, `device.port`, каналы устройств) эмитятся контейнером всегда — просто без boot-класса их никто не слушает.
+
+> **Важно:** `DeviceManager` — единственная **обязательная** запись: `ServiceLoader.createDevice()` ищет его по id (`Bootstrap.getBootClass('DeviceManager', DeviceManager)`), без него сервис с устройствами не запустится. Остальные — необязательны: без `DeviceFileStorage` нет сохранения состояний, без `StructureStorage` — структуры на диске, без `BootDatabase*` — общей базы данных устройств (см. [03-Device](03-Device.md), `getDB()`). Каждый можно заменить своей реализацией.
 
 ### `DeviceManager`
 
@@ -199,7 +221,7 @@ await db.ping()             // SELECT 1; бросает, если БД недо�
 
 ### `ServiceLogger`
 
-Журналирует события устройств в `vrack2-journal-db` (таблица `device_log`): все каналы событий — `device.terminal`, `device.notify`, `device.event`, `device.alert`, `device.error`, `device.terminate`, кроме `device.render`. Включён по умолчанию (входит в `MainProcess.DEFAULT_BOOTLIST`).
+Журналирует события устройств в `vrack2-journal-db` (таблица `device_log`): все каналы событий — `device.terminal`, `device.notify`, `device.event`, `device.alert`, `device.error`, `device.terminate`, кроме `device.render`. Opt-in — подключается явно (см. «Опциональные boot-классы» выше).
 
 | Опция | По умолчанию |
 |---|---|
@@ -227,7 +249,7 @@ logger.truncate()         // полностью очистить таблицу 
 
 ### `PortLogger`
 
-Журналирует трафик **выходных портов** в `vrack2-journal-db` (таблица `port_log`): каждое событие `device.port` — по умолчанию создаётся каждым выходным портом на каждый `push` (см. [04-Ports-Actions-Metrics](04-Ports-Actions-Metrics.md)), кроме портов с модификатором `noCapture()`. Включён по умолчанию (входит в `MainProcess.DEFAULT_BOOTLIST`).
+Журналирует трафик **выходных портов** в `vrack2-journal-db` (таблица `port_log`): каждое событие `device.port` — по умолчанию создаётся каждым выходным портом на каждый `push` (см. [04-Ports-Actions-Metrics](04-Ports-Actions-Metrics.md)), кроме портов с модификатором `noCapture()`. Opt-in — подключается явно (см. «Опциональные boot-классы» выше).
 
 Хранилище коренится в том же каталоге, что и `ServiceLogger` / `JournalDbMetrics` — `<path>/{containerId}`, каждый boot-класс владеет своей таблицей в одном общем каталоге. Все хранилища (`JournalDbMetrics`, `ServiceLogger`, `PortLogger`) открываются с `lock: 'off'` — у каждой таблицы один владелец в рамках процесса, записи сериализованы event loop'ом, а межпроцессный `.lock`-файл `vrack2-journal-db` здесь не нужен.
 
@@ -244,16 +266,41 @@ logger.truncate()         // полностью очистить таблицу 
 
 ## Стандартный список boot-классов
 
+Ядерные дефолты (`MainProcess.DEFAULT_BOOTLIST`):
+
 ```ts
-const bootstrapConfig = {
-    DeviceManager:    { path: 'vrack2-core.DeviceManager',    options: { systemDir: process.cwd(), dir: './devices' } },
-    DeviceFileStorage:{ path: 'vrack2-core.DeviceFileStorage',options: { storageDir: './storage' } },
-    DeviceMetrics:    { path: 'vrack2-core.JournalDbMetrics', options: {} },
-    StructureStorage: { path: 'vrack2-core.StructureStorage', options: { structureDir: './structure' } },
-    ServiceLogger:    { path: 'vrack2-core.ServiceLogger',    options: {} },
-    PortLogger:       { path: 'vrack2-core.PortLogger',       options: {} },
+const DEFAULT_BOOTLIST = {
+    DeviceManager:    { path: 'vrack2-core.DeviceManager',     options: { storageDir: './storage' } },
+    DeviceStorage:    { path: 'vrack2-core.DeviceFileStorage', options: {} },
+    StructureStorage: { path: 'vrack2-core.StructureStorage',  options: {} },
 }
 ```
+
+### Как включить метрики и журналирование
+
+Добавьте opt-in boot-классы в `bootstrap` — в `service.json`, конф-файле или аргументе конструктора:
+
+```json
+{
+  "devices": [],
+  "connections": [],
+  "bootstrap": {
+    "DeviceMetrics": { "path": "vrack2-core.JournalDbMetrics", "options": { "path": "./journals" } },
+    "ServiceLogger": { "path": "vrack2-core.ServiceLogger",    "options": { "path": "./journals" } },
+    "PortLogger":    { "path": "vrack2-core.PortLogger",       "options": { "path": "./journals" } }
+  }
+}
+```
+
+Результат подключения:
+
+| Boot-класс | Что даёт |
+|---|---|
+| `DeviceMetrics` | Метрики устройств пишутся в journal-db (таблица `metrics`); доступны `read()` / `aggregate()` / `percentile()` |
+| `ServiceLogger` | События каналов устройств (terminal, notify, event, alert, error, terminate) пишутся в `device_log`; доступны `query()` / `tail()` / `count()` |
+| `PortLogger` | Трафик выходных портов пишется в `port_log`; доступны `query()` / `tail()` / `count()` |
+
+Все три открывают store в одном каталоге `<path>/{containerId}` — при совместном использовании укажи один `path`.
 
 ## Слоевая конфигурация
 
