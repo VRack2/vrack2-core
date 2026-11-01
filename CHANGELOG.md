@@ -2,13 +2,14 @@
 
 ## 2026.11.01
 
+### Minor
+
+- **Реестр ресурсов в `Container`** — устройства публикуют и разрешают живые объектные ссылки через контейнер без передачи через порты: `Container.publish(key, value)`, `Container.resolve(key)`, `Container.hasResource(key)`, `Container.resourceList()`. Ключи — точечные пространства имён (`'Provider.data'`). Повторный ключ → `CONT_RESOURCE_EXISTS`; отсутствующий ключ → `CONT_RESOURCE_NOT_FOUND`. Документация — [06-Container](docs/06-Container.md) («Реестр ресурсов»).
+- **`vrack2-journal-db` обновлена `^4.1.0` → `^4.2.0`**.
+
 ### Breaking
 
 - **`MainProcess.DEFAULT_BOOTLIST` сокращён до ядра**: `DeviceManager`, `DeviceStorage`, `StructureStorage`. Boot-классы `DeviceMetrics` (`JournalDbMetrics`), `ServiceLogger` и `PortLogger` **удалены из дефолтов** — теперь opt-in: подключаются явно через `bootstrap` в `service.json`, конф-файле или аргументе конструктора. События (`device.metric`, `device.port`, каналы устройств) эмитятся контейнером всегда — без boot-класса их просто никто не слушает, и на диске не создаётся каталог `./journals`. Как включить и что даёт каждый — [07-Bootstrap](docs/07-Bootstrap.md) («Опциональные boot-классы», «Как включить метрики и журналирование»).
-
-### Minor
-
-- **`vrack2-journal-db` обновлена `^4.1.0` → `^4.2.0`**.
 
 ## 2026.10.31
 

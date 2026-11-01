@@ -162,6 +162,21 @@ ErrorManager.registerMany('Container', [
     },
 ])
 
+/***** ********      RESOURCE REGISTRY ERROR      ********************/
+
+ErrorManager.registerMany('Container', [
+    {
+        short: 'CONT_RESOURCE_EXISTS',
+        description: 'A resource with this key has already been published in the container',
+        rules: { key: Rule.string().description('Resource key') }
+    },
+    {
+        short: 'CONT_RESOURCE_NOT_FOUND',
+        description: 'No resource with this key has been published in the container',
+        rules: { key: Rule.string().description('Resource key') }
+    },
+])
+
 
 
 /**
@@ -288,6 +303,13 @@ export default class Container extends EventEmitter {
      * Used to make `startDevice()` idempotent.
     */
     protected started: Set<string> = new Set()
+
+    /**
+     * Shared resource registry: devices publish live object references here
+     * so that other devices can resolve them without passing through ports.
+     * Keys are dot-namespaced strings (e.g. 'BackupManager.taskTable').
+     */
+    protected resources: Map<string, unknown> = new Map()
 
     /**
      * Systematized device status records: [deviceID]: IDeviceStatus.
@@ -796,6 +818,58 @@ export default class Container extends EventEmitter {
     */
     deviceList(): string[] {
         return Object.keys(this.devices)
+    }
+
+    /* ─── Resource registry ─── */
+
+    /**
+     * Publish a live object reference into the container's shared resource
+     * registry. Other devices can resolve it by key.
+     *
+     * The key is typically dot-namespaced after the publishing device
+     * (e.g. 'BackupManager.taskTable') to avoid collisions.
+     *
+     * Throws `CONT_RESOURCE_EXISTS` if the key is already taken.
+     *
+     * @param key Resource key (dot-namespaced string)
+     * @param value The live object reference to share
+     */
+    publish(key: string, value: unknown): void {
+        if (this.resources.has(key)) {
+            throw ErrorManager.make('CONT_RESOURCE_EXISTS', { key })
+        }
+        this.resources.set(key, value)
+    }
+
+    /**
+     * Resolve a previously published resource by key.
+     *
+     * Throws `CONT_RESOURCE_NOT_FOUND` if no resource with this key exists.
+     *
+     * @param key Resource key
+     * @returns The published object reference
+     */
+    resolve(key: string): unknown {
+        if (!this.resources.has(key)) {
+            throw ErrorManager.make('CONT_RESOURCE_NOT_FOUND', { key })
+        }
+        return this.resources.get(key)
+    }
+
+    /**
+     * Whether a resource with the given key has been published.
+     *
+     * @param key Resource key
+     */
+    hasResource(key: string): boolean {
+        return this.resources.has(key)
+    }
+
+    /**
+     * List all published resource keys.
+     */
+    resourceList(): string[] {
+        return [...this.resources.keys()]
     }
 
     /**

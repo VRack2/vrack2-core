@@ -8,10 +8,10 @@ import BasicType from '../validator/types/BasicType';
  * (`device_log`) so the history of device activity can be queried after the
  * fact.
  *
- * Enabled by default (id `ServiceLogger` in `MainProcess.DEFAULT_BOOTLIST`):
- * it captures every device channel event — `device.terminal`, `device.notify`,
- * `device.event`, `device.alert`, `device.error`, `device.terminate` — i.e.
- * all of them except `device.render`.
+ * Opt-in (not in `MainProcess.DEFAULT_BOOTLIST`): add id `ServiceLogger` to
+ * the bootstrap config to capture every device channel event — `device.terminal`,
+ * `device.notify`, `device.event`, `device.alert`, `device.error`,
+ * `device.terminate` — i.e. all of them except `device.render`.
  *
  * Capture is switchable: the `enabled` option sets the at-start state
  * (default `true`), and the live `enable()` / `disable()` methods toggle it

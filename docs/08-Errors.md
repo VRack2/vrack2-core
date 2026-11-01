@@ -93,6 +93,8 @@
 | `CONT_INCOMPATIBLE_PORTS` | Несовместимые типы портов. |
 | `CONT_INCORRECT_BOOTSTRAP` | DeviceManager не указан корректно. |
 | `CONT_IGNORE_SERVICE_AUTORELOAD` | Ошибка, игнорирующая флаг перезапуска сервиса. |
+| `CONT_RESOURCE_EXISTS` | Ресурс с таким ключом уже опубликован в контейнере. |
+| `CONT_RESOURCE_NOT_FOUND` | Ресурс с таким ключом не опубликован в контейнере. |
 
 ### ServiceLoader (`SLDR_*`)
 

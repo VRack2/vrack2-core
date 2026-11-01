@@ -334,7 +334,7 @@ describe('Container: device initialization', () => {
 
         const dm = mp.Bootstrap.getBootClass('DeviceManager', DeviceManager)
         expect(dm.getVendorList()).toContain('testkit')
-        expect(dm.getVendorDeviceList('testkit').sort()).toEqual(['Counter', 'DbReader', 'Lamp', 'NoCaptureSrc', 'NoHandler', 'ReturnSrc', 'StopFail', 'Talker', 'Tracker'])
+        expect(dm.getVendorDeviceList('testkit').sort()).toEqual(['Counter', 'DbReader', 'Lamp', 'NoCaptureSrc', 'NoHandler', 'ResourceConsumer', 'ResourceProvider', 'ReturnSrc', 'StopFail', 'Talker', 'Tracker'])
 
         expect(mp.Container.devices).toHaveProperty('Counter1')
         expect(mp.Container.devices).toHaveProperty('Lamp1')

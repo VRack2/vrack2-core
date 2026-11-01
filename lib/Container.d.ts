@@ -151,6 +151,12 @@ export default class Container extends EventEmitter {
     */
     protected started: Set<string>;
     /**
+     * Shared resource registry: devices publish live object references here
+     * so that other devices can resolve them without passing through ports.
+     * Keys are dot-namespaced strings (e.g. 'BackupManager.taskTable').
+     */
+    protected resources: Map<string, unknown>;
+    /**
      * Systematized device status records: [deviceID]: IDeviceStatus.
      * Maintained by the Container on lifecycle transitions and on channel
      * messages (`device.alert` / `device.error` / `device.terminate`); a full
@@ -339,6 +345,38 @@ export default class Container extends EventEmitter {
      * List ids of all registered devices.
     */
     deviceList(): string[];
+    /**
+     * Publish a live object reference into the container's shared resource
+     * registry. Other devices can resolve it by key.
+     *
+     * The key is typically dot-namespaced after the publishing device
+     * (e.g. 'BackupManager.taskTable') to avoid collisions.
+     *
+     * Throws `CONT_RESOURCE_EXISTS` if the key is already taken.
+     *
+     * @param key Resource key (dot-namespaced string)
+     * @param value The live object reference to share
+     */
+    publish(key: string, value: unknown): void;
+    /**
+     * Resolve a previously published resource by key.
+     *
+     * Throws `CONT_RESOURCE_NOT_FOUND` if no resource with this key exists.
+     *
+     * @param key Resource key
+     * @returns The published object reference
+     */
+    resolve(key: string): unknown;
+    /**
+     * Whether a resource with the given key has been published.
+     *
+     * @param key Resource key
+     */
+    hasResource(key: string): boolean;
+    /**
+     * List all published resource keys.
+     */
+    resourceList(): string[];
     /**
      * Get the systematized status of a registered device.
      *
