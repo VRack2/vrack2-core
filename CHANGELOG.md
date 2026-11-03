@@ -1,19 +1,45 @@
 # Changelog
 
-## 2026.11.01
+## 2026.11.03 — 2.0.0 (breaking)
 
-### Minor
+### 2026.11.03
+
+#### Minor
+
+- **Объявленные карты ресурсов в `service.json`.** Запись устройства получила поля `publish: { ключ: имяВРеестре }` и `resolve: { ключ: имяВРеестре }`: несколько устройств публикуют один ключ-интерфейс под уникальными именами, потребитель привязывается к конкретному провайдеру конфигом, а не кодом. `Device.publish(key, value)` / `Device.resolve(key)` (новые методы устройства) транслируют ключ в имя по карте устройства; без карт — прежний сырой режим (`Container.publish/resolve` по голому ключу, совместимость с `2.0.0`). Проверки на загрузке (`ServiceLoader`, до создания устройств): `SLDR_RESOURCE_DUPLICATE` (имя занято), `SLDR_RESOURCE_MISSING` (требуемое имя не опубликовано другим устройством), `SLDR_RESOURCE_MISMATCH` (имя опубликовано под другим ключом), `SLDR_BAD_RESOURCE_MAP` (некорректная карта). Строгость для объявленного устройства: `CONT_RESOURCE_NOT_DECLARED` / `CONT_RESOURCE_NOT_REQUIRED`. Карты попадают в структуру (`getStructure()` → `publish` / `resolve`) — граф ресурсов виден. Документация — [02-AppStructure](docs/02-AppStructure.md), [03-Device](docs/03-Device.md) («Реестр ресурсов»), [06-Container](docs/06-Container.md), коды — [08-Errors](docs/08-Errors.md).
+
+#### Tests
+
+- `resource-registry`: `+8` — два провайдера одного ключа и привязка потребителей по именам (живые ссылки, алиасы в реестре), карты в структуре, `MISSING` / `MISMATCH` / `DUPLICATE` / `BAD_MAP` на загрузке, `NOT_DECLARED` / `NOT_REQUIRED` в рантайме.
+
+#### Breaking
+
+- **Динамическое управление составом сервиса выведено из публичного контракта.** `ServiceLoader.addDevice()` / `removeDevice()` / `addConnection()` и `Container.startDevice()` / `removeDevice()` / `addConnection()` остаются в коде и под тестами, но больше **не являются частью публичного API**: хост-коду и устройствам полагаться на них не следует — сигнатуры и поведение могут меняться без предупреждения и без секции Breaking. Из доков убраны публичные описания hot-add/hot-remove/hot-connection (06 — разделы `removeDevice`/`addConnection`, событие `device.remove` из таблицы; 01 — переходы `destroyed` из lifecycle-диаграммы и абзац про изменение состава; 03 — `onDestroy()` сведён к внутренней механике, `DESTROYED` убран из состояний; 02/07 — загрузка storage по `device.add`; 04 — рантайм-объявление соединений через `addConnection`). В JSDoc методы помечены `@internal`; в [11-API](docs/11-API.md) — раздел «Внутренние методы (не публичный контракт)». Рантайм-поведение не менялось: код, не использовавший эти методы, работает без изменений.
+
+#### Docs
+
+- **Реестр ресурсов**: формулировка «ресурсы живут всё время контейнера» без отсылки к `removeDevice()` (06).
+- Актуализация доков по метрикам: `metric(path, value)` без `modify` (01/03/10), уточнения стартовой последовательности (01), `Utility` — публичный экспорт (09).
+- **Реестр ресурсов — документация закрыта.** Раньше реестр был описан только в [06-Container](docs/06-Container.md). Теперь: в [03-Device](docs/03-Device.md) расширено свойство `Container` (таблица свойств) и добавлен раздел «Реестр ресурсов (`publish` / `resolve`)» для авторов устройств; в [01-Architecture](docs/01-Architecture.md) — абзац «Прямые ссылки — реестр ресурсов» в «Как данные движутся»; в README реестр упомянут в составе ядра.
+
+#### Chores
+
+- **Репозиторий:** `.gitignore` — исправлен склеенный хвост файла (нет завершающего перевода строки) и добавлено `test/tmp/`; закоммиченный тестовый артефакт `test/tmp/smoke-struct/smoke.json` снят с отслеживания. Удалён устаревший дубликат `vitest.config.mjs` (активный конфиг — `vitest.config.mts`).
+
+### 2026.11.01
+
+#### Minor
 
 - **Реестр ресурсов в `Container`** — устройства публикуют и разрешают живые объектные ссылки через контейнер без передачи через порты: `Container.publish(key, value)`, `Container.resolve(key)`, `Container.hasResource(key)`, `Container.resourceList()`. Ключи — точечные пространства имён (`'Provider.data'`). Повторный ключ → `CONT_RESOURCE_EXISTS`; отсутствующий ключ → `CONT_RESOURCE_NOT_FOUND`. Документация — [06-Container](docs/06-Container.md) («Реестр ресурсов»).
 - **`vrack2-journal-db` обновлена `^4.1.0` → `^4.2.0`**.
 
-### Breaking
+#### Breaking
 
 - **`MainProcess.DEFAULT_BOOTLIST` сокращён до ядра**: `DeviceManager`, `DeviceStorage`, `StructureStorage`. Boot-классы `DeviceMetrics` (`JournalDbMetrics`), `ServiceLogger` и `PortLogger` **удалены из дефолтов** — теперь opt-in: подключаются явно через `bootstrap` в `service.json`, конф-файле или аргументе конструктора. События (`device.metric`, `device.port`, каналы устройств) эмитятся контейнером всегда — без boot-класса их просто никто не слушает, и на диске не создаётся каталог `./journals`. Как включить и что даёт каждый — [07-Bootstrap](docs/07-Bootstrap.md) («Опциональные boot-классы», «Как включить метрики и журналирование»).
 
-## 2026.10.31
+### 2026.10.31
 
-### Метрики: multi-aggregate rollup (vrack2-journal-db 4.1.0)
+#### Метрики: multi-aggregate rollup (vrack2-journal-db 4.1.0)
 
 - **Зависимость:** `vrack2-journal-db` `^4.0.1` → `^4.1.0` (multi-agg rollup).
 - **Таблица `metrics` объявляет полный набор агрегатов**: `agg: { value: ['min','max','sum','count','last','first'] }` — в сгущённых тирах лежат колонки `value_min/value_max/value_sum/value_count/value_last(+ts)/value_first(+ts)` вместо одного среднего.
@@ -22,9 +48,9 @@
 - **`percentile()`** — по-прежнему по сырым строкам: грубые тир в квантили не попадают (квантиль от средних бакетов статистически неверен).
 - Тесты: `service.test` — честные max/min/sum/last/first/avg после принудительного rollup за пределы сырого тира.
 
-## 2026.10.29
+### 2026.10.29
 
-### Breaking
+#### Breaking
 
 - **Метрики: одна таблица на сервис вместо таблицы на метрику.** `JournalDbMetrics` хранит все метрики сервиса в одной таблице `metrics { ts, dev, met, value }` (`cluster: ['dev','met']`, dims-саммари в `.meta` — чтение одной метрики остаётся сублинейным) в одном store `<path>/{containerId}`. Старые каталоги журналов (формат ≤3.1, по таблице на метрику) не читаются — миграция не предусмотрена (прод-данных нет).
 - **Объявление метрики — только метаданные.** `Metric.inS()` / `Metric.inMs()` и классы `BasicMetric`, `IvS`, `IvMS` **удалены** (экспорт `BasicMetric` из `vrack2-core` снят). Новое API: `Metric.one()` (`MetricOne`: `.descriptions()`, `.additional()`) и `Metric.group()` (`MetricGroup`: `.descriptions()`, `.additional()`, `.list()`) — новые экспорты. Из `IMetricSettings` удалены `interval`, `retentions`, `modify`, `vType`, `tType`; остались `kind` (`'one' | 'group'`), `description`, `additional`, `list`. Единица времени — всегда мс.
@@ -33,12 +59,12 @@
 - **Retention — уровень сервиса**, не метрики: опция boot-класса `JournalDbMetrics.retention` (по умолчанию `5s:10m, 1m:2h, 15m:1d, 1h:1w, 6h:1mon, 1d:1y`; одна пара `res:ttl` — чистый TTL без rollup) и `VrackDbMetrics.retentions`. Опция `JournalDbMetrics.clusterCompactInterval` (default `600000` мс) — фоновая компакция кластера по watermark-окну.
 - `JournalDbMetrics.aggregate(device, name, period)` — всегда `avg` (per-metric `modify` удалён); `percentile()` считается в core по сырым строкам окна (линейная интерполяция, как `Percentile.of` в `vrack2-journal-db`).
 
-### Tests
+#### Tests
 
 - `service`: `+3` — единая таблица: участник группы (`dyn.extra`) и незадекларированное имя пишутся и читаются, `has()` до/после записи, отсутствие утечек между метриками, `aggregate` по `where`; структура содержит `'dyn.*'` с `kind: 'group'` и `list`; некорректные wildcard-ключи групп → `BDM_GROUP_PATTERN` (fail-closed при регистрации); окно `read()`/`percentile()` сверх `maxReadPoints` → `JDM_POINTS_LIMIT` (вместо материалзации всего окна).
 - `smoke`: strict-set — `BasicMetric` убран, добавлены `MetricOne` / `MetricGroup`.
 
-### Fix (review follow-up)
+#### Fix (review follow-up)
 
 - Фоновый `clusterCompact` обёрнут в try/catch: бросок пакета (IO/состояние журнала) больше не роняет процесс через uncaughtException в `setInterval` — ошибка уходит в `system.error`, watermark не двигается, следующее окно повторяет попытку.
 - Watermark компакции сидируется с `0`, а не с wall-clock: первый проход покрывает весь уже имеющийся в сторе диапазон (хвост сегментов прошлого запуска, часы назад), иначе `clusterCompact(start,end)` навсегда пропускает сегменты целиком ниже окна.
@@ -47,28 +73,28 @@
 - Реестр объявлений движка хранит копию `IMetricSettings` (`cloneSettings`): мутация структуры (`getStructure()`) не меняет declared-метаданные движка.
 - Удалён незадействованный `BootDeviceMetrics.getDeclaration()`; `AGENTS.md` — зависимости приведены к `vrack-db` + `vrack2-journal-db`.
 
-## 2026.10.28
+### 2026.10.28
 
-### Minor
+#### Minor
 
 - **`vrack2-journal-db` обновлена `3.1.1 → 4.0.1`**. Публичный API, используемый `vrack2-core` (`Store`, `Table`, `Interval`, `defineLogTable`, `AggFn`, `query` / `allRows` / `truncate`, `openTables`), без изменений — код не менялся. Поведение хранилищ (`JournalDbMetrics` / `ServiceLogger` / `PortLogger`): **WAL по умолчанию выключен** (`wal: 'off'` — раньше WAL писался всегда): вдвое меньше записанных байтов; при жёсткой гибели процесса строки активного сегмента теряются (детерминированный `MainProcess.stop()` → `Store.closeAll()` флешит журнал как раньше). Содержание пакета: breaking — удалены форматы сегментов v1/v2 и миграция (прод-данных нет; только бинарный контейнер v4, при несовпадении версии — `SFW3_BAD_VERSION`); **кластеризация по измерениям** (`cluster: ['met','dev']`, `clusterCompact`, `setCluster`) с dims-саммари в `.meta` — `where` по измерению пропускает сегмент целиком, сублинейный скан «одна метрика + ts-окно»; `Table.aggregate(start, end, exprs, where?)` с pushdown и склейкой тир-агрегатов; одно-тирной `retention` = чистый TTL без rollup; ускорение сканов (зональная фильтрация, pushdown во все тиры, k-way merge), WAL-watermark (без дублей при крахе), корректный ранний стоп `limit`-скана. База под будущую модель «одна таблица метрик на store».
 
-## 2026.10.14
+### 2026.10.14
 
-### Minor
+#### Minor
 
 - **`MainProcess.stop()` теперь полный teardown**: после `Container.stopAll()` (остановка устройств) — `Bootstrap.destroyAll()` (уничтожение ВСЕХ boot-классов в обратном порядке загрузки) — закрываются journal-db store'ы (`JournalDbMetrics`/`ServiceLogger`/`PortLogger` → `Store.closeAll()`, журнал flush-ится до `process.exit()`), отключается `BootDatabase`, освобождаются прочие процесс-ресурсы. Порядок зеркальный стартовому: устройства (стартовали последними) — первыми, boot-классы (загружались первыми) — последними. Если остановка устройства упала (`CONT_DEVICE_STOP_ALL_EXCEPTION`) — boot-классы всё равно уничтожаются (best-effort; `try/finally`), их сбои — `BTSP_TERMINATE_FAILED` в `system.error`. Идемпотентность сохранена (latch `destroyed`). Раньше `destroyAll()` требовалось вызывать вручную — тесты и пример в 10-Standalone делали это в обход.
 - **`vrack2-journal-db` обновлена `2.4.0 → 3.0.0`** (breaking в самом пакете): ошибки `Interval` — некорректный `period` / `precision`, `start > end` — теперь **кодированные** (`vError` / `vShort`, напр. `INT_PERIOD_FORMAT`), а не `RangeError` (в 2.x). `JournalDbMetrics.read()` — поведение соответствующее; неизвестный `func` по-прежнему → `RangeError` (бросает сам `vrack2-core`).
 - Документация: `@throws` в `JournalDbMetrics.ts` (кодованная ошибка пакета вместо `RangeError`).
 
-### Tests
+#### Tests
 
 - `service` (`MainProcess.stop()`): `+2` — boot-классы уничтожаются после остановки устройств (обратный порядок, повторный `destroyAll()` — no-op); boot-классы уничтожаются даже при падающем устройстве (`CONT_DEVICE_STOP_ALL_EXCEPTION` + `TermBoot.destroyed`).
 - `service` (`read()`): неправильный период → кодованная ошибка `INT_PERIOD_FORMAT` (2.x: `RangeError`).
 
-## 2026.10.13
+### 2026.10.13
 
-### Minor
+#### Minor
 
 - **`JournalDbMetrics.read()` — полный контракт `vrack-db SingleDB.read`** (движок метрик снова заменяем с `VrackDbMetrics` без изменения кода потребителей). Сигнатура: `read(device, name, period, precision, func?)` — `precision` — интервал (`'15m'`, `'5s'`) или число точек (10, 200, 1500), `func` — `last | first | max | min | avg | sum` (по умолчанию `last`). Результат `{ relevant, start, end, rows }`: `start`/`end` — **абсолютные мс** периода (выровнены по сетке `precision`), а не строки-границы `'now-6h'` / `'now'` (введённые в `2026.10.11`); `relevant` — метрика зарегистрирована (как в `vrack-db`: `false` только для несуществующей метрики); `rows` — **плотный ряд** `{ time, value }` (старые → новые; ключ `time`, как в `vrack-db`, не `ts`), пустые бакеты — `value: null`; семантики агрегации — как в `vrack-db MetricResult.aggregate`.
 - **`BootDeviceMetrics` — новый абстрактный базовый класс движков метрик** (наследует `BootClass`): общий контракт `has()` / `read()` / `registerMetric()` / `deviceMetric()` + общая подписка на `device.metric` / `device.metric.register`. `JournalDbMetrics` и `VrackDbMetrics` теперь наследуют его и перенесены в `src/boot/metrics/`; дублирование (`getMetricPath`, `deviceRegisterMetric`, `onStart`) вынесено в базу, старт движка — хук `onEngineStart()`. `BootDeviceMetrics` теперь экспортируется из `vrack2-core`.
@@ -77,14 +103,14 @@
 - Период/сетка резолвятся в boot-классе через `Interval` (`period` / `getIntervals` / `getIntervalOfFixedCount` / `parseInterval`) из `vrack2-journal-db` (**обновлена `2.3.0 → 2.4.0`** — `Interval` снова экспортируется из корня); `Table.query()` получает числовые границы. Неправильный `period` / `precision`, `start > end` или неизвестный `func` → `RangeError` (как в самих пакетах).
 - Документация: 04-Ports-Actions-Metrics (сигнатура и форма результата `read()`), 07-Bootstrap (список методов `JournalDbMetrics` / `VrackDbMetrics`).
 
-### Tests
+#### Tests
 
 - `service`: `read()` — детерминированная сетка 5×15s: точные `{ time, value }`-строки, `null` в пустых бакетах; несуществующая метрика → `relevant: false` + полностью `null`-сетка (контракт `readFake`); числовая строка `'600'` = 600 точек (601 точка на сетке 1h); `Lamp1` — ровно один непустой бакет; неправильный период / `func` → `RangeError`.
 - `hot-devices`: чтение метрики хот-устройства — новая сигнатура + `relevant`.
 
-## 2026.10.12
+### 2026.10.12
 
-### Minor
+#### Minor
 
 - **`vrack2-journal-db`-хранилища всех boot-классов (`JournalDbMetrics`, `ServiceLogger`, `PortLogger`) теперь открываются с `lock: 'off'`**: межпроцессный `.lock`-файл пакета здесь не нужен — у каждой таблицы один владелец в рамках процесса, записи сериализованы event loop'ом, а прежний lock ложно срабатывал на двух `Store` в одном процессе над одним каталогом («журнал заблокирован процессом N»). Внешние читатели открывают каталог после остановки сервиса — lock их не защищал.
 - **Новый boot-класс `PortLogger`** (включён по умолчанию в `MainProcess.DEFAULT_BOOTLIST`): журналирует трафик **выходных портов** — событие `device.port` (см. `2026.10.11`), кроме портов с `noCapture()` — в таблицу `port_log` (`vrack2-journal-db`; опция `path`, по умолчанию `./journals`, хранилище коренится в `<path>/{containerId}` — тот же каталог, что `ServiceLogger`/`JournalDbMetrics`; lock у пакета на уровне таблицы, поэтому каждый boot-класс владеет своей таблицей в одном общем каталоге). Строка: `{ ts, device, port, data }`. Публичный API — как у `ServiceLogger`: `logger.DB` (Store), `logger.table`, `logger.query(period)`, `logger.tail(count?)`, `logger.count()`; опции `enabled` (по умолчанию `true`) и `path`; живое переключение захвата: `logger.enable()` / `logger.disable()`. При `enabled: false` журнал на диске не создаётся, а `query()`/`tail()`/`count()` до `enable()` бросают `PLG_NOT_STARTED`. Fail-soft: сбой записи → `PLG_APPEND_FAILED` на `system.error`, логирование продолжается. Отключение boot-класса — `"PortLogger": null` в слоевой конфигурации. Экспортируется из `vrack2-core`.
@@ -94,14 +120,14 @@
 - **`ServiceLogger.truncate()` / `PortLogger.truncate()`** — фасад к `Table.truncate()`: полностью очищает таблицу (в памяти и на диске) и возвращает `{ removedRows }`; таблица остаётся открытой — запись (`append`) продолжается. До `enable()` бросает `SLG_NOT_STARTED` / `PLG_NOT_STARTED` соответственно.
 - Документация: 07-Bootstrap (`truncate()` в публичном API обоих логгеров), 08-Errors (`*_NOT_STARTED`), 11-API (строки `ServiceLogger` / `PortLogger`).
 
-### Tests
+#### Tests
 
 - `+9` интеграционных тестов `port-logger` (захват `device.port`, `noCapture()`-порты не видны, общий каталог с `ServiceLogger`, `enabled: false` + `enable()`, `disable()`/`enable()`, `query()`/`tail()`/`count()`, чтение извне после остановки процесса).
 - `+2` интеграционных теста (`service-logger`, `port-logger`): `truncate()` очищает таблицу, возвращает `removedRows`, запись продолжается; бросает `SLG_NOT_STARTED` / `PLG_NOT_STARTED` до `enable()`.
 
-## 2026.10.11
+### 2026.10.11
 
-### Minor
+#### Minor
 
 - **`vrack2-journal-db` обновлена `2.1.0 → 2.2.0`** (breaking в самом пакете, перенесено в `JournalDbMetrics`): API `Store` переведён на «ClickHouse-модель» — `Store.openTable(name, cfg)` **удалён**, `Interval` **больше не экспортируется** из корня. `JournalDbMetrics.registerMetric()` теперь создаёт таблицу через `Store.create(defineLogTable({ name, columns: { ts: 'delta', value: 'auto' }, retention, agg }))` (формат `retention` `'res:ttl'` не изменился). Публичный API boot-класса сохранён: `read()` / `aggregate()` / `percentile()` передают период в две границы (`period.split(':')`) — новые методы `Table` сами резолвят строки `'now-6h'`. Данные, записанные на `2.1.0`, читаются на `2.2.0` (проверено: `allRows` / `aggregate` поверх legacy-сегментов тиров `r*`).
 - **Поведение `read()`**: поля `start` / `end` в результате теперь возвращаются **строками-границами** (например `'now-6h'`, `'now'`), а не резолвлёнными миллисекундами — пакет сам принимает строки в границах запроса. `relevant` / `rows` не изменились.
@@ -110,47 +136,47 @@
 - Документация: 00-Overview (boot-классы + журнал событий), 07-Bootstrap (раздел `ServiceLogger`, «шесть стандартных boot-классов»), 08-Errors (`SLG_APPEND_FAILED`), 11-API (строка `ServiceLogger`).
 - **Событие `device.port` и модификатор `noCapture()`**: теперь каждый **выходной** порт по умолчанию создаёт событие `device.port` в контейнере при `push` — `{ device, data: имяПорта, trace: данные }`. Это точка наблюдения/логгирования потока (наблюдение не-инвазивное: данные всё равно уходят по соединениям; входные порты события не создают). Новый модификатор `Port.standard().noCapture()` / `Port.return().noCapture()` отключает событие для конкретного выходного порта (для «внутренних» сигналов). Флаг не трогает отдельный механизм одноразового захвата `DevicePort.listens`. Реализовано как метод `BasicPort` (набор value-экспортов не меняется); `DevicePort` получил поля `direct` (`'input'`/`'output'`) и `noCapture`.
 
-### Tests
+#### Tests
 
 - `277/277` на `vrack2-journal-db@2.2.0`: `service`, `boot-database`, `hot-devices` (метрики через `JournalDbMetrics`), `service-logger` — зелёные; `aggregate()` / `percentile()` / `read()` проверены end-to-end.
 - Новый `test/integration/service-logger.test.ts` (7): `ServiceLogger` в ядровых дефолтах и доступ к `DB`, отключение через `null`, захват всех каналов (кроме `render`/`save`/`metric`), форма строки, опция `channels`, внешнее чтение через `Store` после `destroyAll()`, `query()` / `count()`.
 - `test/integration/service.test.ts`: +`Talker` в ожидаемый список устройств вендора.
 - Новый фикстура `test/fixtures/devices/testkit/Talker.js` (+`list.json`).
 
-## 2026.10.07
+### 2026.10.07
 
-### Major
+#### Major
 
 - **Метрики переведены на `vrack2-journal-db`**: по умолчанию boot-класс метрик — `JournalDbMetrics` (база `vrack2-journal-db`). Старая реализация на `vrack-db` сохранена как `VrackDbMetrics` — переключается в `service.json` ключом `bootstrap.DeviceMetrics` (id не меняется).
 - **Breaking**: экспорт `DeviceMetrics` удалён; вместо него — `JournalDbMetrics` (по умолчанию) и `VrackDbMetrics` (обратная совместимость). Экспортируются из `vrack2-core`.
 - **Breaking**: `Device.metric(path, value, modify?)` — параметр `modify` **убран**: агрегация задаётся в объявлении метрики через `Metric.modify('min'|'max'|'sum'|'avg'|'count')` (по умолчанию `avg`). `IvUs`/`Metric.inUs()` (микросекунды) удалены — минимальная единица `inS()`/`inMs()`.
 
-### Tests
+#### Tests
 
 - `test/integration/service.test.ts`, `hot-devices.test.ts`, `boot-database.test.ts`: boot-класс `DeviceMetrics` заменён на `JournalDbMetrics`; `read()`/`aggregate()` по новому API.
 - `test/fixtures/devices/testkit/{Counter,Lamp}.js`: `modify` вынесен в объявление метрики; `this.metric(path, value)` — 2 аргумента.
 
-### Docs
+#### Docs
 
 - 01-Architecture, 04-Ports-Actions-Metrics, 06-Container, 07-Bootstrap, 10-Standalone, 11-API: метрики на `JournalDbMetrics`/`VrackDbMetrics`, `modify` в объявлении, API-таблица.
 
-## 2026.10.06
+### 2026.10.06
 
-### Minor
+#### Minor
 
 - **Универсальный импорт классов**: новый публичный метод `ImportManager.importClassUniversal(ref)` — автоматически определяет тип ссылки и возвращает класс. (1) путь к **файлу** (абсолютный, `./`/`../`, с `/` или расширением `.js`/`.mjs`/`.cjs`/`.ts`/`.json`/`.node`) → импорт файла + `default`-экспорт; (2) `vendor.Class` (пакет по точкам) → как `importClass`; (3) голый пакет → импорт + `default`. Экспортируется из `vrack2-core` (метод существующего экспорта `ImportManager` — набор value-экспортов не меняется, smoke-тест проходит).
 - **Boot-классы по файлу и устройство в роли boot-класса**: поле `path` в `IBootstrapEntry` теперь принимает **и пакет, и путь к файлу** (`Bootstrap.loadBootList()` использует `importClassUniversal`). Разрешённый класс может наследовать не только `BootClass`, но и `Device`; для `Device` лоадер сам валидирует опции и заполняет дефолты (`Validator.validate`), чего раньше не было. Побочный эффект: `type` теперь берётся из имени класса (`ExClass.name`), а не из последнего сегмента пути.
 - Новый код ошибки `IM_IMPORT_FAILED` (модуль `ImportManager`): не удалось импортировать класс по файлу или по пакету — таблица в [08-Errors](docs/08-Errors.md).
 - Документация: 07-Bootstrap (универсальная `path`, Device допустим, обновлён псевдокод `loadBootList`), 08-Errors (`IM_IMPORT_FAILED`), 09-Utils (метод `importClassUniversal`), 11-API (описание `ImportManager`).
 
-### Tests
+#### Tests
 
 - `test/unit/import-manager.test.ts`: +5 тестов `importClassUniversal` — пакетный путь (равен `importClass`), файл по относительному/абсолютному пути, отсутствующий файл (`IM_FILE_NOT_FOUND`), неизвестный вендор (`IM_CLASS_VENDOR_ERROR`).
 - `test/integration/service.test.ts`: +1 — «boot-класс из локального файла (относительный путь) — Device в роли boot-класса»: `Lamp` загружается по `test/fixtures/devices/testkit/Lamp.js`, `instanceof Device`, дефолтная опция `maxBrightness: 200`.
 
-## 2026.09.29
+### 2026.09.29
 
-### Major
+#### Major
 
 - **Breaking**: `beforeAction()` переименован в `onBeforeAction()` и **подключён** к `Container.deviceAction()`: хук вызывается после валидации аргументов, до хендлера, с событием `action.before`; если вернуть `false` — действие отклоняется ошибкой `CONT_DEVICE_ACTION_VETOED` (fail-closed). Базовая реализация — `return true` (нет-то).
 - **Breaking**: имена кодов ошибок разнесены по модулям — общий префикс заменён на префикс модуля-владельца кода:
@@ -160,7 +186,7 @@
 
   Старые коды как алиасы **не** введены — `ErrorManager.isCode()` и документы принимают только новые. Полная таблица — [08-Errors](docs/08-Errors.md).
 
-### Minor
+#### Minor
 
 - **Миграция boot-классов завершена**: ядро-обвязка (в т.ч. `DeviceFileStorage`) использует только канонические `on*` имена (`process()` / `processPromise()` в boot-классах убраны); `test/unit/lifecycle-hooks.test.ts` переписан на канонические имена (back-compat-кейсы убраны); депрекейшн-заметки удалены из доков (01, 03, 04, 07).
 - Новый документ [docs/11-API.md](docs/11-API.md) — таблица публичного API (`src/index.ts`) со столбцами `name / purpose / since / deprecated` — **single source of truth** по депрекациям. Строгий smoke-тест `test/smoke.test.ts` фиксирует точный набор value-экспортов (несовпадение с таблицей — падение).
@@ -168,23 +194,23 @@
 - JSDoc публичных классов (`Device`, `BootClass`, `Container`, `MainProcess`, `ServiceLoader`, `Bootstrap`) приведён к единому шаблону: описание / `@returns` / `@example`.
 - `MainProcess`: добавлен class-level JSDoc и JSDoc у `run()` / `check()` (у `stop()` уже был).
 
-## 2026.09.27
+### 2026.09.27
 
-### Major
+#### Major
 
 - **Breaking**: убрана реактивность `Device.shares`. `shares` — теперь обычный объект (обычное поле базового класса, дефолт `{}`; подкласс задаёт его обычным типизированным полем). Изменение `shares` (запись, новое свойство, `delete`, полная замена) **больше ничего не эмитит** — устройство явно вызывает `render()` после изменений.
 - **Breaking**: удалены `Device.attachSharesRender()` / `Device.detachSharesRender()` (Container их больше не вызывает) и `Device.sharesSnapshot()`. `ReactiveRef` остаётся в публичном API как самостоятельная утилита (см. [09-Utils](docs/09-Utils.md)), но `Device` его больше не использует.
 - `Device.render()` шлёт `device.render` со **живой ссылкой** на `shares` (была глубокая plain-копия). Подписчик обязан считать `trace` read-only (мутация меняет состояние устройства) и клонировать сам (`structuredClone`) перед пересылкой за границу сериализации (postMessage, ответ воркера). Убран re-entrancy guard — без авто-рендера вложенный render невозможен.
 - Документация: 00-Overview (строка «Shares»), 01-Architecture (раздел «shares / render»), 03-Device (свойства, регистрация, методы, раздел «Как работают `shares` и `render()`»), 06-Container (регистрация, `removeDevice()`).
 
-### Tests
+#### Tests
 
 - `test/unit/device-shares.test.ts` переписан под явную семантику: мутации не шлют событий; `render()` шлёт живую ссылку (`trace === shares`); `render()` работает без изменений и после `removeDevice()`; `shares` — plain-объект (`structuredClone` напрямую); поля-дефолты подкласса и legacy-фикстуры (`SharesField.js`) остаются начальным состоянием.
 - `test/smoke.test.ts`: вместо `sharesSnapshot` — проверка `Device.prototype.render`.
 
-## 2026.09.22
+### 2026.09.22
 
-### Minor
+#### Minor
 
 - База данных для сервиса: новый boot-класс `BootDatabase` (машина состояний `pending → ready → closed`, гварды публичных методов, переупаковка ошибок драйвера в кодовые `BDB_*`, вся логика транзакций `acquire()` → `BEGIN` → `fn(tx)` → `COMMIT`/`ROLLBACK` → `release()`) и два адаптера из коробки: `BootDatabaseSqlite` (SQLite на встроенном модуле `node:sqlite` — ноль внешних зависимостей; требует Node ≥ 22.5 в момент подключения, на старых рантаймах fail-fast `BDB_CONNECT_FAILED`) и `BootDatabaseMemory` (`file = ':memory:'`, данные живут до конца процесса). БД объявляется в секции `bootstrap` сервиса — общий ресурс всех устройств, один экземпляр на id; адаптер реализует только контрактные методы `connect/disconnect/_query/_execute/acquire/release`.
 - Новый публичный API: `Device.getDB(id = 'DB')` — доступ к базе из device-кода (типируется по интерфейсу `BootDatabase`; не объявлена в bootstrap → `BTSP_CLASS_ID_NOT_FOUND`). Экспортируются из `vrack2-core`: `BootDatabase`, `IExecResult`, `BootDatabaseSqlite`, `BootDatabaseMemory`.
@@ -192,30 +218,30 @@
 - Новые коды ошибок (модуль `BootDatabase`): `BDB_NOT_READY`, `BDB_CLOSED`, `BDB_CONNECT_FAILED`, `BDB_QUERY_FAILED` (несёт `message`/`driverCode`, но не SQL и не параметры), `BDB_BUSY`, `BDB_TX_LOCKED`, `BDB_TRANSACTION_FAILED` — таблица в [08-Errors](docs/08-Errors.md).
 - Документация: 07-Bootstrap — раздел «BootDatabase / BootDatabaseSqlite / BootDatabaseMemory» (опции, публичный API, поведение); 03-Device — раздел «База данных (`getDB()`)» с примером; 08-Errors — коды `BDB_*`.
 
-### Tests
+#### Tests
 
 - `test/unit/boot-database.test.ts` — контракт адаптеров: машина состояний, гварды, транзакции (COMMIT/ROLLBACK, вложенность), переупаковка ошибок (скелет драйвера).
 - `test/unit/boot-database-sqlite.test.ts` — `BootDatabaseSqlite` / `BootDatabaseMemory`: подключение и fail-fast (`BDB_CONNECT_FAILED`), живучесть данных после `terminate()`, WAL (вкл/выкл), read-only, обёртка ошибок драйвера без утечки SQL, транзакции (commit / атомарный rollback / `BDB_BUSY`), изоляция in-memory инстансов.
 - `test/integration/boot-database.test.ts` — реальный `MainProcess` с БД в bootstrap: старт/остановка (после — `BDB_CLOSED`), живучесть данных между двумя запусками процесса, fail-fast при невалидных опциях (`VR_NOT_PASS`) и неудачном подключении (`BDB_CONNECT_FAILED`, `driverCode = ERR_SQLITE_ERROR`), доступ устройства через `getDB()` (запрос в `processPromise()`, транзакция в action).
 - Фикстура: `test/fixtures/devices/testkit/DbReader.js` (+ запись в `list.json`).
 
-## 2026.09.21
+### 2026.09.21
 
-### Minor
+#### Minor
 
 - Слоевая конфигурация boot-классов: `service.json` (поле `bootstrap`) и конф-файл (секция `bootstrap`) могут объявлять/перекрывать boot-классы поверх ядерных дефолтов. Приоритет снизу вверх: `MainProcess.DEFAULT_BOOTLIST` → `service.bootstrap` → `bootstrap` конф-файла → аргумент конструктора. Семантика записи на id: запись с `path` — добавляет/полностью заменяет; запись без `path` — поштучно перекрывает `options` уже объявленного id (иначе `BTSP_BAD_BOOTLIST`); `null` — удаляет id.
 - Новый публичный API: `mergeBootList(layers)` (чистая функция слоёвого merge; nullish-слои пропускаются, входы не мутируются), типы `IBootListConfig` / `IBootstrapEntry`, `IMainProcessOptions` — экспортированы из `vrack2-core`.
 - Новый код ошибки `BTSP_BAD_BOOTLIST` (модуль Bootstrap): некорректная запись boot-листа (нет `options`) или запись без `path`, не совпадающая ни с одним id нижних слоёв.
 - `IServiceStructure` получил опциональное поле `bootstrap?: IBootListConfig`; конструктор `MainProcess` мержит четыре слоя при создании, секция конф-файла читается на конструировании (до создания boot-инстансов).
 
-### Tests
+#### Tests
 
 - `test/unit/mergeBootList.test.ts` — 12 юнит-тестов merge-семантики (replace, options-only, null, порядок, приоритет слоёв, отсутствие мутаций, ошибки).
 - `test/integration/service.test.ts` — новый describe «Layered boot-list config» (7 тестов: кастомный path в service-файле, options-only перекрывание, null-удаление, orphan-ошибка, приоритет конструктора, конф-файл поверх service-файла).
 
-## 2026.09.19
+### 2026.09.19
 
-### Major
+#### Major
 
 - Систематизированный статус устройства: контейнер ведёт запись `IDeviceStatus` на каждое зарегистрированное устройство — состояние `state` (`registered`/`started`/`stopped`), время последнего изменения, последнее сообщение alert/error (`{ data, trace, at }`) и счётчики `alertCount`/`errorCount`.
 - Новый канал `status`: при каждом изменении статуса контейнер эмитит событие `device.status` с полным снапшотом в стандартном конверте `{ device, data: 'status', trace: IDeviceStatus }`. Триггеры: регистрация устройства, успешный старт (`runProcess()`/`startDevice()`), остановка (`stopDevice()`), события `device.alert`/`device.error`/`device.terminate`.
@@ -223,27 +249,27 @@
 - Новый метод устройства: `sharesSnapshot()` — глубокая plain-копия `shares` без реактивных прокси. `this.shares` возвращает Proxy из `ReactiveRef`, который `structuredClone` / postMessage отклоняют с `DataCloneError`; метод возвращает сериализуемую копию (plain-объекты/массивы клонируются, циклы сохраняются, `Date`/`Map`/экземпляры классов проходят как есть — семантика `ReactiveRef.snapshot()`).
 - `'status'` добавлен в каналы по умолчанию `Device.settings().channels`.
 
-### Minor
+#### Minor
 
 - Тесты: новый интеграционный срез `test/integration/device-status.test.ts` (10 тестов).
 - Документация: 03-Device — автоматический канал `status`; 06-Container — раздел «Статус устройства», методы доступа, событие в таблице.
 
-## 2026.09.17
+### 2026.09.17
 
-### Minor
+#### Minor
 
 - Типизация `Device.shares` по классу без generic и хуков: подкласс объявляет `shares = {...}` обычным типизированным полем — внутри класса `this.shares` имеет ровно его форму (IDE подсказывает). Реактивные accessors установлены на prototype базового класса, а в модели типов `shares` — обычное свойство, поэтому поле наследника легально.
 - Механика: после `preProcess()` Container импортирует значение поля в реактивный ref (`attachSharesRender()`) и снимает тень (ES2022 class fields) — уточнения из `preProcess()` сохраняются; без поля дефолт `{}`. Storage — обычное инстансное поле `_sharesRef` (без WeakMap и прототипных хаков).
 - Type-level тест: `test/typing/device-shares.ts` + `tsconfig.typetest.json`; скрипт `npm run typecheck:types`.
 
-### Chores
+#### Chores
 
 - Миграция ESLint-конфига с `.eslintrc.js` на flat `eslint.config.js` (ESLint 9 по умолчанию не находит legacy-формат, из-за чего `npm run lint` падал ещё до проверки файлов). Явно настроены Node-globals, для TS-файлов включён `@typescript-eslint/no-unused-vars` (вместо базового), исключена `lib/`.
 - Отключено правило `no-explicit-any` (`any` в проекте — осознанный выбор стиля); удалены мёртвые импорты (`ChildProcess`, `BasicAction`, `SingleDB`).
 
-## 2026.09.15 — 2.0.0 (breaking)
+### 2026.09.15
 
-### Major
+#### Major
 
 - **Убрано поле `CoreError.vCode`** (случайный машинный код). Единственный канонический идентификатор ошибки — `vShort` (читаемый код, например `VR_NOT_PASS`): на него смотрят `ErrorManager.isCode()` и документы.
 - **Сигнатура `ErrorManager.register()`**: `(name, short, description, rules?)` — аргумент `code` удалён. Повторная регистрация идентичной записи — без действия; другая запись с тем же `short` — `EM_CODE_EXISTS`.
@@ -252,14 +278,14 @@
 - Из `IValidationProblem` удалено поле `code` (валидатор уже передаёт тип проблемы в `type`).
 - Все коды ошибок в `src/` зарегистрированы по `short` (12-символьные литералы `code` удалены).
 
-### Patch
+#### Patch
 
 - `docs/08-Errors.md`: убрана колонка/поле `vCode`, описаны `rules`/`vAdd`; `docs/00-Overview.md`: глоссарий ссылки на `vShort`.
 - Тесты: `test/unit/error-docs.test.ts` сканирует `short` как второй аргумент `register()`; `errors.test.ts` / `smoke.test.ts` проверены на отсутствие `vCode`.
 
-## 2026.09.13
+### 2026.09.13
 
-### Major
+#### Major
 
 - Реверсивная остановка устройств: `Container.stopDevice(id)` / `Container.stopAll()`, хуки устройства `Device.stop()` / `Device.stopPromise()`. Остановка обратима: повторный запуск — `Container.startDevice()` (повторно выполняются `process()` + `processPromise()`, снова включаются порты и actions).
 - Убран `Device.works`: его заменило `Device.running` — состояние работы, которым **управляет контейнер**: `true` с конструктора (как у `works`), `false` после `stopDevice()` / `stopAll()` / `removeDevice()`, снова `true` при `startDevice()` (до `process()`).
@@ -267,11 +293,11 @@
 - `Container.removeDevice()` и `ServiceLoader.removeDevice()` теперь асинхронные (возвращают `Promise`): работающее устройство сначала останавливается (`stop()` + `stopPromise()`), и только потом вызывается `beforeTerminate()`. Падение хуков остановки прерывает удаление (fail-closed) — устройство остаётся в контейнере.
 - Добавлен `MainProcess.terminate()` — graceful-завершение сервиса: останавливает все работающие устройства (через `Container.stopAll()`). Идемпотентен; процесс не завершается — это решение хост-кода; структура и хранилища сохраняются.
 
-### Fix
+#### Fix
 
 - **Критично**: при интродукции `stopDevice()` начальное значение `running` стало `false` — и `DevicePort.push` (`!running`) **тихо отбрасывал весь портовый трафик, созданный во время старта устройства** (`process()` / `processPromise()`), в частности регистрацию команд устройств в Master/ServiceManager («command not found» на стороне сервиса). `running` снова `true` с конструктора (семантика старого `works`) и `false` только после явной остановки: не-запущенные и запускающиеся устройства снова пропускают данные, остановленные — по-прежнему отбрасывают.
 
-### Patch
+#### Patch
 
 - Новые коды ошибок: `CONT_DEVICE_STOP_EXCEPTION`, `CONT_DEVICE_STOP_PROMISE_EXCEPTION`, `CONT_DEVICE_STOP_ALL_EXCEPTION`, `CONT_DEVICE_STOPPED`.
 - Новые события контейнера: `stop` (id устройства), `beforeStop` / `afterStop` (начало/конец `stopAll()`).
@@ -279,22 +305,22 @@
 - Нормализована обработка ошибок в `DeviceFileStorage`: ошибки чтения/записи хранения идут через `BootClass.error()` (событие `system.error`) — как в `StructureStorage`.
 - Добавлен тест-страж синхронности кодов ошибок `src/` ↔ `docs/08-Errors.md` (в обе стороны): `test/unit/error-docs.test.ts`.
 
-## 2026.09.11
+### 2026.09.11
 
-### Major
+#### Major
 
 - Вынесено создание устройств из `Container` в `ServiceLoader`: `createDevice()`, `addDevice()`, `removeDevice()`, `checkDevice()`, `checkConnection()`, переопределение `confFile`, событие finalization `serviceLoaded` ([#15](https://github.com/vrack/vrack2-core/issues/15)).
 - `Container` теперь чистый рантайм-контейнер: регистрация, состояние портов/соединений, ступенчатый `runProcess()`, hot `startDevice()`, `getStructure()` ([#15](https://github.com/vrack/vrack2-core/issues/15)).
 - Добавлен `ICheckResult` — dry-run валидация конфигурации устройства и соединения ([#15](https://github.com/vrack/vrack2-core/issues/15)).
 
-### Minor
+#### Minor
 
 - Добавлены `Device.render()`, `attachSharesRender()`, `detachSharesRender()`, реактивный accessors `shares` ([#14](https://github.com/vrack/vrack2-core/issues/14)).
 - Добавлен класс утилиты `ReactiveRef` ([#14](https://github.com/vrack/vrack2-core/issues/14)).
 - Добавлены классы `Metric` / `BasicMetric` и boot-класс `DeviceMetrics` для `vrack-db` ([#14](https://github.com/vrack/vrack2-core/issues/14)).
 - Добавлены `Metric.inS()`, `Metric.inMs()`, `Metric.inUs()` — минимальная единица времени метрики ([#14](https://github.com/vrack/vrack2-core/issues/14)).
 
-### Patch
+#### Patch
 
 - `Device.terminate()` теперь шлёт событие `device.terminate`.
 - Добавлена `Utility.prettyFormat()`.

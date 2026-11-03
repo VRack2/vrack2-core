@@ -70,7 +70,7 @@ export default class Lamp extends Device {
         this.state = { on, brightness: on ? this.options.maxBrightness : 0 }
         this.shares = this.state
         this.render()
-        this.metric('brightness', this.state.brightness, 'last')
+        this.metric('brightness', this.state.brightness)
         this.ports.output.status.push(this.shares)
     }
 }

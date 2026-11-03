@@ -157,3 +157,161 @@ describe('Container resource registry', () => {
         expect(keys).toContain('Extra.thing')
     })
 })
+
+/* ================================================================== */
+/*  DECLARED RESOURCE MAPS (publish / resolve in service.json)        */
+/* ================================================================== */
+
+describe('Declared resource maps', () => {
+
+    it('several providers of one key; consumers bind the exact provider', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.data': 'Provider1Data' } },
+                { id: 'Provider2', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.data': 'Provider2Data' } },
+                { id: 'Consumer1', type: 'testkit.ResourceConsumer', options: {},
+                  resolve: { 'Provider.data': 'Provider1Data' } },
+                { id: 'Consumer2', type: 'testkit.ResourceConsumer', options: {},
+                  resolve: { 'Provider.data': 'Provider2Data' } },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        await mp.run()
+
+        const p1 = mp.Container.devices['Provider1'] as any
+        const p2 = mp.Container.devices['Provider2'] as any
+        const c1 = mp.Container.devices['Consumer1'] as any
+        const c2 = mp.Container.devices['Consumer2'] as any
+
+        // Each consumer got the live reference of its bound provider
+        expect(c1.resolved).toBe(p1.published)
+        expect(c2.resolved).toBe(p2.published)
+        expect(c1.resolved).not.toBe(c2.resolved)
+
+        // Registry stores under aliases, not the interface key
+        expect(mp.Container.hasResource('Provider1Data')).toBe(true)
+        expect(mp.Container.hasResource('Provider2Data')).toBe(true)
+        expect(mp.Container.hasResource('Provider.data')).toBe(false)
+    })
+
+    it('declared maps appear in the service structure', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.data': 'Provider1Data' } },
+                { id: 'Consumer1', type: 'testkit.ResourceConsumer', options: {},
+                  resolve: { 'Provider.data': 'Provider1Data' } },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        await mp.run()
+
+        const st = await mp.Container.getStructure() as any
+        expect(st['Provider1'].publish).toEqual({ 'Provider.data': 'Provider1Data' })
+        expect(st['Consumer1'].resolve).toEqual({ 'Provider.data': 'Provider1Data' })
+    })
+
+    it('required name not published by another device → SLDR_RESOURCE_MISSING', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.data': 'Provider1Data' } },
+                { id: 'Consumer1', type: 'testkit.ResourceConsumer', options: {},
+                  resolve: { 'Provider.data': 'NobodyData' } },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        let caught: any
+        try { await mp.run() } catch (e) { caught = e }
+        expect(caught?.vShort).toBe('SLDR_RESOURCE_MISSING')
+    })
+
+    it('required name provided under another key → SLDR_RESOURCE_MISMATCH', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.meta': 'Provider1Data' } },
+                { id: 'Consumer1', type: 'testkit.ResourceConsumer', options: {},
+                  resolve: { 'Provider.data': 'Provider1Data' } },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        let caught: any
+        try { await mp.run() } catch (e) { caught = e }
+        expect(caught?.vShort).toBe('SLDR_RESOURCE_MISMATCH')
+    })
+
+    it('two devices publishing the same name → SLDR_RESOURCE_DUPLICATE', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.data': 'SharedData' } },
+                { id: 'Provider2', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.meta': 'SharedData' } },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        let caught: any
+        try { await mp.run() } catch (e) { caught = e }
+        expect(caught?.vShort).toBe('SLDR_RESOURCE_DUPLICATE')
+    })
+
+    it('malformed publish map → SLDR_BAD_RESOURCE_MAP', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: ['Provider.data'] as any },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        let caught: any
+        try { await mp.run() } catch (e) { caught = e }
+        expect(caught?.vShort).toBe('SLDR_BAD_RESOURCE_MAP')
+    })
+
+    it('publishing an undeclared key throws CONT_RESOURCE_NOT_DECLARED', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.data': 'Provider1Data' } },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        await mp.run()
+
+        let caught: any
+        try {
+            ;(mp.Container.devices['Provider1'] as any).publish('Other.thing', {})
+        } catch (e) { caught = e }
+        expect(caught?.vShort).toBe('CONT_RESOURCE_NOT_DECLARED')
+    })
+
+    it('resolving an undeclared key throws CONT_RESOURCE_NOT_REQUIRED', async () => {
+        const service: IServiceStructure = {
+            devices: [
+                { id: 'Provider1', type: 'testkit.ResourceProvider', options: {},
+                  publish: { 'Provider.data': 'Provider1Data' } },
+                { id: 'Consumer1', type: 'testkit.ResourceConsumer', options: {},
+                  resolve: { 'Provider.data': 'Provider1Data' } },
+            ],
+            connections: [],
+        }
+        const mp = makeMP(service)
+        await mp.run()
+
+        let caught: any
+        try {
+            ;(mp.Container.devices['Consumer1'] as any).resolve('Other.thing')
+        } catch (e) { caught = e }
+        expect(caught?.vShort).toBe('CONT_RESOURCE_NOT_REQUIRED')
+    })
+})

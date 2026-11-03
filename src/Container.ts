@@ -175,6 +175,22 @@ ErrorManager.registerMany('Container', [
         description: 'No resource with this key has been published in the container',
         rules: { key: Rule.string().description('Resource key') }
     },
+    {
+        short: 'CONT_RESOURCE_NOT_DECLARED',
+        description: 'The device published a resource key not declared in its "publish" map',
+        rules: {
+            device: Rule.string().description('Device ID'),
+            key: Rule.string().description('Resource key')
+        }
+    },
+    {
+        short: 'CONT_RESOURCE_NOT_REQUIRED',
+        description: 'The device resolved a resource key not declared in its "resolve" map',
+        rules: {
+            device: Rule.string().description('Device ID'),
+            key: Rule.string().description('Resource key')
+        }
+    },
 ])
 
 
@@ -200,6 +216,10 @@ export interface IContainerStructure {
         ports: Array<IDeviceStructurePort>;
         /** A list of device metrics */
         metrics: { [key: string]: IMetricSettings }
+        /** Declared resource publications ({ key: registryName }) */
+        publish?: { [key: string]: string };
+        /** Declared resource requirements ({ key: registryName }) */
+        resolve?: { [key: string]: string };
         /** Device display settings */
         settings: { [key: string]: any };
         /** Personalized display settings */
@@ -390,7 +410,11 @@ export default class Container extends EventEmitter {
      * Idempotent — calling it again for the same device is a no-op.
      * Used to hot-start a device that was added via `addDevice()`.
      *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
+     *
      * @param id Device ID
+     * @internal
     */
     async startDevice(id: string): Promise<void> {
         if (!(id in this.devices)) throw ErrorManager.make('CONT_DEVICE_NF', { device: id })
@@ -558,6 +582,10 @@ export default class Container extends EventEmitter {
 
         dev.onRegister()
 
+        // Declared resource maps (from service.json) become part of the structure
+        if (dev.resourcePublish) this.structure[dev.id].publish = { ...dev.resourcePublish }
+        if (dev.resourceResolve) this.structure[dev.id].resolve = { ...dev.resourceResolve }
+
         // Check actions 
         this.deviceActions[dev.id] = dev.actions()
         for (const action in this.deviceActions[dev.id]) {
@@ -687,7 +715,11 @@ export default class Container extends EventEmitter {
      * emits `connection`, updates the structure and creates the
      * `DeviceConnect`. Throws the specific VRack error on failure.
      *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
+     *
      * @param conn Device connection string like a "DevID.port -> DevIDTO.port"
+     * @internal
     */
     addConnection(conn: string) {
         const cc = this.checkConnectionCore(conn)
@@ -741,7 +773,11 @@ export default class Container extends EventEmitter {
      *
      * The device's storage file is intentionally left on disk.
      *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
+     *
      * @param id Device ID
+     * @internal
     */
     async removeDevice(id: string): Promise<void> {
         if (!(id in this.devices)) throw ErrorManager.make('CONT_DEVICE_NF', { device: id })

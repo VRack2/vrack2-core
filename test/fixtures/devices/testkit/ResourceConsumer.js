@@ -15,7 +15,7 @@ export default class ResourceConsumer extends Device {
     }
 
     async onStartAsync() {
-        this.resolved = this.Container.resolve('Provider.data')
+        this.resolved = this.resolve('Provider.data')
         this.shares.value = this.resolved.value
         this.shares.items = this.resolved.items
     }

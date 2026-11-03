@@ -72,6 +72,28 @@ export default class Device {
         [key: string]: any;
     };
     /**
+     * Declared resource publications (`{ key: registryName }`) copied from
+     * the device's `service.json` entry by `ServiceLoader`. When present,
+     * `publish()` is strict: only declared keys are accepted and each key
+     * is stored under its registry name.
+     *
+     * @internal
+     */
+    resourcePublish?: {
+        [key: string]: string;
+    };
+    /**
+     * Declared resource requirements (`{ key: registryName }`) copied from
+     * the device's `service.json` entry by `ServiceLoader`. When present,
+     * `resolve()` is strict: only declared keys are accepted and each key
+     * resolves to its bound registry name.
+     *
+     * @internal
+     */
+    resourceResolve?: {
+        [key: string]: string;
+    };
+    /**
      * @param id Unique ID
      * @param type Device type string
      * @param Container Active loader container
@@ -374,5 +396,33 @@ export default class Device {
      * @param id boot class identifier from the bootstrap list (default 'DB')
      */
     getDB(id?: string): BootDatabase;
+    /**
+     * Publish a live object reference into the container's resource registry.
+     *
+     * If the device declares a `publish` map in `service.json`, the key must
+     * be declared there and is stored under its bound registry name — this
+     * lets several devices provide the same key without collision, and each
+     * consumer binds the exact provider it needs. Publishing an undeclared
+     * key throws `CONT_RESOURCE_NOT_DECLARED`.
+     *
+     * Without a declared map the key is published as-is (raw registry key).
+     *
+     * @param key Resource key (dot-namespaced, the interface being provided)
+     * @param value The live object reference to share
+     */
+    publish(key: string, value: unknown): void;
+    /**
+     * Resolve a resource published by another device.
+     *
+     * If the device declares a `resolve` map in `service.json`, the key must
+     * be declared there and resolves to its bound registry name. Resolving
+     * an undeclared key throws `CONT_RESOURCE_NOT_REQUIRED`.
+     *
+     * Without a declared map the key is resolved as-is (raw registry key).
+     *
+     * @param key Resource key (dot-namespaced, the interface being consumed)
+     * @returns The published live object reference
+     */
+    resolve(key: string): unknown;
 }
 export {};

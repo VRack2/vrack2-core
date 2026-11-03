@@ -44,6 +44,42 @@ ErrorManager.registerMany('ServiceLoader', [
         description: 'An error occurred while preparing options',
         rules: { message: Rule.string().description('Exception error string') }
     },
+    {
+        short: 'SLDR_BAD_RESOURCE_MAP',
+        description: 'Malformed "publish" / "resolve" map in a device configuration',
+        rules: {
+            device: Rule.string().description('Device ID'),
+            field: Rule.string().description('Map field name')
+        }
+    },
+    {
+        short: 'SLDR_RESOURCE_DUPLICATE',
+        description: 'Two devices publish the same resource registry name',
+        rules: {
+            device: Rule.string().description('Device ID'),
+            alias: Rule.string().description('Registry name'),
+            providedBy: Rule.string().description('Device that already provides this name')
+        }
+    },
+    {
+        short: 'SLDR_RESOURCE_MISSING',
+        description: 'A required resource is not published by any other device',
+        rules: {
+            device: Rule.string().description('Device ID'),
+            key: Rule.string().description('Resource key'),
+            alias: Rule.string().description('Registry name')
+        }
+    },
+    {
+        short: 'SLDR_RESOURCE_MISMATCH',
+        description: 'A required resource name is provided under a different resource key',
+        rules: {
+            device: Rule.string().description('Device ID'),
+            key: Rule.string().description('Resource key'),
+            alias: Rule.string().description('Registry name'),
+            providedKey: Rule.string().description('Key the name is provided under')
+        }
+    },
 ])
 
 /**
@@ -133,6 +169,7 @@ export default class ServiceLoader {
         }
         this.Container.emit('service.init.begin')
         this.Container.emit('service.init')
+        this.validateResources()
         for (const device of this.service.devices) {
             try {
                 this.Container.emit('device.register', device)
@@ -180,14 +217,69 @@ export default class ServiceLoader {
     }
 
     /**
+     * Validate declared resource maps (`publish` / `resolve`) of all devices
+     * in the service configuration, before any device is created.
+     *
+     * Rules:
+     *  - each map is an object of string → string (`SLDR_BAD_RESOURCE_MAP`);
+     *  - every published registry name is unique across the service
+     *    (`SLDR_RESOURCE_DUPLICATE`);
+     *  - every required name exists in another device's `publish` under the
+     *    same resource key (`SLDR_RESOURCE_MISSING` / `SLDR_RESOURCE_MISMATCH`).
+     */
+    private validateResources() {
+        const devices = this.service.devices ?? []
+        const provided = new Map<string, { device: string, key: string }>()
+
+        for (const d of devices) {
+            for (const field of ['publish', 'resolve'] as const) {
+                const map = d[field]
+                if (map === undefined) continue
+                if (typeof map !== 'object' || map === null || Array.isArray(map)) {
+                    throw ErrorManager.make('SLDR_BAD_RESOURCE_MAP', { device: d.id, field })
+                }
+                for (const [key, alias] of Object.entries(map)) {
+                    if (typeof alias !== 'string' || !alias) {
+                        throw ErrorManager.make('SLDR_BAD_RESOURCE_MAP', { device: d.id, field })
+                    }
+                    if (field === 'publish') {
+                        const owner = provided.get(alias)
+                        if (owner) {
+                            throw ErrorManager.make('SLDR_RESOURCE_DUPLICATE', { device: d.id, alias, providedBy: owner.device })
+                        }
+                        provided.set(alias, { device: d.id, key })
+                    }
+                }
+            }
+        }
+
+        for (const d of devices) {
+            if (!d.resolve) continue
+            for (const [key, alias] of Object.entries(d.resolve)) {
+                const owner = provided.get(alias)
+                if (!owner || owner.device === d.id) {
+                    throw ErrorManager.make('SLDR_RESOURCE_MISSING', { device: d.id, key, alias })
+                }
+                if (owner.key !== key) {
+                    throw ErrorManager.make('SLDR_RESOURCE_MISMATCH', { device: d.id, key, alias, providedKey: owner.key })
+                }
+            }
+        }
+    }
+
+    /**
       * Hot-add a device: create it, register it in the container, and emit
       * `device.register` + `device.add` + `service.loaded`.
      *
-     * The device is registered (structure, ports, actions, metrics) but is
+      * The device is registered (structure, ports, actions, metrics) but is
      * **not** started. Start it with `Container.startDevice(id)`.
+     *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
      *
      * @param dconf Device configuration
      * @returns The registered (not yet started) device
+     * @internal
      */
     async addDevice(dconf: IStructureDevice): Promise<Device> {
         if (dconf.id in this.Container.devices || this.pending.has(dconf.id)) {
@@ -213,7 +305,11 @@ export default class ServiceLoader {
      * (`onStop()` + `await onStopAsync()`) and then destroyed
      * (`onDestroy()` + cleanup).
      *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
+     *
      * @param id Device ID
+     * @internal
      */
     async removeDevice(id: string): Promise<void> {
         await this.Container.removeDevice(id)
@@ -224,7 +320,11 @@ export default class ServiceLoader {
     /**
      * Hot-add a connection and emit `service.loaded`.
      *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
+     *
      * @param conn Device connection string like "DevID.port -> DevIDTO.port"
+     * @internal
      */
     addConnection(conn: string): void {
         this.Container.addConnection(conn)
@@ -279,6 +379,10 @@ export default class ServiceLoader {
 
         // Create device instance (not yet registered)
         const dev = new cs(dconf.id, dconf.type, this.Container) as Device
+
+        // Declared resource maps (validated at load; copied onto the device)
+        if (dconf.publish) dev.resourcePublish = { ...dconf.publish }
+        if (dconf.resolve) dev.resourceResolve = { ...dconf.resolve }
 
         // Fill options
         for (const key in dconf.options) dev.options[key] = dconf.options[key]

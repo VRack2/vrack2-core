@@ -136,8 +136,7 @@ Boot-классы владеют ресурсами уровня процесс�
 
 События:
 
-- `service.start.begin` (первичный старт) → `dev.storage = loadDeviceStorage(id)`;
-- `device.add` (hot add) → `dev.storage = loadDeviceStorage(id)`;
+- `service.start.begin` (старт сервиса) → `dev.storage = loadDeviceStorage(id)`;
 - `device.save` → `saveDeviceStorage(device, trace)`.
 
 Файл: `storage/{containerId}/{deviceId}.json`. Сохранение: запись в `-tmp`, затем rename. Загрузка: если основного файла нет — берётся `-tmp`-резерв и переименовывается. Ошибка — `emit('system.error')`.

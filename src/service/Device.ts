@@ -11,6 +11,7 @@ import BasicPort from "../ports/BasicPort";
 import DevicePort from "./DevicePort";
 import IDeviceEvent from "./IDeviceEvent";
 import CoreError from "../errors/CoreError";
+import ErrorManager from "../errors/ErrorManager";
 import MetricOne from "../metrics/MetricOne";
 import MetricGroup from "../metrics/MetricGroup";
 import ImportManager from "../ImportManager";
@@ -83,6 +84,26 @@ export default class Device {
      * @see checkOptions()
     */
     options: { [key: string]: any } = {};
+
+    /**
+     * Declared resource publications (`{ key: registryName }`) copied from
+     * the device's `service.json` entry by `ServiceLoader`. When present,
+     * `publish()` is strict: only declared keys are accepted and each key
+     * is stored under its registry name.
+     *
+     * @internal
+     */
+    resourcePublish?: { [key: string]: string };
+
+    /**
+     * Declared resource requirements (`{ key: registryName }`) copied from
+     * the device's `service.json` entry by `ServiceLoader`. When present,
+     * `resolve()` is strict: only declared keys are accepted and each key
+     * resolves to its bound registry name.
+     *
+     * @internal
+     */
+    resourceResolve?: { [key: string]: string };
 
     /**
      * @param id Unique ID
@@ -430,6 +451,57 @@ export default class Device {
      */
     getDB(id = 'DB'): BootDatabase {
         return this.Container.Bootstrap.getBootClass(id, BootDatabase) as BootDatabase
+    }
+
+    /**
+     * Publish a live object reference into the container's resource registry.
+     *
+     * If the device declares a `publish` map in `service.json`, the key must
+     * be declared there and is stored under its bound registry name — this
+     * lets several devices provide the same key without collision, and each
+     * consumer binds the exact provider it needs. Publishing an undeclared
+     * key throws `CONT_RESOURCE_NOT_DECLARED`.
+     *
+     * Without a declared map the key is published as-is (raw registry key).
+     *
+     * @param key Resource key (dot-namespaced, the interface being provided)
+     * @param value The live object reference to share
+     */
+    publish(key: string, value: unknown): void {
+        const map = this.resourcePublish
+        if (map) {
+            const name = map[key]
+            if (name === undefined) {
+                throw ErrorManager.make('CONT_RESOURCE_NOT_DECLARED', { device: this.id, key })
+            }
+            this.Container.publish(name, value)
+            return
+        }
+        this.Container.publish(key, value)
+    }
+
+    /**
+     * Resolve a resource published by another device.
+     *
+     * If the device declares a `resolve` map in `service.json`, the key must
+     * be declared there and resolves to its bound registry name. Resolving
+     * an undeclared key throws `CONT_RESOURCE_NOT_REQUIRED`.
+     *
+     * Without a declared map the key is resolved as-is (raw registry key).
+     *
+     * @param key Resource key (dot-namespaced, the interface being consumed)
+     * @returns The published live object reference
+     */
+    resolve(key: string): unknown {
+        const map = this.resourceResolve
+        if (map) {
+            const name = map[key]
+            if (name === undefined) {
+                throw ErrorManager.make('CONT_RESOURCE_NOT_REQUIRED', { device: this.id, key })
+            }
+            return this.Container.resolve(name)
+        }
+        return this.Container.resolve(key)
     }
 
 }

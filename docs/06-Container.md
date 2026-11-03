@@ -1,6 +1,6 @@
 # 06 — Контейнер (Container)
 
-> **Зачем читать:** понимать, что хранит контейнер, как регистрируются устройства, как запускаются, как добавляются соединения и удаляются устройства.
+> **Зачем читать:** понимать, что хранит контейнер, как устройства регистрируются, запускаются и останавливаются.
 > **Кому:** авторам устройств и хост-процессам.
 >
 > ← [05-Validator](05-Validator.md) · [Далее: 07-Bootstrap](07-Bootstrap.md) →
@@ -14,7 +14,7 @@
 - реестром устройств (`devices`) и их actions/метрик;
 - живой структурой (`structure`);
 - состоянием соединений (через `DevicePort` / `DeviceConnect`);
-- запуском и остановкой устройств (`runStart` / `startDevice` / `stopDevice` / `stopAll`);
+- запуском и остановкой устройств (`runStart` / `stopDevice` / `stopAll`);
 - статусами устройств (`deviceStatus`) — по записи `IDeviceStatus` на каждое зарегистрированное устройство.
 
 Конфигурацией сервиса и созданием устройств не владеет — это `ServiceLoader` ([01-Architecture](01-Architecture.md), § «MainProcess + ServiceLoader»).
@@ -52,7 +52,7 @@ constructor(id: string, bootstrap: Bootstrap)
 
 ### `runStart()`
 
-Выполняется один раз на контейнер (страж `runStartAttempted`). Устройства, которые уже стартовали (например, через `startDevice()`), пропускаются — поэтому вызывать безопасно и после горячего добавления:
+Выполняется один раз на контейнер (страж `runStartAttempted`). Уже стартованные устройства пропускаются — поэтому вызывать безопасно повторно:
 
 ```
 emit 'service.start.begin'
@@ -67,21 +67,17 @@ emit 'service.ready'
 
 Падение `onStart()` → `CONT_DEVICE_PROCESS_EXCEPTION`; `onStartAsync()` → `CONT_DEVICE_PROCESS_PROMISE_EXCEPTION` (вложенная ошибка — в `vAddErrors`).
 
-### `startDevice(id)`
-
-Старт одного зарегистрированного устройства: `onStart()` + `await onStartAsync()` + `started.add(id)`. Повторный вызов ничего не делает. Используется для горячего добавления. Неизвестное устройство — `CONT_DEVICE_NF`.
-
 ### `isStarted(id)`
 
-`true`, если устройство прошло `onStart()` + `onStartAsync()`. После `stopDevice()` / `stopAll()` — `false` (устройство можно запустить снова через `startDevice()`).
+`true`, если устройство прошло `onStart()` + `onStartAsync()`. После `stopDevice()` / `stopAll()` — `false`.
 
 ### `isRunning(id)`
 
-`true`, если устройство **не остановлено**: `state = 'registered'` (ещё не запускалось) или `started`. `false` для `stopped` и для id без записи статуса (удалённое или не зарегистрированное) — fail-closed. Источник геттера `Device.running`.
+`true`, если устройство **не остановлено**: `state = 'registered'` (ещё не запускалось) или `started`. `false` для `stopped` и для id без записи статуса (не зарегистрированное) — fail-closed. Источник геттера `Device.running`.
 
 ### Остановка: `stopDevice(id)` / `stopAll()`
 
-Остановка **обратима**: устройство не разрушается и запускается снова через `startDevice()` (повтор `onStart()` + `onStartAsync()`, снова включаются порты и actions).
+Остановка **обратима**: устройство не разрушается, порты и actions отключаются. Повторный запуск отдельного остановленного устройства — внутренняя механика контейнера, в публичный контракт не входит.
 
 `stopDevice(id)`:
 
@@ -141,24 +137,6 @@ deviceAction('Counter1', 'set.value', { value: 42 })
 
 ## Соединения
 
-### `addConnection(conn)`
-
-Hot-соединение двух уже зарегистрированных портов:
-
-```
-"DevA.outputPort -> DevB.inputPort"
-```
-
-1. `checkConnectionCore(conn)` — парсинг и валидация:
-   - синтаксис `->`, ровно 2 части, по 2–3 акта на стороне (`CONT_CONNECTION_INCORRECT`);
-   - устройство на выходе существует (`CONT_CONNECTION_DEVICE_NF`);
-   - выходной порт существует (`CONT_CONNECTION_PORT_NF`);
-   - устройство на входе существует (`CONT_CONNECTION_DEVICE_NF`);
-   - входной порт существует (`CONT_CONNECTION_PORT_NF`);
-   - типы портов совпадают: `standard ↔ standard`, `return ↔ return` (`CONT_INCOMPATIBLE_PORTS`).
-2. `emit('service.connection', cc)`;
-3. `makeConnection(cc)` — запись в `structure[].outputs/inputs[]` + `new DeviceConnect(outPort, inPort)`.
-
 ### `checkConnection(conn)`
 
 Только проверка, без событий и без `DeviceConnect`. Возвращает `ICheckResult`:
@@ -168,24 +146,6 @@ Hot-соединение двух уже зарегистрированных п
 // или
 { valid: false, error: { code, message }, problems? }
 ```
-
-## Удаление: `removeDevice(id)`
-
-Удаление **необратимо** (в отличие от `stopDevice()`): устройство разрушается. Метод асинхронный (возвращает `Promise`) — при удалении работающего устройства его сначала останавливают:
-
-```
-if (!(id in devices)) throw CONT_DEVICE_NF
-  → если started.has(id): await stopDevice(id)  // onStop() + await onStopAsync();
-                                                 // падение хуков остановки → удаление прерывается (fail-closed),
-                                                 // устройство остаётся в контейнере
-  → dev.onDestroy()
-  → отключение всех соединений (обе стороны, дедупликация по DeviceConnect)
-  → удаление записи структуры + всех ссылок на устройство (у других устройств)
-  → удаление из devices / deviceActions / deviceMetrics / started
-  → emit('device.remove', id)
-```
-
-Файл хранилища устройства **остается** на диске намеренно.
 
 ## Доступ к устройствам
 
@@ -212,17 +172,41 @@ if (!(id in devices)) throw CONT_DEVICE_NF
 
 ```js
 // Provider (onStartAsync)
-this.Container.publish('Provider.data', this.internalState)
+this.publish('Provider.data', this.internalState)
 
 // Consumer (onStartAsync)
-const shared = this.Container.resolve('Provider.data')
+const shared = this.resolve('Provider.data')
 ```
 
-Ресурсы живут всё время работы контейнера; при `removeDevice()` они **не** удаляются автоматически (владелец ресурса — контейнер, а не устройство).
+### Объявленные карты `publish` / `resolve`
+
+Несколько устройств могут публиковать один ключ (несколько провайдеров одного интерфейса). Публикации и требования объявляются в записи устройства в `service.json`:
+
+```json
+{
+  "devices": [
+    { "id": "Provider1", "type": "myvendor.Provider", "options": {},
+      "publish": { "Provider.data": "Provider1Data" } },
+    { "id": "Provider2", "type": "myvendor.Provider", "options": {},
+      "publish": { "Provider.data": "Provider2Data" } },
+    { "id": "Lamp1", "type": "myvendor.Lamp", "options": {},
+      "resolve": { "Provider.data": "Provider1Data" } }
+  ]
+}
+```
+
+- `{ ключ: имяВРеестре }`: ключ — интерфейс, имя — конкретная публикация; имя уникально во всём сервисе.
+- `Device.publish(key, value)` / `Device.resolve(key)` транслируют ключ в имя по карте устройства — код не знает про алиасы, выбор провайдера делает конфиг.
+- На загрузке (`ServiceLoader`, до создания устройств): дубликат имени → `SLDR_RESOURCE_DUPLICATE`, требуемое имя не опубликовано другим устройством → `SLDR_RESOURCE_MISSING`, опубликовано под другим ключом → `SLDR_RESOURCE_MISMATCH`, некорректная карта → `SLDR_BAD_RESOURCE_MAP`.
+- В строгом режиме (карта объявлена): `publish` необъявленного ключа → `CONT_RESOURCE_NOT_DECLARED`, `resolve` необъявленного → `CONT_RESOURCE_NOT_REQUIRED`.
+- Без карт — сырой режим: ключ используется как есть (совместимость с `2.0.0`).
+- Объявленные карты попадают в структуру сервиса (`getStructure()`: поля `publish` / `resolve` записи устройства) — граф ресурсов виден целиком.
+
+Ресурсы живут всё время работы контейнера (владелец ресурса — контейнер, а не устройство).
 
 ## Статус устройства
 
-Контейнер ведёт систематизированный статус каждого зарегистрированного устройства — тип `IDeviceStatus` (экспортируется из `vrack2-core`). Запись создаётся при регистрации и уничтожается вместе с устройством (`removeDevice()`); сообщения удалённого устройства статус не создают.
+Контейнер ведёт систематизированный статус каждого зарегистрированного устройства — тип `IDeviceStatus` (экспортируется из `vrack2-core`). Запись создаётся при регистрации; сообщения незарегистрированного устройства статус не создают.
 
 | Поле | Значение |
 |---|---|
@@ -235,7 +219,7 @@ const shared = this.Container.resolve('Provider.data')
 Статус меняется, и при каждом изменении **полный снапшот** эмитится на канал `status` — событие `device.status`, конверт `{ device, data: 'status', trace: <IDeviceStatus> }`:
 
 1. `registerDevice()` — начальный статус (`state = 'registered'`);
-2. успешный `startDevice()` / `runStart()` — `state = 'started'`;
+2. успешный `runStart()` — `state = 'started'`;
 3. успешная `stopDevice()` — `state = 'stopped'`;
 4. события `device.alert`, `device.error`, `device.terminate` — обновление `lastAlert`/`lastError` и счётчиков (устройство при этом продолжает работать).
 
@@ -250,8 +234,7 @@ const shared = this.Container.resolve('Provider.data')
 | `service.ready.begin` / `service.ready` | — | Конец `runStart()` (сервис собран). |
 | `device.stop` | `id` | При `stopDevice()` — **до** хуков `onStop()` / `onStopAsync()`. |
 | `service.stop.begin` / `service.stop.end` | — | Начало / конец `stopAll()` (выдаются всегда, даже если остановленных устройств нет). |
-| `service.connection` | `{ outputDevice, outputPort, inputDevice, inputPort }` | При `addConnection()`. |
-| `device.remove` | `id` | При `removeDevice()`. |
+| `service.connection` | `{ outputDevice, outputPort, inputDevice, inputPort }` | При установлении соединения (загрузка сервиса). |
 | `device.metric.register` | `{ device, data, trace }` | При `registerDevice()`. |
 | `device.status` | `{ device, data: 'status', trace: IDeviceStatus }` | Автоматический канал — при каждом изменении статуса устройства (см. «Статус устройства»). |
 | `device.port` | `{ device, data: имяПорта, trace: данные }` | Поток данных на **выходном** порту при `push` — по умолчанию; отключается модификатором `noCapture()`. Наблюдение не-инвазивное: данные всё равно уходят по соединениям. |

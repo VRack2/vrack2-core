@@ -95,6 +95,8 @@
 | `CONT_IGNORE_SERVICE_AUTORELOAD` | Ошибка, игнорирующая флаг перезапуска сервиса. |
 | `CONT_RESOURCE_EXISTS` | Ресурс с таким ключом уже опубликован в контейнере. |
 | `CONT_RESOURCE_NOT_FOUND` | Ресурс с таким ключом не опубликован в контейнере. |
+| `CONT_RESOURCE_NOT_DECLARED` | Устройство публикует ключ, не объявленный в его карте `publish` (`device`, `key`). |
+| `CONT_RESOURCE_NOT_REQUIRED` | Устройство запрашивает ключ, не объявленный в его карте `resolve` (`device`, `key`). |
 
 ### ServiceLoader (`SLDR_*`)
 
@@ -105,6 +107,10 @@
 | `SLDR_ERROR_INIT_CONNECTION` | Ошибка инициализации соединения. |
 | `SLDR_ERROR_PREPARE_OPTIONS` | Ошибка подготовки опций устройства. |
 | `SLDR_INCORRECT_DEVICE_ID` | Неверный id устройства. |
+| `SLDR_BAD_RESOURCE_MAP` | Некорректная карта `publish` / `resolve` в конфигурации устройства (`device`, `field`). |
+| `SLDR_RESOURCE_DUPLICATE` | Два устройства публикуют одно имя в реестре (`device`, `alias`, `providedBy`). |
+| `SLDR_RESOURCE_MISSING` | Требуемый ресурс не опубликован другим устройством (`device`, `key`, `alias`). |
+| `SLDR_RESOURCE_MISMATCH` | Требуемое имя опубликовано под другим ключом (`device`, `key`, `alias`, `providedKey`). |
 
 ### Bootstrap (`BTSP_*`, `BS_*`)
 

@@ -23,16 +23,16 @@ export default class MyDevice extends Device {
 |---|---|---|
 | `id` | конструктор | Уникальный id в контейнере (из `service.json`). |
 | `type` | конструктор | `'vendor.Device'`. |
-| `Container` | конструктор | Ссылка на контейнер: события и вызов действий устройства. |
+| `Container` | конструктор | Ссылка на контейнер (`this.Container`): события, вызов actions, реестр ресурсов (`publish` / `resolve`), доступ к boot-классам (`Container.Bootstrap`). Полный API контейнера — [06-Container](06-Container.md). |
 | `options` | конструктор + `createDevice()` | Опции, проверенные `checkOptions()`. |
 | `ports.input` / `ports.output` | `registerDevice()` | Объекты портов; `push(data)` — на выходных. |
-| `storage` | `service.start.begin` / `device.add` | Персистентное состояние; сохраняется `save()`. |
+| `storage` | `service.start.begin` | Персистентное состояние; сохраняется `save()`. |
  | `shares` | конструктор / `onRegister()` | Объект быстро-меняющихся данных (обычный объект); подкласс задаёт его обычным типизированным полем; устройство вызывает `render()` после изменения — событие `device.render`. |
 | `running` | только чтение (геттер) | Состояние работы устройства — выводится из статуса контейнера (`deviceStatus[id].state` через `Container.isRunning(id)`), самим устройством **не управляется**. `false` только у остановленного (`stopped`) или удалённого устройства: его порты отбрасывают `push`, а actions отклоняются ошибкой `CONT_DEVICE_STOPPED`. Не-запущенное (`registered`) устройство остановленным **не считается** — `running = true`, его порты активны, и старт-трафик (например, регистрация команд) проходит. |
 
 ## Жизненный цикл
 
-Порядок фиксирован ядром (полная последовательность — [01-Architecture](01-Architecture.md), § «Каноническая стартовая последовательность»):
+Порядок фиксирован ядром (полная последовательность — [01-Architecture](01-Architecture.md), раздел «Как сервис поднимается»):
 
 1. `new MyDevice(id, type, Container)` — конструктор.
 2. Копирование опций из конфига, вызов `prepareOptions()` — **подготовка опций до валидации** (производные значения, преобразования).
@@ -42,27 +42,27 @@ export default class MyDevice extends Device {
    - проверка actions: для каждой action должен существовать хендлер;
     - регистрация метрик (событие `device.metric.register` на каждую);
    - создание входных/выходных портов; проверка и bind входных хендлеров.
-5. Подключение соединений (`addConnection`).
+5. Подключение соединений.
 6. `onStart()` — **входная точка старта работы**: выполнены все шаги выше; здесь стартует основная работа (таймеры, подписки, инициализация соединений).
 7. `await onStartAsync()` — асинхронная инициализация, которую лоадер ждёт у всех устройств (например, инициализация файловых баз).
 
-Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.stop()`) вызывает `onStop()`, затем `await onStopAsync()`, и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается** — его можно запустить снова через `Container.startDevice()` (повторно выполняются `onStart()` + `onStartAsync()`, снова включаются порты и actions).
+Остановка (обратима): `Container.stopDevice()` / `stopAll()` (а на уровне сервиса — `MainProcess.stop()`) вызывает `onStop()`, затем `await onStopAsync()`, и переводит статус устройства в `stopped` (отсюда `running = false`). Устройство **не разрушается**: порты и actions отключаются, запись статуса остаётся.
 
-Завершение (необратимо): `onDestroy()` вызывается, когда устройство удаляется из работающего сервиса (`ServiceLoader.removeDevice()` → `Container.removeDevice()`). Если устройство работало — сначала выполняется остановка (`onStop()` + `onStopAsync()`), и только потом `onDestroy()`. При простом завершении процесса вызываться не будет.
+Завершение: `onDestroy()` — хук разрушения устройства, вызывается только внутренней механикой контейнера и в публичный контракт не входит. При обычной остановке сервиса (`MainProcess.stop()`) **не вызывается** — для graceful-уборки используйте `onStop()` / `onStopAsync()`.
 
 | Метод | Асинхронный | Когда вызывается |
 |---|---|---|
 | `prepareOptions()` | нет | до проверки опций |
 | `checkOptions()` | нет | возвращает правила опций |
  | `onRegister()` | нет | в `registerDevice()`, до старта |
- | `onStart()` | нет | в `runStart()` / `startDevice()`, ступень 1 |
- | `onStartAsync()` | да | в `runStart()` / `startDevice()`, ступень 2, awaited |
+ | `onStart()` | нет | в `runStart()`, ступень 1 |
+ | `onStartAsync()` | да | в `runStart()`, ступень 2, awaited |
  | `onStop()` | нет | при остановке (`stopDevice()` / `stopAll()`), только если устройство работает |
  | `onStopAsync()` | да | при остановке, awaited, после `onStop()` |
  | `onBeforeAction(action, data)` | нет | вызывается в `deviceAction()` **после** валидации аргументов, **перед** хендлером action; возвращение `false` отменяет action (`CONT_DEVICE_ACTION_VETOED`) |
- | `onDestroy()` | нет | при удалении устройства (после остановки, если оно работало) |
+ | `onDestroy()` | нет | только внутренней механикой контейнера (вне публичного контракта); при обычной остановке сервиса не вызывается |
 
-Состояния: `CREATED → RUNNING → STOPPED → RUNNING …` (остановка обратима), а из `RUNNING` / `STOPPED` / `CREATED` — `DESTROYED` (удаление необратимо). Управление состоянием — только за контейнером.
+Состояния: `CREATED → RUNNING → STOPPED` (остановка обратима). Управление состоянием — только за контейнером.
 
 ## Декларативные методы
 
@@ -118,7 +118,7 @@ settings(): IDeviceSettings {
 | `error(data, trace, ...args)` | `device.error` | Ошибка устройства (`Error` в `trace` автоматически преобразуется в объект) |
 | `render()` | `device.render` | Явный рендер: шлёт текущий `shares` (**живую ссылку** — подписчики считают read-only) |
 | `save()` | `device.save` | Сохранить `storage` в файл |
-| `metric(path, value, modify)` | `device.metric` | Записать метрику; `modify`: `last` (по умолчанию), `first`, `max`, `min`, `avg`, `sum` |
+| `metric(path, value)` | `device.metric` | Записать метрику (raw-запись «текущее время + значение»); объявление — в `metrics()`, см. [04-Ports-Actions-Metrics](04-Ports-Actions-Metrics.md) |
 | `terminate(error, action)` | `device.terminate` | Сообщить о критической ошибке: устройство не может продолжать работу |
 
 > **Не путайте:** `Device.terminate(error, action)` — это **сообщение** о критической ошибке (событие `device.terminate`); оно само по себе **не останавливает** устройство. Остановка устройства — `Container.stopDevice()` / `stopAll()`; graceful-остановка всего сервиса — `MainProcess.stop()` (см. [01-Architecture](01-Architecture.md)).
@@ -158,6 +158,51 @@ class Track extends Device {
     }
 }
 ```
+
+## Реестр ресурсов (`publish` / `resolve`)
+
+Иногда двум устройствам нужно обменяться не потоком данных, а **живой ссылкой на объект** — таблицей, пулом соединений, общим кэшем. Через порты это неудобно: порты — для данных. Контейнер даёт общее пространство имён для таких ссылок — реестр ресурсов:
+
+```js
+// Provider (onStartAsync)
+this.publish('Provider.data', this.internalState)
+
+// Consumer (onStartAsync)
+const shared = this.resolve('Provider.data')
+```
+
+### Объявленные карты (`publish` / `resolve` в `service.json`)
+
+Один и тот же ключ могут публиковать несколько устройств (несколько провайдеров одного интерфейса). Чтобы граф зависимостей был виден в структуре сервиса, а не только в коде, публикации и требования объявляются в записи устройства:
+
+```json
+{
+  "devices": [
+    { "id": "Provider1", "type": "myvendor.Provider", "options": {},
+      "publish": { "Provider.data": "Provider1Data" } },
+    { "id": "Provider2", "type": "myvendor.Provider", "options": {},
+      "publish": { "Provider.data": "Provider2Data" } },
+    { "id": "Lamp1", "type": "myvendor.Lamp", "options": {},
+      "resolve": { "Provider.data": "Provider1Data" } }
+  ]
+}
+```
+
+- Левая часть — **ключ** (интерфейс), правая — **имя в реестре** (конкретная публикация). Имя уникально во всём сервисе.
+- Код устройства оперирует только ключом: `this.publish('Provider.data', obj)` кладёт объект под именем из карты устройства; `this.resolve('Provider.data')` достаёт публикацию, привязанную в карте `resolve`. Алиасы в коде не упоминаются — выбор конкретного провайдера делает `service.json`.
+- Проверки на загрузке (до старта): имя уникально (`SLDR_RESOURCE_DUPLICATE`), требуемое имя опубликовано другим устройством под тем же ключом (`SLDR_RESOURCE_MISSING` / `SLDR_RESOURCE_MISMATCH`), карта корректна (`SLDR_BAD_RESOURCE_MAP`).
+- Строгость для объявленного устройства: `publish()` необъявленного ключа → `CONT_RESOURCE_NOT_DECLARED`, `resolve()` необъявленного → `CONT_RESOURCE_NOT_REQUIRED`.
+
+### Без карт (сырой режим)
+
+Если у устройства нет карт `publish` / `resolve`, ключ используется как есть — устройства публикуют и запрашивают ресурс по одному общему ключу (как в `2.0.0`). Тот же ключ у двух провайдеров → `CONT_RESOURCE_EXISTS`.
+
+- Ключи — точечные пространства имён (`'BackupManager.taskTable'`) — это снижает риск коллизий.
+- Публикуйте в `onStartAsync()` устройства-провайдера, потребляйте — в `onStartAsync()` устройства-потребителя: порядок старта устройств = порядок в `service.json`, поэтому провайдер, указанный раньше, опубликует ресурс до того, как потребитель его запросит.
+- `hasResource(key)` — есть ли ключ; `resolve()` несуществующего ключа → `CONT_RESOURCE_NOT_FOUND`, повторный `publish()` того же имени → `CONT_RESOURCE_EXISTS`.
+- Ресурсы живут всё время работы контейнера: владелец ресурса — контейнер, а не устройство.
+
+Полный контракт — [06-Container](06-Container.md), раздел «Реестр ресурсов».
 
 ## Полный пример
 
@@ -210,7 +255,7 @@ export default class Counter extends Device {
         this.shares.count = this.count
         this.render()
         this.save()
-        this.metric('count', this.count, 'max')
+        this.metric('count', this.count)
         this.ports.output.result.push(this.count)
     }
 
@@ -267,7 +312,7 @@ class MyDevice extends Device {
 - Изменение `shares` (запись, новое свойство, `delete`, полная замена `this.shares = {...}`) **ничего не шлёт** — устройство вызывает `render()` после изменений.
 - В событии `device.render` поле `trace` — **живая ссылка** на `shares`: подписчик обязан считать её read-only (мутация меняет состояние устройства) и клонировать сам (`structuredClone`) перед пересылкой за границу сериализации (postMessage, ответ воркера).
 - В `shares` держите plain-данные: `Date`, `Map`, экземпляры классов — как есть, никакой обёртки нет.
-- `render()` работает в любой момент жизненного цикла, в том числе после `removeDevice()`.
+- `render()` работает в любой момент жизненного цикла.
 
 **Типизация `options` (TS).** Базовые `options` — `Record<string, any>`. Чтобы получить подсказки внутри класса, сузьте тип только декларацией — на рантайм это не влияет (`declare` не эмитит код):
 

@@ -18,7 +18,7 @@ export default class ResourceProvider extends Device {
 
     async onStartAsync() {
         this.published = { value: 42, items: ['a', 'b'] }
-        this.Container.publish('Provider.data', this.published)
+        this.publish('Provider.data', this.published)
         this.shares.published = true
     }
 

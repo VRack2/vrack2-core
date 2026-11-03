@@ -1,124 +1,66 @@
 # AGENTS.md — Guide for AI agents (and human contributors)
 
-## What is this project?
+## What this is
 
 **vrack2-core is a framework for building event-driven services in Node.js**
-(JavaScript/TypeScript). This is the *framework core*, not a finished application.
+(JS/TS) — the *core*, not a finished app. You provide **devices** (classes
+extending `Device`) and a **`service.json`** (devices with options + port
+connections); the core loads/validates the structure, instantiates devices,
+wires ports, runs the lifecycle, moves data, stores state/metrics, and reports
+problems as coded errors. Everything external happens **via events**
+(`device.render`, `device.error`, `system.error`, …) — subscribe, don't poke internals.
 
-The framework provides **classes and rules**; you provide two things:
+Startup chain: `MainProcess → Bootstrap (boot classes) → ServiceLoader → Container`.
+The canonical sequence is documented **only** in `docs/01-Architecture.md`.
 
-1. **Devices** — plain JS/TS classes extending `Device` (inputs, outputs, actions, metrics, options).
-2. **Service structure** — a `service.json` file listing devices (with options) and connections between their ports.
-
-The framework classes then do the mechanics: load and validate the structure,
-instantiate devices, validate options, wire ports, run the lifecycle, move data
-between devices, store device state and metrics, and report problems as coded errors.
-
-## How it works (big picture)
-
-Startup chain of a service process:
-
-```
-MainProcess → Bootstrap (boot classes) → ServiceLoader (builds the service from service.json) → Container (runs devices)
-```
-
-- `MainProcess` — entry point; orchestrates the startup order.
-- `Bootstrap` — loads boot classes (service modules): `DeviceManager` (device registry, **required**), plus optional `DeviceFileStorage`, `StructureStorage` (in the core default boot list), and opt-in `DeviceMetrics`, `ServiceLogger`, `PortLogger`, `BootDatabase` family (`BootDatabaseSqlite` / `BootDatabaseMemory` adapters) — must be declared in `bootstrap` config.
-- `ServiceLoader` — builds the service: resolves device classes (`vendor.Class`), validates options, creates devices in the Container, wires connections; also adds/removes devices in a running service.
-- `Container` — runs devices, moves data through ports, executes actions, stores state, emits all events.
-
-**Everything external happens via events** (`device.render`, `device.metric`,
-`device.error`, `system.error`, …). The host process subscribes to events instead
-of poking internals.
-
-Full architecture, canonical startup sequence, and data flows: `docs/01-Architecture.md`
-(the sequence is documented **only** there).
-
-## Repository layout
+## Layout
 
 | Path | What it is |
 |---|---|
-| `src/` | Framework source (TypeScript, strict mode). Public API = `src/index.ts`. |
-| `src/MainProcess.ts`, `src/Bootstrap.ts`, `src/ServiceLoader.ts`, `src/Container.ts` | Core runtime classes. |
-| `src/service/Device.ts` | Base class for devices. |
-| `src/ports/`, `src/actions/`, `src/metrics/` | Ports, actions, metrics. |
-| `src/validator/` | `Rule` / `Validator` — option & action-argument validation. |
-| `src/errors/` | `ErrorManager` / `CoreError` — coded errors. |
-| `src/boot/` | Standard boot classes (`BootClass` base, `DeviceManager`, `DeviceFileStorage`, `DeviceMetrics`, `StructureStorage`) and the `BootDatabase` family (`BootDatabase`, `BootDatabaseSqlite`, `BootDatabaseMemory`). |
-| `test/` | Vitest tests: `smoke.test.ts` (public API surface), `unit/`, `integration/` (boots a real `MainProcess`: `service`, `device-status`, `device-stop`, `hot-devices`, `boot-database`), `fixtures/` (test devices & boot classes). |
-| `docs/` | Canonical documentation, numbered 00–10 (in Russian). One file = one topic. |
-| `lib/` | **Build output (CommonJS + .d.ts). Never edit by hand.** |
-| `README.md`, `TESTING.md`, `CHANGELOG.md` | Project entry points. |
+| `src/` | Framework source (TS strict). **Public API = `src/index.ts`.** Core runtime: `MainProcess`, `Bootstrap`, `ServiceLoader`, `Container`; devices: `service/Device.ts`; plus `ports/`, `actions/`, `metrics/`, `validator/` (`Rule`/`Validator`), `errors/` (`ErrorManager`/`CoreError`). |
+| `src/boot/` | Boot classes: `BootClass` base, `DeviceManager`, `DeviceFileStorage`, `StructureStorage`, `ServiceLogger`, `PortLogger`, `BootDatabase` (+ `Sqlite`/`Memory`), `boot/metrics/` (`BootDeviceMetrics`, `JournalDbMetrics`, `VrackDbMetrics`). |
+| `test/` | Vitest: `smoke.test.ts` (strict public-API set), `unit/`, `integration/` (real `MainProcess`: service, device-status/-stop, hot-devices, resource-registry, boot-database, loggers), `typing/`, `fixtures/` (test devices & boot classes). |
+| `docs/` | Canonical docs, numbered 00–11, one topic per file (map — README). |
+| `lib/` | **Build output (CJS + .d.ts), committed (installed from git). Never hand-edit** — `npm run build`. |
+
+Boot classes: `DEFAULT_BOOTLIST` = `DeviceManager` (**required**), `DeviceFileStorage`
+(id `DeviceStorage`), `StructureStorage`; opt-in via `bootstrap`: `JournalDbMetrics`
+(default metrics engine, `vrack2-journal-db`), `VrackDbMetrics` (`vrack-db`),
+`ServiceLogger`, `PortLogger`, `BootDatabaseSqlite`/`Memory` — `docs/07-Bootstrap.md`.
 
 ## Commands
 
-| Task | Command |
-|---|---|
-| Install | `npm install` |
-| Run all tests | `npm test` (vitest run) |
-| Run one test file | `npx vitest run test/unit/validator.test.ts` |
-| Type check | `npm run typecheck` |
-| Lint | `npm run lint` |
-| Build the library | `npm run build` (tsc → `lib/`) |
+`npm test` (all) · `npx vitest run test/unit/validator.test.ts` (one file) ·
+`npm run typecheck` + `npm run typecheck:types` · `npm run lint` · `npm run build` (→ `lib/`).
 
-Notes:
+- Tests run **against TS source** via Vitest aliases (`vitest.config.mts`:
+  `vrack2-core` → `src/index.ts`, `testkit` → `test/fixtures/boot/index.js`) — no build needed.
+- Integration tests use temp dirs under `os.tmpdir()`, clean up after each test.
+- Runtime deps: `vrack2-journal-db` (JournalDbMetrics, loggers), `vrack-db` (VrackDbMetrics).
 
-- Tests run **directly against the TypeScript source** via Vitest aliases
-  (`vrack2-core` → `src/index.ts`, `testkit` → `test/fixtures/boot/index.js`) —
-  no build step is required before testing.
-- Integration tests use temp dirs under `os.tmpdir()` and clean up after each test.
-- The runtime dependencies are `vrack-db` (used by `VrackDbMetrics`) and
-  `vrack2-journal-db` (used by `JournalDbMetrics` and the log boot-classes).
+## Rules for changes
 
-## Rules for changes (read before editing)
+1. **Code is the source of truth** — if docs disagree, fix the docs.
+2. **Public API = `src/index.ts`**, fully listed (name/purpose/since/deprecated)
+   **only** in `docs/11-API.md` and pinned by `test/smoke.test.ts`. Add the table
+   row *before* exporting; record deprecations there and in `CHANGELOG.md`; don't
+   remove/rename exports without reason.
+3. **Internal ≠ public.** Dynamic composition management (`ServiceLoader.addDevice`
+   / `removeDevice` / `addConnection`, `Container.startDevice` / `removeDevice` /
+   `addConnection`) is `@internal`: code and tests stay, docs must not present it as public.
+4. **Errors are coded:** `ErrorManager.make('CODE', data)` with a code registered
+   for the module; never bare `Error` for expected failures; unexpected exceptions
+   in handlers are wrapped (fail-closed) — let them bubble. Full list — `docs/08-Errors.md`.
+5. **Docs: one topic per file.** Startup sequence **only** in `docs/01`, error codes
+   **only** in `docs/08`; elsewhere link, don't duplicate.
+6. **Never hand-edit `lib/`** — after `src/` changes run `npm run build` (it's committed).
+7. **Event-based & testable:** new behavior gets a test (unit/integration split);
+   reuse `test/fixtures/devices/testkit/`.
+8. **Style:** TS strict; ESLint (`eslint:recommended` + `@typescript-eslint/recommended`);
+   match the style of the file you edit.
 
-1. **Source code is the source of truth.** If docs and code disagree, the code
-   is right — fix the docs.
-2. **Public API = `src/index.ts`.** The full surface (name / purpose / since /
-   deprecated status) is documented **only** in `docs/11-API.md` — the single
-   source of truth for deprecations — and is pinned by the strict set test in
-   `test/smoke.test.ts`. Add a new export to that table before exporting it;
-   record any deprecation there and in `CHANGELOG.md`. Do not remove or rename
-   exports without reason.
-3. **Errors must be coded.** Expected failures are thrown with
-   `ErrorManager.make('CODE', data)` using a code *registered* for the module
-   (registry and full list — `docs/08-Errors.md`). Don't throw bare `Error` for
-   expected conditions; unexpected exceptions inside handlers are wrapped into a
-   VRack error (fail-closed), so let them bubble instead of swallowing.
-4. **Docs discipline.** One topic per numbered file. The startup sequence is
-   documented **only** in `docs/01-Architecture.md`; error codes **only** in
-   `docs/08-Errors.md`. Other docs must link to these two, not duplicate them.
-5. **Never hand-edit `lib/`** — it is generated by `tsc`.
-6. **Keep behavior event-based and testable.** New behavior gets a test in
-   `test/` following the existing unit/integration split; reuse the fixtures in
-   `test/fixtures/devices/testkit/` where possible.
-7. **Style.** TypeScript strict mode; ESLint (`eslint:recommended` +
-   `@typescript-eslint/recommended`); match the style of the file you are editing.
+## Good first moves
 
-## Where to find what (doc map)
-
-| Question | File |
-|---|---|
-| What it is, why event-driven, glossary | `docs/00-Overview.md` |
-| Startup sequence, who does what, data flows | `docs/01-Architecture.md` |
-| File layout, `service.json`, storage dirs | `docs/02-AppStructure.md` |
-| Writing a device (lifecycle, messages) | `docs/03-Device.md` |
-| Ports, connections, actions, metrics | `docs/04-Ports-Actions-Metrics.md` |
-| Options & action validation (`Rule`/`Validator`) | `docs/05-Validator.md` |
-| Container public API & events | `docs/06-Container.md` |
-| Boot classes, writing your own | `docs/07-Bootstrap.md` |
-| All error codes | `docs/08-Errors.md` |
-| Utilities (`ImportManager`, workers, `ReactiveRef`) | `docs/09-Utils.md` |
-| Running a service standalone | `docs/10-Standalone.md` |
-| Public API surface & deprecation status (single source of truth) | `docs/11-API.md` |
-| Testing | `TESTING.md` |
-
-## Good first moves when contributing
-
-- **New device behavior** → extend the `testkit` fixtures and
-  `test/integration/service.test.ts` first, then implement.
-- **New public API** → export from `src/index.ts`, add a smoke test in
-  `test/smoke.test.ts`, document in the matching `docs/0X` file.
-- **New error** → register the code in the owning module (`ErrorManager.register`)
-  and add it to the table in `docs/08-Errors.md`.
-
+- **New device behavior** → extend `testkit` fixtures + `test/integration/service.test.ts`, then implement.
+- **New public API** → table in `docs/11-API.md` → export from `src/index.ts` → smoke test → matching `docs/0X`.
+- **New error** → `ErrorManager.register` in the owning module → table in `docs/08-Errors.md`.

@@ -68,14 +68,30 @@ export default class ServiceLoader {
      */
     private initConnection;
     /**
+     * Validate declared resource maps (`publish` / `resolve`) of all devices
+     * in the service configuration, before any device is created.
+     *
+     * Rules:
+     *  - each map is an object of string → string (`SLDR_BAD_RESOURCE_MAP`);
+     *  - every published registry name is unique across the service
+     *    (`SLDR_RESOURCE_DUPLICATE`);
+     *  - every required name exists in another device's `publish` under the
+     *    same resource key (`SLDR_RESOURCE_MISSING` / `SLDR_RESOURCE_MISMATCH`).
+     */
+    private validateResources;
+    /**
       * Hot-add a device: create it, register it in the container, and emit
       * `device.register` + `device.add` + `service.loaded`.
      *
-     * The device is registered (structure, ports, actions, metrics) but is
+      * The device is registered (structure, ports, actions, metrics) but is
      * **not** started. Start it with `Container.startDevice(id)`.
+     *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
      *
      * @param dconf Device configuration
      * @returns The registered (not yet started) device
+     * @internal
      */
     addDevice(dconf: IStructureDevice): Promise<Device>;
     /**
@@ -85,13 +101,21 @@ export default class ServiceLoader {
      * (`onStop()` + `await onStopAsync()`) and then destroyed
      * (`onDestroy()` + cleanup).
      *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
+     *
      * @param id Device ID
+     * @internal
      */
     removeDevice(id: string): Promise<void>;
     /**
      * Hot-add a connection and emit `service.loaded`.
      *
+     * Not part of the public contract — internal mechanics of the dynamic
+     * device management; behavior may change without notice.
+     *
      * @param conn Device connection string like "DevID.port -> DevIDTO.port"
+     * @internal
      */
     addConnection(conn: string): void;
     /**
