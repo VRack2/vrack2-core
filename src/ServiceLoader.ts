@@ -36,6 +36,11 @@ ErrorManager.registerMany('ServiceLoader', [
         description: 'Problem with extending service configuration.'
     },
     {
+        short: 'SLDR_CONF_DEVICE_INVALID',
+        description: 'A conf-file device entry is not a valid new device (missing or invalid "type")',
+        rules: { device: Rule.string().description('Device ID') }
+    },
+    {
         short: 'SLDR_INCORRECT_DEVICE_ID',
         description: 'Incorrect device id'
     },
@@ -138,8 +143,9 @@ export default class ServiceLoader {
      * Load the full structure from `this.service` into the container.
      *
      * This re-homes the previous `Container.init()`:
-     * 1. `service.configure` event, then `fillConfFile()` (override device
-     *    options; failures wrapped in `SLDR_CONF_EXTENDS_PROBLEM`).
+     * 1. `service.configure` event, then `fillConfFile()` (override options of
+     *    existing devices and add devices declared only in the conf file;
+     *    failures wrapped in `SLDR_CONF_EXTENDS_PROBLEM`).
      * 2. `service.init.begin` / `service.init` events, then for each device:
      *    `device.register` event + `createDevice()` +
      *    `Container.registerDevice()` (failures wrapped in
@@ -332,21 +338,51 @@ export default class ServiceLoader {
     }
 
     /**
-     * Override device options (and connections) from the conf file.
+     * Extend the service configuration from the conf file.
      *
-     * Re-homed from `Container.fillConfFile()`.
+     * Re-homed from `Container.fillConfFile()`. Per conf-file device entry:
+     *  - **Override** — the `id` already exists in the service file: the entry's
+     *    `options` are shallow-merged over the existing device and, when the
+     *    entry carries `connections`, they replace the device's own connections.
+     *  - **Addition** — the `id` is absent from the service file: the entry is
+     *    appended to `this.service.devices` as a **full device**, so it is
+     *    created, validated and wired exactly like devices declared in the
+     *    service file. Such an entry must declare a valid string `type`
+     *    (otherwise `SLDR_CONF_DEVICE_INVALID`); `options` default to `{}` and
+     *    `connections` / `publish` / `resolve` are carried over when present.
+     *
+     * Entries without a usable string `id` are ignored. Conf-file additions run
+     * before the load loop, so added devices (and the connections that reference
+     * them) are seen by every later step of `load()` (resource validation,
+     * device creation, connection wiring, `service.loaded` persistence).
      */
     protected fillConfFile() {
         if (!this.confFile || !existsSync(this.confFile)) return
         const conf = ImportManager.importJSON(this.confFile)
         if (conf.devices === undefined || !Array.isArray(conf.devices)) conf.devices = []
         for (const device of conf.devices) {
-            if (!device.id || device.options === undefined || typeof device.options !== 'object') continue
-            for (const cdev of this.service.devices) {
-                if (cdev.id === device.id) {
-                    for (const pname in device.options) cdev.options[pname] = device.options[pname]
-                    if (device.connections) cdev.connections = device.connections
+            if (!device || typeof device !== 'object' || !device.id || typeof device.id !== 'string') continue
+            const existing = this.service.devices.find((cdev) => cdev.id === device.id)
+            if (existing) {
+                // Override: merge options over an existing device, replace its connections
+                if (device.options !== undefined && typeof device.options === 'object') {
+                    for (const pname in device.options) existing.options[pname] = device.options[pname]
                 }
+                if (device.connections) existing.connections = device.connections
+            } else {
+                // Addition: a full device declared only in the conf file
+                if (!device.type || typeof device.type !== 'string') {
+                    throw ErrorManager.make('SLDR_CONF_DEVICE_INVALID', { device: device.id })
+                }
+                const added: IStructureDevice = {
+                    id: device.id,
+                    type: device.type,
+                    options: (device.options !== undefined && typeof device.options === 'object') ? device.options : {},
+                }
+                if (Array.isArray(device.connections)) added.connections = device.connections
+                if (device.publish) added.publish = device.publish
+                if (device.resolve) added.resolve = device.resolve
+                this.service.devices.push(added)
             }
         }
     }

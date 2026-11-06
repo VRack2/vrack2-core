@@ -61,6 +61,6 @@ Boot classes: `DEFAULT_BOOTLIST` = `DeviceManager` (**required**), `DeviceFileSt
 
 ## Good first moves
 
-- **New device behavior** → extend `testkit` fixtures + `test/integration/service.test.ts`, then implement.
+- **New device behavior** → extend `testkit` fixtures + the matching `test/integration/service-*.test.ts` (bootstrap/bootlist/conf-file/device-init/connections/counter/lamp/structure-storage/stop/device-port; shared helpers in `test/integration/service-helpers.ts`), then implement.
 - **New public API** → table in `docs/11-API.md` → export from `src/index.ts` → smoke test → matching `docs/0X`.
 - **New error** → `ErrorManager.register` in the owning module → table in `docs/08-Errors.md`.

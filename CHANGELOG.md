@@ -2,6 +2,17 @@
 
 ## 2026.11.03 — 2.0.0 (breaking)
 
+### 2026.11.07
+
+#### Minor
+
+- **Конф-файл теперь добавляет устройства, а не только переопределяет.** В `confFile` запись устройства, `id` которого отсутствует в `service.json`, попадает в конфигурацию как **полноценное устройство**: оно обязано задать `type`, а `options` / `connections` / `publish` / `resolve` подхватываются и валидируются так же, как у устройств из файла сервиса (добавка в `this.service.devices` выполняется в `ServiceLoader.fillConfFile()` до цикла загрузки, поэтому устройство создаётся, регистрируется, соединяется и сохраняется наравне с остальными). Запись устройства с неизвестным `id` и без корректного `type` — новый код ошибки `SLDR_CONF_DEVICE_INVALID`. Записи с уже известным `id` по-прежнему переопределяют `options` (и `connections`). Документация — [02-AppStructure](docs/02-AppStructure.md), коды — [08-Errors](docs/08-Errors.md).
+
+#### Tests
+
+- `service-conf-file.test`: новый describe «Conf file extends service structure (add devices)» — добавление устройства только из конф-файла (+ проводка его соединения к устройству из `service.json` и протекание данных), прежнее переопределение `options` без дублирования, `SLDR_CONF_DEVICE_INVALID` для новой записи без `type`.
+- Рефакторинг тестов: разбит огромный `test/integration/service.test.ts` (>1200 строк, 11 describe) на тематические файлы `test/integration/service-{bootstrap,bootlist,conf-file,device-init,connections,counter,lamp,structure-storage,stop,device-port}.test.ts` с общим немодульным хелпером `test/integration/service-helpers.ts` (`FIXTURES`, `EMPTY_SERVICE`, хук `useTmpDir()`, `makeMP`, `runOrError`, `sleep`, `hasCode`). Количество и тела тестов сохранены (56 интеграционных тестов, 320 всего), `npm test`/`lint` зелёные.
+
 ### 2026.11.03
 
 #### Minor

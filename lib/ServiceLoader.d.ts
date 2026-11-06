@@ -45,8 +45,9 @@ export default class ServiceLoader {
      * Load the full structure from `this.service` into the container.
      *
      * This re-homes the previous `Container.init()`:
-     * 1. `service.configure` event, then `fillConfFile()` (override device
-     *    options; failures wrapped in `SLDR_CONF_EXTENDS_PROBLEM`).
+     * 1. `service.configure` event, then `fillConfFile()` (override options of
+     *    existing devices and add devices declared only in the conf file;
+     *    failures wrapped in `SLDR_CONF_EXTENDS_PROBLEM`).
      * 2. `service.init.begin` / `service.init` events, then for each device:
      *    `device.register` event + `createDevice()` +
      *    `Container.registerDevice()` (failures wrapped in
@@ -119,9 +120,23 @@ export default class ServiceLoader {
      */
     addConnection(conn: string): void;
     /**
-     * Override device options (and connections) from the conf file.
+     * Extend the service configuration from the conf file.
      *
-     * Re-homed from `Container.fillConfFile()`.
+     * Re-homed from `Container.fillConfFile()`. Per conf-file device entry:
+     *  - **Override** — the `id` already exists in the service file: the entry's
+     *    `options` are shallow-merged over the existing device and, when the
+     *    entry carries `connections`, they replace the device's own connections.
+     *  - **Addition** — the `id` is absent from the service file: the entry is
+     *    appended to `this.service.devices` as a **full device**, so it is
+     *    created, validated and wired exactly like devices declared in the
+     *    service file. Such an entry must declare a valid string `type`
+     *    (otherwise `SLDR_CONF_DEVICE_INVALID`); `options` default to `{}` and
+     *    `connections` / `publish` / `resolve` are carried over when present.
+     *
+     * Entries without a usable string `id` are ignored. Conf-file additions run
+     * before the load loop, so added devices (and the connections that reference
+     * them) are seen by every later step of `load()` (resource validation,
+     * device creation, connection wiring, `service.loaded` persistence).
      */
     protected fillConfFile(): void;
     /**
